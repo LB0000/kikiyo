@@ -148,7 +148,7 @@ export function DataTable({ rows, livers }: Props) {
                 <TableCell className="text-right">{fmt(row.diamonds)}</TableCell>
                 <TableCell className="text-right">{row.valid_days ?? "0"}</TableCell>
                 <TableCell className="text-right">{row.live_duration ?? "0"}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.estimated_bonus)}</TableCell>
+                <TableCell className="text-right">{fmt(row.estimated_bonus)}</TableCell>
                 <TableCell className="text-right">{fmtBonus(row.bonus_rookie_half_milestone)}</TableCell>
                 <TableCell className="text-right">{fmtBonus(row.bonus_rookie_milestone_1)}</TableCell>
                 <TableCell className="text-right">{fmtBonus(row.bonus_rookie_retention)}</TableCell>

@@ -240,6 +240,7 @@ export function DashboardClient({
           </TabsContent>
           <TabsContent value="refund" className="mt-4">
             <RefundTable
+              key={`${selectedReportId}-${agencyFilter ?? "all"}`}
               rows={dashboardData.refunds.map((r) => ({
                 id: r.id,
                 liver_name:

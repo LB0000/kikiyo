@@ -13,7 +13,7 @@ export function EmptyState({
   description,
 }: Props) {
   return (
-    <div role="status" className="flex flex-col items-center justify-center py-12 gap-3">
+    <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-12 gap-3">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
         <Icon className="size-6 text-muted-foreground/60" aria-hidden="true" />
       </div>

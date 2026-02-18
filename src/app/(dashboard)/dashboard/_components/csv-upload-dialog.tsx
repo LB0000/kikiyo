@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Papa from "papaparse";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
   const [exchangeRate, setExchangeRate] = useState<number>(150);
   const [revenueTask, setRevenueTask] = useState<RevenueTask>("task_1");
   const [loading, setLoading] = useState(false);
+  const [uploadStage, setUploadStage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function resetForm() {
@@ -67,111 +68,12 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
     setLoading(true);
 
     try {
-      const text = await file.text();
+      setUploadStage("CSVファイルを読み込み中...");
+      const csvText = await file.text();
 
-      const parsed = Papa.parse<Record<string, string>>(text, {
-        header: true,
-        skipEmptyLines: true,
-      });
-
-      if (parsed.errors.length > 0) {
-        toast.error("CSVの解析に失敗しました", {
-          description: parsed.errors[0]?.message,
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (parsed.data.length === 0) {
-        toast.error("CSVにデータがありません");
-        setLoading(false);
-        return;
-      }
-
-      // 必須カラムの検証
-      const firstRow = parsed.data[0];
-      const hasCreatorId =
-        "Creator ID" in firstRow || "creator_id" in firstRow;
-      const hasEstimatedBonus =
-        "Estimated Bonus" in firstRow || "estimated_bonus" in firstRow;
-      if (!hasCreatorId || !hasEstimatedBonus) {
-        toast.error("CSVに必須カラムが不足しています", {
-          description: "Creator ID, Estimated Bonus が必要です",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Map CSV rows to CsvRow type
-      const safeFloat = (v: string | undefined) => {
-        const n = parseFloat(v ?? "0");
-        return isNaN(n) ? 0 : n;
-      };
-
-      const rows = parsed.data.map((row) => ({
-        creator_id: row["Creator ID"] ?? row["creator_id"] ?? "",
-        creator_nickname:
-          row["Creator Nickname"] ?? row["creator_nickname"] ?? "",
-        handle: row["Handle"] ?? row["handle"] ?? "",
-        group: row["Group"] ?? row["group"] ?? "",
-        group_manager: row["Group Manager"] ?? row["group_manager"] ?? "",
-        creator_network_manager:
-          row["Creator Network Manager"] ??
-          row["creator_network_manager"] ??
-          "",
-        data_month: row["Data Month"] ?? row["data_month"] ?? "",
-        diamonds: safeFloat(row["Diamonds"] ?? row["diamonds"]),
-        estimated_bonus: safeFloat(
-          row["Estimated Bonus"] ?? row["estimated_bonus"]
-        ),
-        valid_days: row["Valid Days"] ?? row["valid_days"] ?? "",
-        live_duration: row["Live Duration"] ?? row["live_duration"] ?? "",
-        is_violative_creators:
-          (
-            row["Is Violative Creators"] ??
-            row["is_violative_creators"] ??
-            "false"
-          ).toLowerCase() === "true",
-        the_creator_was_rookie_at_the_time_of_first_joining:
-          (
-            row[
-              "The Creator Was Rookie At The Time Of First Joining"
-            ] ??
-            row[
-              "the_creator_was_rookie_at_the_time_of_first_joining"
-            ] ??
-            "false"
-          ).toLowerCase() === "true",
-        // Bubble task1〜task6+ に対応するボーナスフィールド（CLAUDE.md参照）
-        bonus_rookie_half_milestone: safeFloat(
-          row["Bonus - Rookie Half Milestone"] ??
-            row["bonus_rookie_half_milestone"]
-        ),
-        bonus_activeness: safeFloat(
-          row["Bonus - Activeness"] ?? row["bonus_activeness"]
-        ),
-        bonus_revenue_scale: safeFloat(
-          row["Bonus - Revenue Scale"] ?? row["bonus_revenue_scale"]
-        ),
-        bonus_rookie_milestone_1: safeFloat(
-          row["Bonus - Rookie Milestone 1"] ??
-            row["bonus_rookie_milestone_1"]
-        ),
-        bonus_rookie_milestone_2: safeFloat(
-          row["Bonus - Rookie Milestone 2"] ??
-            row["bonus_rookie_milestone_2"]
-        ),
-        bonus_off_platform: safeFloat(
-          row["Bonus - Off Platform"] ?? row["bonus_off_platform"]
-        ),
-        bonus_rookie_retention: safeFloat(
-          row["Bonus - Rookie Retention"] ??
-            row["bonus_rookie_retention"]
-        ),
-      }));
-
+      setUploadStage("データを検証・登録中...");
       const result = await importCsvData({
-        rows,
+        csvText,
         rate: exchangeRate,
         revenueTask,
         uploadAgencyId: uploadAgencyId ?? "",
@@ -215,6 +117,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
         description: err instanceof Error ? err.message : "不明なエラー",
       });
     } finally {
+      setUploadStage(null);
       setLoading(false);
     }
   }
@@ -272,11 +175,19 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
           </div>
         </div>
 
+        {uploadStage && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            <span>{uploadStage}</span>
+          </div>
+        )}
+
         <DialogFooter>
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={loading}
           >
             キャンセル
           </Button>

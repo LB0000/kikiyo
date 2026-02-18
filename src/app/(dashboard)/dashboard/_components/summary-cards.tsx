@@ -17,6 +17,7 @@ type Props = {
 type CardItem = {
   label: string;
   value: string;
+  highlight?: boolean;
 };
 
 function fmt(n: number): string {
@@ -75,6 +76,7 @@ export function SummaryCards({
     {
       label: "お支払い金額(税込)",
       value: fmtJpy(agencyPaymentIncTax),
+      highlight: true,
     },
   ];
 
@@ -83,10 +85,14 @@ export function SummaryCards({
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-lg border bg-card p-4"
+          className={`rounded-lg border p-4 ${
+            card.highlight
+              ? "bg-primary/5 border-primary/20 ring-1 ring-primary/10"
+              : "bg-card"
+          }`}
         >
-          <p className="text-xs text-muted-foreground">{card.label}</p>
-          <p className="mt-2 text-right text-2xl font-bold">{card.value}</p>
+          <p className={`text-xs ${card.highlight ? "font-medium text-primary/70" : "text-muted-foreground"}`}>{card.label}</p>
+          <p className={`mt-2 text-right text-2xl font-bold ${card.highlight ? "text-primary" : ""}`}>{card.value}</p>
         </div>
       ))}
     </div>

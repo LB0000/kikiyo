@@ -21,6 +21,7 @@ import {
   type DashboardData,
 } from "@/lib/actions/dashboard";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
+import { Upload } from "lucide-react";
 import type { RevenueTask } from "@/lib/supabase/types";
 
 type Props = {
@@ -190,7 +191,16 @@ export function DashboardClient({
       </div>
 
       {/* サマリーカード */}
-      {dashboardData && (
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card p-4">
+              <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+              <div className="mt-4 ml-auto h-7 w-24 animate-pulse rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      ) : dashboardData ? (
         <SummaryCards
           revenueTask={
             selectedReport?.revenue_task
@@ -207,12 +217,18 @@ export function DashboardClient({
           commissionRate={dashboardData.summary.commissionRate}
           agencyPaymentIncTax={dashboardData.summary.agencyPaymentIncTax}
         />
-      )}
+      ) : null}
 
       {/* データ/返金タブ */}
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          読み込み中...
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+          </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+          ))}
         </div>
       ) : dashboardData ? (
         <Tabs defaultValue="data">
@@ -238,8 +254,21 @@ export function DashboardClient({
           </TabsContent>
         </Tabs>
       ) : reports.length === 0 ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          CSVデータをアップロードしてください
+        <div className="flex flex-col items-center justify-center py-16 gap-4">
+          <Upload className="size-12 text-muted-foreground/40" />
+          <div className="text-center">
+            <p className="font-medium">まだデータがありません</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              CSVファイルをアップロードしてダッシュボードを開始しましょう
+            </p>
+          </div>
+          <button
+            type="button"
+            className="cursor-pointer rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}
+          >
+            CSVをアップロード
+          </button>
         </div>
       ) : null}
 

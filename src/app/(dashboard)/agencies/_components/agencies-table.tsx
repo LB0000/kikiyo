@@ -76,7 +76,7 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
                   <TableCell>
                     <button
                       type="button"
-                      className="cursor-pointer p-1 text-primary hover:text-primary/70 transition-colors"
+                      className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
                       onClick={() => onSelect(agency)}
                       aria-label="編集"
                     >

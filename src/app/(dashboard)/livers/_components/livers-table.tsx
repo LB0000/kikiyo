@@ -38,18 +38,35 @@ export function LiversTable({ livers, onSelect }: Props) {
   const safePage = Math.min(page, totalPages);
   const pagedLivers = livers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  async function handleStatusChange(liverId: string, status: ApplicationStatus) {
+  async function handleStatusChange(liverId: string, newStatus: ApplicationStatus) {
+    const liver = livers.find((l) => l.id === liverId);
+    const previousStatus = liver?.status;
     setUpdatingId(liverId);
-    try {
-      const result = await updateLiverStatus(liverId, status);
-      if (result.error) {
-        toast.error("ステータス変更に失敗しました");
-      } else {
-        toast.success("申請状況を変更しました");
-      }
-    } finally {
-      setUpdatingId(null);
+
+    const result = await updateLiverStatus(liverId, newStatus);
+    setUpdatingId(null);
+
+    if (result.error) {
+      toast.error("ステータス変更に失敗しました");
+      return;
     }
+
+    toast.success("申請状況を変更しました", {
+      action: previousStatus
+        ? {
+            label: "元に戻す",
+            onClick: async () => {
+              const undo = await updateLiverStatus(liverId, previousStatus as ApplicationStatus);
+              if (undo.error) {
+                toast.error("元に戻せませんでした");
+              } else {
+                toast.success("ステータスを元に戻しました");
+              }
+            },
+          }
+        : undefined,
+      duration: 5000,
+    });
   }
 
   return (
@@ -77,7 +94,11 @@ export function LiversTable({ livers, onSelect }: Props) {
               </TableRow>
             ) : (
               pagedLivers.map((liver) => (
-                <TableRow key={liver.id}>
+                <TableRow
+                  key={liver.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => onSelect(liver)}
+                >
                   <TableCell className="font-medium">
                     {liver.name ?? "-"}
                   </TableCell>
@@ -85,7 +106,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                     {liver.liver_id ?? "-"}
                   </TableCell>
                   <TableCell>{liver.account_name ?? "-"}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={liver.status}
                       onValueChange={(v) =>
@@ -117,7 +138,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                       ? new Date(liver.acquisition_date).toLocaleDateString("ja-JP")
                       : "-"}
                   </TableCell>
-                  <TableCell className="text-sm max-w-[200px] truncate">
+                  <TableCell className="text-sm max-w-[200px] truncate" onClick={(e) => e.stopPropagation()}>
                     {liver.link && /^https?:\/\//.test(liver.link) ? (
                       <a
                         href={liver.link}
@@ -132,10 +153,10 @@ export function LiversTable({ livers, onSelect }: Props) {
                       "-"
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      className="cursor-pointer p-1 text-primary hover:text-primary/70 transition-colors"
+                      className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
                       onClick={() => onSelect(liver)}
                       aria-label="編集"
                     >

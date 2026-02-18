@@ -1,5 +1,6 @@
 "use server";
 
+import Papa from "papaparse";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
@@ -19,7 +20,7 @@ import { createRefundSchema } from "@/lib/validations/refund";
 //   Bubble task5  → bonus_rookie_milestone_2    (Bonus - Rookie Milestone 2)
 //   Bubble task6+ → bonus_off_platform          (Bonus - Off Platform)
 //   (Bubbleなし)  → bonus_rookie_retention      (Bonus - Rookie Retention)
-export type CsvRow = {
+type CsvRow = {
   creator_id: string;
   creator_nickname: string;
   handle: string;
@@ -246,8 +247,95 @@ export type ImportResult = {
   unlinkedAgencyCount: number;
 };
 
+// CSV行をパース（サーバーサイド）
+function parseCsvText(csvText: string): CsvRow[] | { error: string } {
+  const parsed = Papa.parse<Record<string, string>>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+  });
+
+  if (parsed.errors.length > 0) {
+    return { error: `CSVの解析に失敗しました: ${parsed.errors[0]?.message}` };
+  }
+
+  if (parsed.data.length === 0) {
+    return { error: "CSVにデータがありません" };
+  }
+
+  const firstRow = parsed.data[0];
+  const hasCreatorId =
+    "Creator ID" in firstRow || "creator_id" in firstRow;
+  const hasEstimatedBonus =
+    "Estimated Bonus" in firstRow || "estimated_bonus" in firstRow;
+  if (!hasCreatorId || !hasEstimatedBonus) {
+    return { error: "CSVに必須カラムが不足しています（Creator ID, Estimated Bonus が必要です）" };
+  }
+
+  const safeFloat = (v: string | undefined) => {
+    const n = parseFloat(v ?? "0");
+    return isNaN(n) ? 0 : n;
+  };
+
+  return parsed.data.map((row) => ({
+    creator_id: row["Creator ID"] ?? row["creator_id"] ?? "",
+    creator_nickname:
+      row["Creator Nickname"] ?? row["creator_nickname"] ?? "",
+    handle: row["Handle"] ?? row["handle"] ?? "",
+    group: row["Group"] ?? row["group"] ?? "",
+    group_manager: row["Group Manager"] ?? row["group_manager"] ?? "",
+    creator_network_manager:
+      row["Creator Network Manager"] ??
+      row["creator_network_manager"] ??
+      "",
+    data_month: row["Data Month"] ?? row["data_month"] ?? "",
+    diamonds: safeFloat(row["Diamonds"] ?? row["diamonds"]),
+    estimated_bonus: safeFloat(
+      row["Estimated Bonus"] ?? row["estimated_bonus"]
+    ),
+    valid_days: row["Valid Days"] ?? row["valid_days"] ?? "",
+    live_duration: row["Live Duration"] ?? row["live_duration"] ?? "",
+    is_violative_creators:
+      (
+        row["Is Violative Creators"] ??
+        row["is_violative_creators"] ??
+        "false"
+      ).toLowerCase() === "true",
+    the_creator_was_rookie_at_the_time_of_first_joining:
+      (
+        row["The Creator Was Rookie At The Time Of First Joining"] ??
+        row["the_creator_was_rookie_at_the_time_of_first_joining"] ??
+        "false"
+      ).toLowerCase() === "true",
+    bonus_rookie_half_milestone: safeFloat(
+      row["Bonus - Rookie Half Milestone"] ??
+        row["bonus_rookie_half_milestone"]
+    ),
+    bonus_activeness: safeFloat(
+      row["Bonus - Activeness"] ?? row["bonus_activeness"]
+    ),
+    bonus_revenue_scale: safeFloat(
+      row["Bonus - Revenue Scale"] ?? row["bonus_revenue_scale"]
+    ),
+    bonus_rookie_milestone_1: safeFloat(
+      row["Bonus - Rookie Milestone 1"] ??
+        row["bonus_rookie_milestone_1"]
+    ),
+    bonus_rookie_milestone_2: safeFloat(
+      row["Bonus - Rookie Milestone 2"] ??
+        row["bonus_rookie_milestone_2"]
+    ),
+    bonus_off_platform: safeFloat(
+      row["Bonus - Off Platform"] ?? row["bonus_off_platform"]
+    ),
+    bonus_rookie_retention: safeFloat(
+      row["Bonus - Rookie Retention"] ??
+        row["bonus_rookie_retention"]
+    ),
+  }));
+}
+
 export async function importCsvData(params: {
-  rows: CsvRow[];
+  csvText: string;
   rate: number;
   revenueTask: RevenueTask;
   uploadAgencyId: string;
@@ -255,12 +343,17 @@ export async function importCsvData(params: {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
 
-  const { rows, rate, revenueTask, uploadAgencyId } = params;
+  const { csvText, rate, revenueTask, uploadAgencyId } = params;
 
-  if (rows.length === 0) return { error: "CSVデータが空です" };
-  if (rows.length > 10000) return { error: "CSVデータが多すぎます（上限10,000行）" };
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
   if (!uploadAgencyId) return { error: "アップロード代理店が指定されていません" };
+
+  // サーバーサイドでCSV解析
+  const parseResult = parseCsvText(csvText);
+  if ("error" in parseResult) return parseResult;
+  const rows = parseResult;
+
+  if (rows.length > 10000) return { error: "CSVデータが多すぎます（上限10,000行）" };
 
   const supabase = await createClient();
 
@@ -277,7 +370,7 @@ export async function importCsvData(params: {
     }
   }
 
-  // 1. Create the monthly_report
+  // 1. monthly_report 作成 + ライバー/代理店を並列取得
   const { data: report, error: reportError } = await supabase
     .from("monthly_reports")
     .insert({
@@ -293,14 +386,11 @@ export async function importCsvData(params: {
     };
   }
 
-  // 2. Pre-fetch all livers and agencies for lookups
-  const { data: allLivers } = await supabase
-    .from("livers")
-    .select("id, liver_id, agency_id");
-
-  const { data: allAgencies } = await supabase
-    .from("agencies")
-    .select("id, name, commission_rate");
+  // 2. ライバーと代理店を並列取得
+  const [{ data: allLivers }, { data: allAgencies }] = await Promise.all([
+    supabase.from("livers").select("id, liver_id, agency_id"),
+    supabase.from("agencies").select("id, name, commission_rate"),
+  ]);
 
   const liverMap = new Map(
     (allLivers ?? [])
@@ -367,14 +457,16 @@ export async function importCsvData(params: {
 
     if (insertError) {
       // Cleanup: remove partial csv_data and orphaned monthly_report
-      await supabase
-        .from("csv_data")
-        .delete()
-        .eq("monthly_report_id", report.id);
-      await supabase
-        .from("monthly_reports")
-        .delete()
-        .eq("id", report.id);
+      await Promise.all([
+        supabase
+          .from("csv_data")
+          .delete()
+          .eq("monthly_report_id", report.id),
+        supabase
+          .from("monthly_reports")
+          .delete()
+          .eq("id", report.id),
+      ]);
       return { error: insertError.message };
     }
   }

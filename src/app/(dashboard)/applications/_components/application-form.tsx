@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { FORM_TAB_LABELS } from "@/lib/constants";
 import { createApplication } from "@/lib/actions/applications";
@@ -19,6 +20,8 @@ type Props = {
 type Step = "input" | "confirm" | "complete";
 
 const ALL_FORM_TABS = Object.keys(FORM_TAB_LABELS) as FormTab[];
+const PRIMARY_TABS: FormTab[] = ["affiliation_check", "million_special", "streaming_auth"];
+const SECONDARY_TABS = ALL_FORM_TABS.filter((t) => !PRIMARY_TABS.includes(t));
 
 export function ApplicationForm({ agencyId }: Props) {
   const [step, setStep] = useState<Step>("input");
@@ -88,37 +91,52 @@ export function ApplicationForm({ agencyId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Progress */}
-      <div className="flex items-center justify-center gap-2">
-        {steps.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                i <= stepIndex
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {i + 1}
+      {/* Progress (Goal-Gradient Effect) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          {steps.map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all duration-300 ${
+                  i < stepIndex
+                    ? "bg-green-500 text-white"
+                    : i === stepIndex
+                    ? "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {i < stepIndex ? <Check className="size-4" /> : i + 1}
+              </div>
+              <span
+                className={`text-sm ${
+                  i < stepIndex
+                    ? "font-medium text-green-600"
+                    : i === stepIndex
+                    ? "font-medium"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {s}
+              </span>
+              {i < steps.length - 1 && (
+                <div className={`h-0.5 w-12 transition-colors duration-300 ${
+                  i < stepIndex ? "bg-green-500" : "bg-muted"
+                }`} />
+              )}
             </div>
-            <span
-              className={`text-sm ${
-                i <= stepIndex ? "font-medium" : "text-muted-foreground"
-              }`}
-            >
-              {s}
-            </span>
-            {i < steps.length - 1 && (
-              <Separator className="w-12" orientation="horizontal" />
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
+        {step === "confirm" && (
+          <p className="text-center text-sm text-green-600 font-medium">
+            あと1ステップで完了です
+          </p>
+        )}
       </div>
 
       {/* Step: Input */}
       {step === "input" && (
         <form onSubmit={handleConfirm} className="space-y-6">
-          {/* 申請種別 — 2×4 grid like Bubble */}
+          {/* 申請種別 — 主要3つ + 折りたたみ (Hick's Law) */}
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">申請を選択してください</p>
             <p className="text-sm text-muted-foreground">
@@ -127,16 +145,33 @@ export function ApplicationForm({ agencyId }: Props) {
             <RadioGroup
               value={selectedTab}
               onValueChange={(v) => setSelectedTab(v as FormTab)}
-              className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4"
+              className="space-y-3"
             >
-              {ALL_FORM_TABS.map((tab) => (
-                <div key={tab} className="flex items-center space-x-2">
-                  <RadioGroupItem value={tab} id={tab} />
-                  <Label htmlFor={tab} className="font-normal text-sm whitespace-nowrap">
-                    {FORM_TAB_LABELS[tab]}
-                  </Label>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-3">
+                {PRIMARY_TABS.map((tab) => (
+                  <div key={tab} className="flex items-center space-x-2">
+                    <RadioGroupItem value={tab} id={tab} />
+                    <Label htmlFor={tab} className="font-normal text-sm whitespace-nowrap">
+                      {FORM_TAB_LABELS[tab]}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <details className="group">
+                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  その他の申請種別を表示
+                </summary>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-3 mt-2">
+                  {SECONDARY_TABS.map((tab) => (
+                    <div key={tab} className="flex items-center space-x-2">
+                      <RadioGroupItem value={tab} id={tab} />
+                      <Label htmlFor={tab} className="font-normal text-sm whitespace-nowrap">
+                        {FORM_TAB_LABELS[tab]}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </details>
             </RadioGroup>
           </div>
 

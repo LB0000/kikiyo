@@ -16,7 +16,7 @@ const firaCode = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "TikTok Live Tool",
+  title: "KIKIYO - Live Manager",
   description: "TikTokライバー管理ツール",
 };
 

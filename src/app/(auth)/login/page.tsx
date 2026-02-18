@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -81,13 +82,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            TikTok Live Tool
+    <div className="relative flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.7_0.18_350_/_0.05),transparent,transparent)]" />
+      <Card className="relative w-full max-w-md overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-primary/70" />
+        <CardHeader className="pt-8 text-center">
+          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+            <Image src="/logo.png" alt="KIKIYO" width={36} height={36} />
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-wider">
+            KIKIYO
           </CardTitle>
-          <CardDescription>
+          <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            Live Manager
+          </p>
+          <CardDescription className="mt-2">
             アカウントにログインしてください
           </CardDescription>
         </CardHeader>

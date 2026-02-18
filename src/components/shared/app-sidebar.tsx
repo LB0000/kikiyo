@@ -67,7 +67,7 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
       {/* ── Brand Header ── */}
       <SidebarHeader className="px-6 pt-8 pb-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-md shadow-primary/25">
+          <div className="flex h-11 w-11 items-center justify-center">
             <Image src="/logo.png" alt="KIKIYO" width={28} height={28} />
           </div>
           <div>

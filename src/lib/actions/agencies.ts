@@ -24,16 +24,18 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
 
   const supabase = await createClient();
 
-  const { data: agencies, error } = await supabase
-    .from("agencies")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // 代理店と階層を並列取得
+  const [{ data: agencies, error }, { data: hierarchy }] = await Promise.all([
+    supabase
+      .from("agencies")
+      .select("*")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("agency_hierarchy")
+      .select("agency_id, parent_agency_id"),
+  ]);
 
   if (error || !agencies) return [];
-
-  const { data: hierarchy } = await supabase
-    .from("agency_hierarchy")
-    .select("agency_id, parent_agency_id");
 
   const agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
 

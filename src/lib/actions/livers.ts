@@ -30,25 +30,20 @@ export async function getLivers(): Promise<LiverRow[]> {
 
   const supabase = await createClient();
 
-  const { data: livers, error } = await supabase
-    .from("livers")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // ライバーと代理店を並列取得
+  const [{ data: livers, error }, { data: allAgencies }] = await Promise.all([
+    supabase
+      .from("livers")
+      .select("*")
+      .order("created_at", { ascending: false }),
+    supabase.from("agencies").select("id, name"),
+  ]);
 
   if (error || !livers) return [];
 
-  const agencyIds = [...new Set(livers.map((l) => l.agency_id).filter(Boolean))] as string[];
-  let agencyMap = new Map<string, string>();
-
-  if (agencyIds.length > 0) {
-    const { data: agencies } = await supabase
-      .from("agencies")
-      .select("id, name")
-      .in("id", agencyIds);
-    if (agencies) {
-      agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
-    }
-  }
+  const agencyMap = new Map(
+    (allAgencies ?? []).map((a) => [a.id, a.name])
+  );
 
   return livers.map((liver) => ({
     id: liver.id,

@@ -31,27 +31,20 @@ export async function getApplications(): Promise<ApplicationRow[]> {
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("applications")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // 申請と代理店を並列取得
+  const [{ data, error }, { data: allAgencies }] = await Promise.all([
+    supabase
+      .from("applications")
+      .select("*")
+      .order("created_at", { ascending: false }),
+    supabase.from("agencies").select("id, name"),
+  ]);
 
   if (error || !data) return [];
 
-  const agencyIds = [
-    ...new Set(data.map((a) => a.agency_id).filter(Boolean)),
-  ] as string[];
-  let agencyMap = new Map<string, string>();
-
-  if (agencyIds.length > 0) {
-    const { data: agencies } = await supabase
-      .from("agencies")
-      .select("id, name")
-      .in("id", agencyIds);
-    if (agencies) {
-      agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
-    }
-  }
+  const agencyMap = new Map(
+    (allAgencies ?? []).map((a) => [a.id, a.name])
+  );
 
   return data.map((app) => ({
     ...app,

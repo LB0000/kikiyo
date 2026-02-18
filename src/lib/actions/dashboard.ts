@@ -153,7 +153,7 @@ export async function getDashboardData(
     return { error: reportError?.message ?? "月次レポートが見つかりません" };
   }
 
-  // Fetch csv_data filtered by monthly_report_id (and optionally agency_id)
+  // csv_data と refunds を並列取得
   let csvQuery = supabase
     .from("csv_data")
     .select("*")
@@ -163,13 +163,6 @@ export async function getDashboardData(
     csvQuery = csvQuery.eq("agency_id", agencyId);
   }
 
-  const { data: csvRows, error: csvError } = await csvQuery;
-
-  if (csvError) {
-    return { error: csvError.message };
-  }
-
-  // Fetch refunds filtered by monthly_report_id and is_deleted=false
   let refundQuery = supabase
     .from("refunds")
     .select("*")
@@ -180,7 +173,14 @@ export async function getDashboardData(
     refundQuery = refundQuery.eq("agency_id", agencyId);
   }
 
-  const { data: refunds, error: refundError } = await refundQuery;
+  const [
+    { data: csvRows, error: csvError },
+    { data: refunds, error: refundError },
+  ] = await Promise.all([csvQuery, refundQuery]);
+
+  if (csvError) {
+    return { error: csvError.message };
+  }
 
   if (refundError) {
     return { error: refundError.message };

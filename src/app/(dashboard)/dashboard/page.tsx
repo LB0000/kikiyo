@@ -9,17 +9,14 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const supabase = await createClient();
-  const reports = await getMonthlyReports();
 
-  const { data: agenciesRaw } = await supabase
-    .from("agencies")
-    .select("id, name")
-    .order("name");
-
-  const { data: liversRaw } = await supabase
-    .from("livers")
-    .select("id, name")
-    .order("name");
+  // レポート・代理店・ライバーを並列取得
+  const [reports, { data: agenciesRaw }, { data: liversRaw }] =
+    await Promise.all([
+      getMonthlyReports(),
+      supabase.from("agencies").select("id, name").order("name"),
+      supabase.from("livers").select("id, name").order("name"),
+    ]);
 
   return (
     <div className="space-y-6">

@@ -16,8 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil } from "lucide-react";
+import { Pencil, Users } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
+import { EmptyState } from "@/components/shared/empty-state";
 import { APPLICATION_STATUS_LABELS } from "@/lib/constants";
 import { STATUS_DOT_COLORS } from "@/components/shared/status-badge";
 import { updateLiverStatus } from "@/lib/actions/livers";
@@ -85,8 +86,12 @@ export function LiversTable({ livers, onSelect }: Props) {
           <TableBody>
             {livers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  データがありません
+                <TableCell colSpan={8} className="p-0">
+                  <EmptyState
+                    icon={Users}
+                    title="ライバーがありません"
+                    description="検索条件を変更してみてください"
+                  />
                 </TableCell>
               </TableRow>
             ) : (

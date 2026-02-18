@@ -53,10 +53,15 @@ export function AgenciesClient({ agencies }: Props) {
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-3 text-2xl font-bold">
-          <span className="inline-block h-8 w-1 rounded bg-primary" />
-          代理店リスト
-        </h1>
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-bold">
+            <span className="inline-block h-8 w-1 rounded bg-primary" />
+            代理店リスト
+          </h1>
+          <p className="mt-1 pl-7 text-sm text-muted-foreground">
+            代理店の登録情報と契約条件の管理
+          </p>
+        </div>
         <Button className="rounded-full" onClick={handleNew}>
           代理店登録
         </Button>

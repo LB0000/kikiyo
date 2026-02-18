@@ -62,10 +62,15 @@ export function LiversClient({ livers }: Props) {
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-3 text-2xl font-bold">
-          <span className="inline-block h-8 w-1 rounded bg-primary" />
-          ライバー名簿
-        </h1>
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-bold">
+            <span className="inline-block h-8 w-1 rounded bg-primary" />
+            ライバー名簿
+          </h1>
+          <p className="mt-1 pl-7 text-sm text-muted-foreground">
+            配信者の情報管理と申請状況の確認
+          </p>
+        </div>
         <Button className="rounded-full" onClick={() => setBulkOpen(true)}>
           申請状況一括変更
         </Button>

@@ -10,7 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
+import { EmptyState } from "@/components/shared/empty-state";
 import { FORM_TAB_LABELS } from "@/lib/constants";
 import type { ApplicationRow } from "@/lib/actions/applications";
 
@@ -42,11 +44,12 @@ export function ApplicationsTable({ applications, onSelect }: Props) {
           <TableBody>
             {applications.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-center text-muted-foreground py-8"
-                >
-                  データがありません
+                <TableCell colSpan={4} className="p-0">
+                  <EmptyState
+                    icon={FileText}
+                    title="申請がありません"
+                    description="まだ申請は送信されていません"
+                  />
                 </TableCell>
               </TableRow>
             ) : (

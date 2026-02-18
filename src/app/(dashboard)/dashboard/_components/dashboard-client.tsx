@@ -21,6 +21,8 @@ import {
   type DashboardData,
 } from "@/lib/actions/dashboard";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import type { RevenueTask } from "@/lib/supabase/types";
@@ -94,10 +96,15 @@ export function DashboardClient({
     <div className="space-y-6">
       {/* ページヘッダー */}
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-3 text-2xl font-bold">
-          <span className="inline-block h-8 w-1 rounded bg-primary" />
-          オールインTikTokバックエンド
-        </h1>
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-bold">
+            <span className="inline-block h-8 w-1 rounded bg-primary" />
+            オールインTikTokバックエンド
+          </h1>
+          <p className="mt-1 pl-7 text-sm text-muted-foreground">
+            月次レポートとデータの確認・管理
+          </p>
+        </div>
         <div className="flex gap-3">
           {selectedReportId && dashboardData && (
             <>
@@ -140,26 +147,24 @@ export function DashboardClient({
 
         {isAdmin && (
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="agencyFilter"
-                checked={filterMode === "all"}
-                onChange={() => setFilterMode("all")}
-                className="accent-primary"
-              />
-              <span className="text-sm">全表示</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="agencyFilter"
-                checked={filterMode === "agency"}
-                onChange={() => setFilterMode("agency")}
-                className="accent-primary"
-              />
-              <span className="text-sm">代理店指定</span>
-            </label>
+            <RadioGroup
+              value={filterMode}
+              onValueChange={(v) => setFilterMode(v as "all" | "agency")}
+              className="flex items-center gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="all" id="filter-all" />
+                <Label htmlFor="filter-all" className="text-sm font-normal cursor-pointer">
+                  全表示
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="agency" id="filter-agency" />
+                <Label htmlFor="filter-agency" className="text-sm font-normal cursor-pointer">
+                  代理店指定
+                </Label>
+              </div>
+            </RadioGroup>
             {filterMode === "agency" && (
               <Select
                 value={selectedAgencyId}
@@ -186,7 +191,10 @@ export function DashboardClient({
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="rounded-lg border bg-card p-4">
-              <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 animate-pulse rounded-md bg-muted" />
+                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+              </div>
               <div className="mt-4 ml-auto h-7 w-24 animate-pulse rounded bg-muted" />
             </div>
           ))}
@@ -228,7 +236,7 @@ export function DashboardClient({
             <TabsTrigger value="refund">返金一覧</TabsTrigger>
           </TabsList>
           <TabsContent value="data" className="mt-4">
-            <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} />
+            <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} livers={livers} />
           </TabsContent>
           <TabsContent value="refund" className="mt-4">
             <RefundTable

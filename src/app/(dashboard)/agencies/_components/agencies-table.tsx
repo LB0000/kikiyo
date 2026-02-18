@@ -9,8 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil } from "lucide-react";
+import { Building2, Pencil } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
+import { EmptyState } from "@/components/shared/empty-state";
 import { AGENCY_RANK_LABELS } from "@/lib/constants";
 import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
 import type { AgencyRank } from "@/lib/supabase/types";
@@ -46,8 +47,12 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
           <TableBody>
             {agencies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  データがありません
+                <TableCell colSpan={7} className="p-0">
+                  <EmptyState
+                    icon={Building2}
+                    title="代理店がありません"
+                    description="新しい代理店を登録してください"
+                  />
                 </TableCell>
               </TableRow>
             ) : (

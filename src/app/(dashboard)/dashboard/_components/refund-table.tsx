@@ -21,9 +21,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { deleteRefund } from "@/lib/actions/dashboard";
+import { EmptyState } from "@/components/shared/empty-state";
 import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 
 type RefundRow = {
@@ -72,8 +73,12 @@ export function RefundTable({ rows }: Props) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-md border p-8 text-center text-muted-foreground">
-        返金データがありません
+      <div className="rounded-md border">
+        <EmptyState
+          icon={ReceiptText}
+          title="返金データがありません"
+          description="返金登録ボタンからレコードを追加してください"
+        />
       </div>
     );
   }

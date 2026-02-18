@@ -127,7 +127,7 @@ export function ApplicationForm({ agencyId }: Props) {
             <RadioGroup
               value={selectedTab}
               onValueChange={(v) => setSelectedTab(v as FormTab)}
-              className="grid grid-cols-4 gap-x-6 gap-y-2"
+              className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4"
             >
               {ALL_FORM_TABS.map((tab) => (
                 <div key={tab} className="flex items-center space-x-2">

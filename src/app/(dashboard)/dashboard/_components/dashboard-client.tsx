@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -56,10 +56,13 @@ export function DashboardClient({
   const [refundKey, setRefundKey] = useState(0);
   const [rateKey, setRateKey] = useState(0);
 
-  const agencyFilter =
-    filterMode === "agency" && selectedAgencyId
-      ? selectedAgencyId
-      : undefined;
+  const agencyFilter = useMemo(
+    () =>
+      filterMode === "agency" && selectedAgencyId
+        ? selectedAgencyId
+        : undefined,
+    [filterMode, selectedAgencyId]
+  );
 
   useEffect(() => {
     if (!selectedReportId) return;
@@ -97,12 +100,14 @@ export function DashboardClient({
           {selectedReportId && dashboardData && (
             <>
               <button
+                type="button"
                 className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
                 onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}
               >
                 為替レート変更
               </button>
               <button
+                type="button"
                 className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
                 onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}
               >
@@ -111,6 +116,7 @@ export function DashboardClient({
             </>
           )}
           <button
+            type="button"
             className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
             onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}
           >
@@ -133,7 +139,7 @@ export function DashboardClient({
             <SelectContent>
               {reports.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {new Date(r.created_at).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" }).replace("/", "/")}
+                  {new Date(r.created_at).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -215,7 +221,7 @@ export function DashboardClient({
             <TabsTrigger value="refund">返金一覧</TabsTrigger>
           </TabsList>
           <TabsContent value="data" className="mt-4">
-            <DataTable rows={dashboardData.csvRows} />
+            <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} />
           </TabsContent>
           <TabsContent value="refund" className="mt-4">
             <RefundTable

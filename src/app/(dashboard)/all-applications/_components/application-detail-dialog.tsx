@@ -124,6 +124,7 @@ export function ApplicationDetailDialog({
         </div>
 
         <button
+          type="button"
           className="mt-4 w-full rounded-lg bg-pink-400 py-3 text-sm font-medium text-white hover:bg-pink-500 transition-colors disabled:opacity-50"
           onClick={handleStatusChange}
           disabled={loading}

@@ -16,6 +16,7 @@ type CsvDataRow = {
   creator_nickname: string | null;
   handle: string | null;
   creator_id: string | null;
+  group: string | null;
   diamonds: number;
   estimated_bonus: number;
   total_reward_jpy: number;
@@ -38,7 +39,8 @@ function fmt(n: number): string {
 export function DataTable({ rows }: Props) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const pagedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const safePage = Math.min(page, totalPages);
+  const pagedRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   if (rows.length === 0) {
     return (
@@ -74,7 +76,7 @@ export function DataTable({ rows }: Props) {
                 <TableCell className="font-mono text-xs">
                   {row.creator_id ?? "-"}
                 </TableCell>
-                <TableCell>-</TableCell>
+                <TableCell>{row.group ?? "-"}</TableCell>
                 <TableCell className="text-right">{fmt(row.diamonds)}</TableCell>
                 <TableCell className="text-right">{row.valid_days ?? "0"}</TableCell>
                 <TableCell className="text-right">{row.live_duration ?? "0"}</TableCell>
@@ -87,7 +89,7 @@ export function DataTable({ rows }: Props) {
         </Table>
       </div>
       <Pagination
-        currentPage={page}
+        currentPage={safePage}
         totalPages={totalPages}
         onPageChange={setPage}
       />

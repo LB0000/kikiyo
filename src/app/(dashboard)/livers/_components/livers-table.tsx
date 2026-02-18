@@ -35,7 +35,8 @@ export function LiversTable({ livers, onSelect }: Props) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(livers.length / PAGE_SIZE));
-  const pagedLivers = livers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const safePage = Math.min(page, totalPages);
+  const pagedLivers = livers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   async function handleStatusChange(liverId: string, status: ApplicationStatus) {
     setUpdatingId(liverId);
@@ -116,13 +117,14 @@ export function LiversTable({ livers, onSelect }: Props) {
                       ? new Date(liver.acquisition_date).toLocaleDateString("ja-JP")
                       : "-"}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm max-w-[200px] truncate">
                     {liver.link && /^https?:\/\//.test(liver.link) ? (
                       <a
                         href={liver.link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-pink-500 hover:underline"
+                        title={liver.link}
                       >
                         {liver.link}
                       </a>
@@ -132,6 +134,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                   </TableCell>
                   <TableCell>
                     <button
+                      type="button"
                       className="p-1 text-pink-400 hover:text-pink-600 transition-colors"
                       onClick={() => onSelect(liver)}
                       aria-label="編集"
@@ -146,7 +149,7 @@ export function LiversTable({ livers, onSelect }: Props) {
         </Table>
       </div>
       <Pagination
-        currentPage={page}
+        currentPage={safePage}
         totalPages={totalPages}
         onPageChange={setPage}
       />

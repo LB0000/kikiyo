@@ -83,7 +83,7 @@ export function SummaryCards({
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-lg border bg-white p-4"
+          className="rounded-lg border bg-card p-4"
         >
           <p className="text-xs text-muted-foreground">{card.label}</p>
           <p className="mt-2 text-right text-2xl font-bold">{card.value}</p>

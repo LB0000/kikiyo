@@ -35,6 +35,7 @@ export function AgenciesClient({ agencies }: Props) {
           代理店リスト
         </h1>
         <button
+          type="button"
           className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
           onClick={handleNew}
         >

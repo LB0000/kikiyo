@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TikTok Live Tool (KIKIYO)
 
-## Getting Started
+TikTok Live配信者（ライバー）を管理する代理店向け内部業務アプリ。
 
-First, run the development server:
+## 技術スタック
+
+- **Next.js 16** (App Router) / React 19 / TypeScript
+- **Supabase** (PostgreSQL + Auth + RLS)
+- **Tailwind CSS v4** / shadcn/ui
+- **Zod v4** / react-hook-form / @tanstack/react-table
+- **PapaParse** (CSV解析) / **Resend** (メール送信) / **sonner** (トースト通知)
+
+## セットアップ
+
+### 1. 依存パッケージのインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+`.env.example` をコピーして `.env.local` を作成し、値を設定:
+
+```bash
+cp .env.example .env.local
+```
+
+| 変数名 | 説明 |
+|--------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase プロジェクトURL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon キー |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role キー |
+| `RESEND_API_KEY` | Resend API キー |
+| `EMAIL_FROM` | 送信元メールアドレス |
+| `NEXT_PUBLIC_APP_URL` | アプリの公開URL |
+
+### 3. Supabase マイグレーション
+
+マイグレーションファイルを順番に適用:
+
+```bash
+supabase db push
+```
+
+または Supabase ダッシュボードの SQL Editor で `supabase/migrations/` 内のファイルを番号順に実行。
+
+### 4. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## コマンド
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run dev          # 開発サーバー起動
+npm run build        # 本番ビルド
+npm start            # 本番サーバー起動
+npm run lint         # ESLint 実行
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## デプロイ (Vercel)
 
-## Learn More
+1. [Vercel](https://vercel.com) でこのリポジトリを Import
+2. 環境変数を設定（上記の6つ）
+3. `NEXT_PUBLIC_APP_URL` を本番ドメインに変更
+4. デプロイ実行
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Supabase のマイグレーションは本番 DB に対して別途適用が必要。

@@ -22,6 +22,7 @@ export type RevenueTask =
   | "task_4"
   | "task_5"
   | "task_6_plus";
+export type AccountType = "futsu" | "toza";
 
 export type Database = {
   public: {
@@ -55,6 +56,14 @@ export type Database = {
           user_id: string | null;
           created_at: string;
           updated_at: string;
+          invoice_registration_number: string | null;
+          company_address: string | null;
+          representative_name: string | null;
+          bank_name: string | null;
+          bank_branch: string | null;
+          bank_account_type: AccountType | null;
+          bank_account_number: string | null;
+          bank_account_holder: string | null;
         };
         Insert: {
           id?: string;
@@ -64,6 +73,14 @@ export type Database = {
           user_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          invoice_registration_number?: string | null;
+          company_address?: string | null;
+          representative_name?: string | null;
+          bank_name?: string | null;
+          bank_branch?: string | null;
+          bank_account_type?: AccountType | null;
+          bank_account_number?: string | null;
+          bank_account_holder?: string | null;
         };
         Update: {
           id?: string;
@@ -73,6 +90,14 @@ export type Database = {
           user_id?: string | null;
           created_at?: string;
           updated_at?: string;
+          invoice_registration_number?: string | null;
+          company_address?: string | null;
+          representative_name?: string | null;
+          bank_name?: string | null;
+          bank_branch?: string | null;
+          bank_account_type?: AccountType | null;
+          bank_account_number?: string | null;
+          bank_account_holder?: string | null;
         };
       };
       agency_hierarchy: {
@@ -348,6 +373,92 @@ export type Database = {
           created_at?: string;
         };
       };
+      invoices: {
+        Row: {
+          id: string;
+          invoice_number: string;
+          agency_id: string;
+          monthly_report_id: string;
+          subtotal_jpy: number;
+          tax_rate: number;
+          tax_amount_jpy: number;
+          total_jpy: number;
+          is_invoice_registered: boolean;
+          invoice_registration_number: string | null;
+          deductible_rate: number;
+          agency_name: string;
+          agency_address: string | null;
+          agency_representative: string | null;
+          bank_name: string | null;
+          bank_branch: string | null;
+          bank_account_type: AccountType | null;
+          bank_account_number: string | null;
+          bank_account_holder: string | null;
+          data_month: string | null;
+          exchange_rate: number;
+          commission_rate: number;
+          sent_at: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_number: string;
+          agency_id: string;
+          monthly_report_id: string;
+          subtotal_jpy: number;
+          tax_rate: number;
+          tax_amount_jpy: number;
+          total_jpy: number;
+          is_invoice_registered?: boolean;
+          invoice_registration_number?: string | null;
+          deductible_rate?: number;
+          agency_name: string;
+          agency_address?: string | null;
+          agency_representative?: string | null;
+          bank_name?: string | null;
+          bank_branch?: string | null;
+          bank_account_type?: AccountType | null;
+          bank_account_number?: string | null;
+          bank_account_holder?: string | null;
+          data_month?: string | null;
+          exchange_rate: number;
+          commission_rate: number;
+          sent_at?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_number?: string;
+          agency_id?: string;
+          monthly_report_id?: string;
+          subtotal_jpy?: number;
+          tax_rate?: number;
+          tax_amount_jpy?: number;
+          total_jpy?: number;
+          is_invoice_registered?: boolean;
+          invoice_registration_number?: string | null;
+          deductible_rate?: number;
+          agency_name?: string;
+          agency_address?: string | null;
+          agency_representative?: string | null;
+          bank_name?: string | null;
+          bank_branch?: string | null;
+          bank_account_type?: AccountType | null;
+          bank_account_number?: string | null;
+          bank_account_holder?: string | null;
+          data_month?: string | null;
+          exchange_rate?: number;
+          commission_rate?: number;
+          sent_at?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       applications: {
         Row: {
           id: string;
@@ -411,6 +522,7 @@ export type Database = {
       agency_rank: AgencyRank;
       form_tab: FormTab;
       revenue_task: RevenueTask;
+      account_type: AccountType;
     };
   };
 };

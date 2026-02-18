@@ -13,6 +13,7 @@ import {
   Monitor,
   ListOrdered,
   FileText,
+  Receipt,
   LogOut,
 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   monitor: Monitor,
   "list-ordered": ListOrdered,
   "file-text": FileText,
+  receipt: Receipt,
 };
 
 type AppSidebarProps = {

@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Building2, Pencil } from "lucide-react";
+import { Building2, FileText, Pencil } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AGENCY_RANK_LABELS } from "@/lib/constants";
@@ -19,11 +19,12 @@ import type { AgencyRank } from "@/lib/supabase/types";
 type Props = {
   agencies: AgencyWithHierarchy[];
   onSelect: (agency: AgencyWithHierarchy) => void;
+  onCompanyInfo: (agency: AgencyWithHierarchy) => void;
 };
 
 const PAGE_SIZE = 10;
 
-export function AgenciesTable({ agencies, onSelect }: Props) {
+export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(agencies.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -41,7 +42,7 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
               <TableHead>手数料率</TableHead>
               <TableHead>メールアドレス</TableHead>
               <TableHead>提携日</TableHead>
-              <TableHead className="w-10" />
+              <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -79,14 +80,24 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
                     {new Date(agency.created_at).toLocaleDateString("ja-JP")}
                   </TableCell>
                   <TableCell>
-                    <button
-                      type="button"
-                      className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
-                      onClick={() => onSelect(agency)}
-                      aria-label="編集"
-                    >
-                      <Pencil className="size-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="cursor-pointer p-2.5 -m-1.5 text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => onCompanyInfo(agency)}
+                        aria-label="会社情報"
+                      >
+                        <FileText className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
+                        onClick={() => onSelect(agency)}
+                        aria-label="編集"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

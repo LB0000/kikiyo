@@ -7,6 +7,10 @@ import {
   agencyFormSchema,
   type AgencyFormValues,
 } from "@/lib/validations/agency";
+import {
+  agencyCompanyInfoSchema,
+  type AgencyCompanyInfoValues,
+} from "@/lib/validations/invoice";
 
 export type AgencyWithHierarchy = {
   id: string;
@@ -367,4 +371,67 @@ async function sendRegistrationEmail(
   if (!res.ok) {
     throw new Error("メール送信に失敗しました");
   }
+}
+
+// ---------------------------------------------------------------------------
+// getAgencyCompanyInfo
+// ---------------------------------------------------------------------------
+
+export async function getAgencyCompanyInfo(agencyId: string) {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agencies")
+    .select(
+      "id, name, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
+    )
+    .eq("id", agencyId)
+    .single();
+
+  if (error || !data) return { error: error?.message ?? "代理店が見つかりません" };
+  return { data };
+}
+
+// ---------------------------------------------------------------------------
+// updateAgencyCompanyInfo
+// ---------------------------------------------------------------------------
+
+export async function updateAgencyCompanyInfo(
+  agencyId: string,
+  values: AgencyCompanyInfoValues
+) {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  const parsed = agencyCompanyInfoSchema.safeParse(values);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "入力値が不正です" };
+  }
+  const v = parsed.data;
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("agencies")
+    .update({
+      invoice_registration_number: v.invoice_registration_number || null,
+      company_address: v.company_address || null,
+      representative_name: v.representative_name || null,
+      bank_name: v.bank_name || null,
+      bank_branch: v.bank_branch || null,
+      bank_account_type: (v.bank_account_type || null) as "futsu" | "toza" | null,
+      bank_account_number: v.bank_account_number || null,
+      bank_account_holder: v.bank_account_holder || null,
+    })
+    .eq("id", agencyId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/agencies");
+  return { success: true };
 }

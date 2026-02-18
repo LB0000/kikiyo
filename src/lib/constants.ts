@@ -1,4 +1,4 @@
-import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask } from "./supabase/types";
+import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask, AccountType } from "./supabase/types";
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   system_admin: "システム管理者",
@@ -39,6 +39,11 @@ export const REVENUE_TASK_LABELS: Record<RevenueTask, string> = {
   task_6_plus: "タスク6以上",
 };
 
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  futsu: "普通",
+  toza: "当座",
+};
+
 export const TAX_RATE = 1.1;
 
 export type NavItem = {
@@ -66,6 +71,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     roles: ["system_admin", "agency_user"],
     icon: "monitor",
+  },
+  {
+    title: "請求書",
+    href: "/invoices",
+    roles: ["system_admin", "agency_user"],
+    icon: "receipt",
   },
   {
     title: "申請一覧",

@@ -83,6 +83,7 @@ export async function updateLiver(
     birth_date?: string | null;
     acquisition_date?: string | null;
     streaming_start_date?: string | null;
+    agency_id?: string | null;
   }
 ) {
   const user = await getAuthUser();
@@ -116,9 +117,15 @@ export async function updateLiver(
     }
   }
 
+  // agency_id の変更は system_admin のみ許可
+  const updateData = { ...parsed.data };
+  if (user.role !== "system_admin") {
+    delete updateData.agency_id;
+  }
+
   const { error } = await supabase
     .from("livers")
-    .update(parsed.data)
+    .update(updateData)
     .eq("id", id);
 
   if (error) {

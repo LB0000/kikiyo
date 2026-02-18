@@ -13,14 +13,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { updateLiver, type LiverRow } from "@/lib/actions/livers";
+import { Combobox } from "@/components/ui/combobox";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   liver: LiverRow | null;
+  agencies: { id: string; name: string }[];
+  isAdmin: boolean;
 };
 
-export function LiverEditDialog({ open, onOpenChange, liver }: Props) {
+export function LiverEditDialog({ open, onOpenChange, liver, agencies, isAdmin }: Props) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: liver?.name ?? "",
@@ -34,6 +37,7 @@ export function LiverEditDialog({ open, onOpenChange, liver }: Props) {
     birth_date: liver?.birth_date ?? "",
     acquisition_date: liver?.acquisition_date ?? "",
     streaming_start_date: liver?.streaming_start_date ?? "",
+    agency_id: liver?.agency_id ?? "",
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,6 +57,7 @@ export function LiverEditDialog({ open, onOpenChange, liver }: Props) {
       birth_date: form.birth_date || null,
       acquisition_date: form.acquisition_date || null,
       streaming_start_date: form.streaming_start_date || null,
+      ...(isAdmin ? { agency_id: form.agency_id || null } : {}),
     });
 
     if (result.error) {
@@ -85,6 +90,20 @@ export function LiverEditDialog({ open, onOpenChange, liver }: Props) {
           <DialogTitle>ライバー情報更新</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
+          {isAdmin && (
+            <div className="space-y-1">
+              <Label htmlFor="agency_id">代理店</Label>
+              <Combobox
+                id="agency_id"
+                options={agencies.map((a) => ({ value: a.id, label: a.name }))}
+                value={form.agency_id}
+                onValueChange={(v) => setForm((prev) => ({ ...prev, agency_id: v }))}
+                placeholder="代理店を選択"
+                searchPlaceholder="代理店名で検索..."
+                emptyText="代理店が見つかりません"
+              />
+            </div>
+          )}
           {fields.map(({ key, label, type }) => (
             <div key={key} className="space-y-1">
               <Label htmlFor={key}>{label}</Label>

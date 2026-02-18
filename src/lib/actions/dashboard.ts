@@ -415,14 +415,15 @@ export async function importCsvData(params: {
   // 2. ライバーと代理店を並列取得（RLSバイパスで全レコード参照）
   const adminSupabase = createAdminClient();
   const [{ data: allLivers }, { data: allAgencies }] = await Promise.all([
-    adminSupabase.from("livers").select("id, liver_id, agency_id"),
+    adminSupabase.from("livers").select("id, liver_id, tiktok_username, agency_id"),
     adminSupabase.from("agencies").select("id, name, commission_rate"),
   ]);
 
+  // Handle（tiktok_username）でマッチ — 大文字小文字を無視して比較
   const liverMap = new Map(
     (allLivers ?? [])
-      .filter((l) => l.liver_id !== null)
-      .map((l) => [l.liver_id!, l])
+      .filter((l) => l.tiktok_username !== null)
+      .map((l) => [l.tiktok_username!.toLowerCase(), l])
   );
 
   const agencyByNameMap = new Map(
@@ -431,7 +432,7 @@ export async function importCsvData(params: {
 
   // 3. Build csv_data insert rows
   const insertRows = rows.map((row) => {
-    const liver = liverMap.get(row.creator_id);
+    const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
     const agency = agencyByNameMap.get(row.creator_network_manager);
 
     const totalRewardJpy = row.estimated_bonus * rate;

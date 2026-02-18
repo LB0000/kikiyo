@@ -147,7 +147,7 @@ export async function updateApplicationStatus(
 
   // 紐付け申請が承認された場合、ライバーレコードを作成
   if (validStatus === "authorized" && app && app.form_tab === "affiliation_check" && app.agency_id) {
-    const { error: liverError } = await supabase.from("livers").insert({
+    const { data: newLiver, error: liverError } = await supabase.from("livers").insert({
       name: app.name || null,
       address: app.address || null,
       birth_date: app.birth_date || null,
@@ -157,10 +157,21 @@ export async function updateApplicationStatus(
       link: app.tiktok_account_link || null,
       status: "authorized" as ApplicationStatus,
       agency_id: app.agency_id,
-    });
+    }).select("id").single();
 
     if (liverError) {
       return { error: `ステータスは更新しましたが、ライバー作成に失敗: ${liverError.message}` };
+    }
+
+    // 作成したライバーのIDを申請レコードに紐付け
+    if (newLiver) {
+      const { error: linkError } = await supabase
+        .from("applications")
+        .update({ liver_id: newLiver.id })
+        .eq("id", id);
+      if (linkError) {
+        console.error("申請へのライバーID紐付けに失敗:", linkError.message);
+      }
     }
 
     revalidatePath("/livers");

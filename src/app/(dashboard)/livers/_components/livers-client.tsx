@@ -22,6 +22,8 @@ import type { ApplicationStatus } from "@/lib/supabase/types";
 
 type Props = {
   livers: LiverRow[];
+  agencies: { id: string; name: string }[];
+  isAdmin: boolean;
 };
 
 const LIVER_COLUMNS: CsvColumn<LiverRow>[] = [
@@ -34,7 +36,7 @@ const LIVER_COLUMNS: CsvColumn<LiverRow>[] = [
   { header: "リンク", accessor: (r) => r.link },
 ];
 
-export function LiversClient({ livers }: Props) {
+export function LiversClient({ livers, agencies, isAdmin }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [selectedLiver, setSelectedLiver] = useState<LiverRow | null>(null);
@@ -127,6 +129,8 @@ export function LiversClient({ livers }: Props) {
         open={editOpen}
         onOpenChange={setEditOpen}
         liver={selectedLiver}
+        agencies={agencies}
+        isAdmin={isAdmin}
       />
       <BulkStatusDialog
         open={bulkOpen}

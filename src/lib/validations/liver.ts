@@ -22,6 +22,7 @@ export const updateLiverSchema = z.object({
   birth_date: z.string().nullable().optional(),
   acquisition_date: z.string().nullable().optional(),
   streaming_start_date: z.string().nullable().optional(),
+  agency_id: z.string().uuid("無効な代理店IDです").nullable().optional(),
 });
 
 export type UpdateLiverValues = z.infer<typeof updateLiverSchema>;

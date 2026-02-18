@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/pagination";
 import { FORM_TAB_LABELS } from "@/lib/constants";
 import type { ApplicationRow } from "@/lib/actions/applications";
@@ -63,13 +64,9 @@ export function ApplicationsTable({ applications, onSelect }: Props) {
                   <TableCell>{FORM_TAB_LABELS[app.form_tab]}</TableCell>
                   <TableCell>{app.agency_name ?? "-"}</TableCell>
                   <TableCell>
-                    <button
-                      type="button"
-                      className="cursor-pointer rounded-md border border-primary px-4 py-2 min-h-[44px] text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
-                      onClick={() => onSelect(app)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => onSelect(app)}>
                       詳細
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

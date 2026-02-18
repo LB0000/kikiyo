@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { FORM_TAB_LABELS } from "@/lib/constants";
@@ -284,12 +285,9 @@ export function ApplicationForm({ agencyId }: Props) {
           </div>
 
           <div className="flex justify-end">
-            <button
-              type="submit"
-              className="cursor-pointer rounded-full bg-primary px-8 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
+            <Button type="submit" className="rounded-full">
               確認画面へ
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -324,21 +322,12 @@ export function ApplicationForm({ agencyId }: Props) {
           </div>
 
           <div className="flex justify-between">
-            <button
-              type="button"
-              className="cursor-pointer rounded-full border border-primary px-8 py-2 text-sm font-medium text-primary hover:bg-primary/5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              onClick={() => setStep("input")}
-            >
+            <Button variant="outline" className="rounded-full" onClick={() => setStep("input")}>
               戻る
-            </button>
-            <button
-              type="button"
-              className="cursor-pointer rounded-full bg-primary px-8 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
+            </Button>
+            <Button className="rounded-full" onClick={handleSubmit} disabled={loading}>
               {loading ? "送信中..." : "送信"}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -350,13 +339,9 @@ export function ApplicationForm({ agencyId }: Props) {
           <p className="mt-2 text-muted-foreground">
             管理者による確認をお待ちください。
           </p>
-          <button
-            type="button"
-            className="cursor-pointer mt-6 rounded-full bg-primary px-8 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            onClick={handleReset}
-          >
+          <Button className="mt-6 rounded-full" onClick={handleReset}>
             新しい申請を作成
-          </button>
+          </Button>
         </div>
       )}
     </div>

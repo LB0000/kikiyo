@@ -71,29 +71,13 @@ export type DashboardData = {
     creator_nickname: string | null;
     handle: string | null;
     group: string | null;
-    group_manager: string | null;
-    creator_network_manager: string | null;
     data_month: string | null;
     diamonds: number;
     estimated_bonus: number;
-    bonus_rookie_half_milestone: number;
-    bonus_activeness: number;
-    bonus_revenue_scale: number;
-    bonus_rookie_milestone_1: number;
-    bonus_rookie_milestone_2: number;
-    bonus_off_platform: number;
-    bonus_rookie_retention: number;
     valid_days: string | null;
     live_duration: string | null;
-    is_violative: boolean;
-    was_rookie: boolean;
     total_reward_jpy: number;
     agency_reward_jpy: number;
-    liver_id: string | null;
-    agency_id: string | null;
-    monthly_report_id: string | null;
-    upload_agency_id: string | null;
-    created_at: string;
   }>;
   refunds: Array<{
     id: string;
@@ -101,11 +85,7 @@ export type DashboardData = {
     reason: string | null;
     amount_usd: number;
     amount_jpy: number;
-    is_deleted: boolean;
-    agency_id: string | null;
     liver_id: string | null;
-    monthly_report_id: string | null;
-    created_at: string;
   }>;
   summary: DashboardSummary;
 };
@@ -143,21 +123,16 @@ export async function getDashboardData(
 
   const supabase = await createClient();
 
-  // Fetch the monthly report
-  const { data: report, error: reportError } = await supabase
+  // report, csv_data, refunds を全て並列取得（必要カラムのみ SELECT）
+  const reportQuery = supabase
     .from("monthly_reports")
     .select("id, rate, revenue_task, created_at")
     .eq("id", monthlyReportId)
     .single();
 
-  if (reportError || !report) {
-    return { error: reportError?.message ?? "月次レポートが見つかりません" };
-  }
-
-  // csv_data と refunds を並列取得
   let csvQuery = supabase
     .from("csv_data")
-    .select("*")
+    .select("id, creator_id, creator_nickname, handle, \"group\", data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy")
     .eq("monthly_report_id", monthlyReportId);
 
   if (agencyId) {
@@ -166,7 +141,7 @@ export async function getDashboardData(
 
   let refundQuery = supabase
     .from("refunds")
-    .select("*")
+    .select("id, target_month, reason, amount_usd, amount_jpy, liver_id")
     .eq("monthly_report_id", monthlyReportId)
     .eq("is_deleted", false);
 
@@ -175,9 +150,14 @@ export async function getDashboardData(
   }
 
   const [
+    { data: report, error: reportError },
     { data: csvRows, error: csvError },
     { data: refunds, error: refundError },
-  ] = await Promise.all([csvQuery, refundQuery]);
+  ] = await Promise.all([reportQuery, csvQuery, refundQuery]);
+
+  if (reportError || !report) {
+    return { error: reportError?.message ?? "月次レポートが見つかりません" };
+  }
 
   if (csvError) {
     return { error: csvError.message };
@@ -346,11 +326,15 @@ export async function importCsvData(params: {
   const { csvText, rate, revenueTask, uploadAgencyId } = params;
 
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
-  if (!uploadAgencyId) return { error: "アップロード代理店が指定されていません" };
 
-  // UUID形式の検証
+  // UUID形式の検証（agency_userは必須、system_adminは任意）
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(uploadAgencyId)) return { error: "無効な代理店IDです" };
+  if (user.role !== "system_admin") {
+    if (!uploadAgencyId) return { error: "アップロード代理店が指定されていません" };
+    if (!uuidRegex.test(uploadAgencyId)) return { error: "無効な代理店IDです" };
+  } else if (uploadAgencyId && !uuidRegex.test(uploadAgencyId)) {
+    return { error: "無効な代理店IDです" };
+  }
 
   // サーバーサイドでCSV解析
   const parseResult = parseCsvText(csvText);
@@ -442,7 +426,7 @@ export async function importCsvData(params: {
       liver_id: liver?.id ?? null,
       agency_id: agency?.id ?? null,
       monthly_report_id: report.id,
-      upload_agency_id: uploadAgencyId,
+      upload_agency_id: uploadAgencyId || null,
     };
   });
 
@@ -510,12 +494,22 @@ export async function createRefund(params: {
   const { liverId, targetMonth, amountUsd, reason, monthlyReportId } = parsed.data;
   const supabase = await createClient();
 
-  // Look up the monthly_report to get the exchange rate
-  const { data: report, error: reportError } = await supabase
-    .from("monthly_reports")
-    .select("rate")
-    .eq("id", monthlyReportId)
-    .single();
+  // report と liver を並列取得
+  const [
+    { data: report, error: reportError },
+    { data: liver, error: liverError },
+  ] = await Promise.all([
+    supabase
+      .from("monthly_reports")
+      .select("rate")
+      .eq("id", monthlyReportId)
+      .single(),
+    supabase
+      .from("livers")
+      .select("agency_id")
+      .eq("id", liverId)
+      .single(),
+  ]);
 
   if (reportError || !report) {
     return {
@@ -523,20 +517,13 @@ export async function createRefund(params: {
     };
   }
 
-  const amountJpy = amountUsd * report.rate;
-
-  // Look up the liver's agency_id
-  const { data: liver, error: liverError } = await supabase
-    .from("livers")
-    .select("agency_id")
-    .eq("id", liverId)
-    .single();
-
   if (liverError || !liver) {
     return {
       error: liverError?.message ?? "ライバーが見つかりません",
     };
   }
+
+  const amountJpy = amountUsd * report.rate;
 
   // agency_userは閲覧可能代理店のライバーのみ返金登録可能
   if (user.role !== "system_admin") {

@@ -19,6 +19,7 @@ import {
 import { Pencil } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
 import { APPLICATION_STATUS_LABELS } from "@/lib/constants";
+import { STATUS_DOT_COLORS } from "@/components/shared/status-badge";
 import { updateLiverStatus } from "@/lib/actions/livers";
 import { toast } from "sonner";
 import type { LiverRow } from "@/lib/actions/livers";
@@ -117,7 +118,10 @@ export function LiversTable({ livers, onSelect }: Props) {
                         {Object.entries(APPLICATION_STATUS_LABELS).map(
                           ([value, label]) => (
                             <SelectItem key={value} value={value}>
-                              {label}
+                              <span className="flex items-center gap-2">
+                                <span className={`size-2 rounded-full ${STATUS_DOT_COLORS[value as ApplicationStatus]}`} />
+                                {label}
+                              </span>
                             </SelectItem>
                           )
                         )}

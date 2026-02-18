@@ -19,6 +19,8 @@ import {
   APPLICATION_STATUS_LABELS,
   FORM_TAB_LABELS,
 } from "@/lib/constants";
+import { STATUS_DOT_COLORS } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button";
 import {
   updateApplicationStatus,
   type ApplicationRow,
@@ -115,7 +117,10 @@ export function ApplicationDetailDialog({
               {Object.entries(APPLICATION_STATUS_LABELS).map(
                 ([value, label]) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    <span className="flex items-center gap-2">
+                      <span className={`size-2 rounded-full ${STATUS_DOT_COLORS[value as ApplicationStatus]}`} />
+                      {label}
+                    </span>
                   </SelectItem>
                 )
               )}
@@ -123,14 +128,13 @@ export function ApplicationDetailDialog({
           </Select>
         </div>
 
-        <button
-          type="button"
-          className="cursor-pointer mt-4 w-full rounded-lg bg-primary py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        <Button
+          className="mt-4 w-full"
           onClick={handleStatusChange}
           disabled={loading}
         >
           {loading ? "変更中..." : "更新する"}
-        </button>
+        </Button>
       </DialogContent>
     </Dialog>
   );

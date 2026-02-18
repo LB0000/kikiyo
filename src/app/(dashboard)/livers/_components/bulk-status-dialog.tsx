@@ -20,6 +20,7 @@ import {
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { toast } from "sonner";
 import { APPLICATION_STATUS_LABELS } from "@/lib/constants";
+import { STATUS_DOT_COLORS } from "@/components/shared/status-badge";
 import { bulkUpdateLiverStatus, type LiverRow } from "@/lib/actions/livers";
 import type { ApplicationStatus } from "@/lib/supabase/types";
 
@@ -73,7 +74,10 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
                 {Object.entries(APPLICATION_STATUS_LABELS).map(
                   ([value, label]) => (
                     <SelectItem key={value} value={value}>
-                      {label}
+                      <span className="flex items-center gap-2">
+                        <span className={`size-2 rounded-full ${STATUS_DOT_COLORS[value as ApplicationStatus]}`} />
+                        {label}
+                      </span>
                     </SelectItem>
                   )
                 )}

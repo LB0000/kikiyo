@@ -29,23 +29,26 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // getSession() は Cookie 読み取りのみ（ネットワーク不要、< 1ms）。
+  // getUser() は Supabase Auth サーバーへ HTTP リクエストが発生し 200-500ms かかる。
+  // JWT の検証は RLS が全 DB クエリで行うため、ルーティング目的には getSession() で十分。
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const isAuthPage =
     request.nextUrl.pathname === "/login" ||
     request.nextUrl.pathname === "/reset-password";
 
   // 未認証ユーザーを/loginにリダイレクト
-  if (!user && !isAuthPage) {
+  if (!session && !isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   // 認証済みユーザーがログインページにアクセスした場合
-  if (user && isAuthPage) {
+  if (session && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

@@ -21,6 +21,7 @@ import {
   type DashboardData,
 } from "@/lib/actions/dashboard";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import type { RevenueTask } from "@/lib/supabase/types";
 
@@ -101,30 +102,18 @@ export function DashboardClient({
           {selectedReportId && dashboardData && (
             <>
               {isAdmin && (
-                <button
-                  type="button"
-                  className="cursor-pointer rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}
-                >
+                <Button className="rounded-full" onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}>
                   為替レート変更
-                </button>
+                </Button>
               )}
-              <button
-                type="button"
-                className="cursor-pointer rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}
-              >
+              <Button className="rounded-full" onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
                 返金登録
-              </button>
+              </Button>
             </>
           )}
-          <button
-            type="button"
-            className="cursor-pointer rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}
-          >
+          <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
             CSV登録
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -264,13 +253,9 @@ export function DashboardClient({
               CSVファイルをアップロードしてダッシュボードを開始しましょう
             </p>
           </div>
-          <button
-            type="button"
-            className="cursor-pointer rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}
-          >
+          <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
             CSVをアップロード
-          </button>
+          </Button>
         </div>
       ) : null}
 

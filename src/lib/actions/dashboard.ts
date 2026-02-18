@@ -229,13 +229,18 @@ export type ImportResult = {
 
 // CSV行をパース（サーバーサイド）
 function parseCsvText(csvText: string): CsvRow[] | { error: string } {
-  const parsed = Papa.parse<Record<string, string>>(csvText, {
+  // BOM（Byte Order Mark）を除去
+  const cleanText = csvText.replace(/^\uFEFF/, "");
+
+  const parsed = Papa.parse<Record<string, string>>(cleanText, {
     header: true,
     skipEmptyLines: true,
   });
 
-  if (parsed.errors.length > 0) {
-    return { error: `CSVの解析に失敗しました: ${parsed.errors[0]?.message}` };
+  // 致命的エラーのみチェック（FieldMismatch は無視 — 末尾空カラム等で発生しうる）
+  const fatalErrors = parsed.errors.filter((e) => e.type !== "FieldMismatch");
+  if (fatalErrors.length > 0) {
+    return { error: `CSVの解析に失敗しました: ${fatalErrors[0]?.message}` };
   }
 
   if (parsed.data.length === 0) {

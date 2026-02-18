@@ -355,7 +355,7 @@ export function DashboardClient({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteReport}
+              onClick={(e) => { e.preventDefault(); handleDeleteReport(); }}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

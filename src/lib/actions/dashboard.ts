@@ -72,6 +72,7 @@ export type DashboardData = {
     creator_nickname: string | null;
     handle: string | null;
     group: string | null;
+    creator_network_manager: string | null;
     data_month: string | null;
     diamonds: number;
     estimated_bonus: number;
@@ -236,6 +237,12 @@ export type ImportResult = {
   unlinkedAgencyCount: number;
 };
 
+export type ImportConfirmation = {
+  needsConfirmation: true;
+  existingReports: { id: string; createdAt: string }[];
+  dataMonth: string;
+};
+
 // CSV行をパース（サーバーサイド）
 // TikTokエクスポートのヘッダー名はケースやサフィックスが不定のため、
 // 小文字正規化 + 部分一致で柔軟にマッチする
@@ -356,11 +363,12 @@ export async function importCsvData(params: {
   rate: number;
   revenueTask: RevenueTask;
   uploadAgencyId: string;
-}): Promise<ImportResult | { error: string }> {
+  replaceReportIds?: string[];
+}): Promise<ImportResult | ImportConfirmation | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
 
-  const { csvText, rate, revenueTask, uploadAgencyId } = params;
+  const { csvText, rate, revenueTask, uploadAgencyId, replaceReportIds } = params;
 
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
 
@@ -381,27 +389,75 @@ export async function importCsvData(params: {
   if (rows.length > 10000) return { error: "CSVデータが多すぎます（上限10,000行）" };
 
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   // agency_userは閲覧可能代理店のみ許可
+  let viewableIds: string[] = [];
   if (user.role !== "system_admin") {
     const { data: viewable } = await supabase
       .from("profile_viewable_agencies")
       .select("agency_id")
       .eq("profile_id", user.id);
 
-    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    viewableIds = (viewable ?? []).map((v) => v.agency_id);
     if (!viewableIds.includes(uploadAgencyId)) {
       return { error: "権限がありません" };
     }
   }
 
-  // 1. monthly_report 作成 + ライバー/代理店を並列取得
+  // replaceReportIdsのUUID形式検証
+  if (replaceReportIds && replaceReportIds.length > 0) {
+    const invalidIds = replaceReportIds.filter((id) => !uuidRegex.test(id));
+    if (invalidIds.length > 0) {
+      return { error: "無効なレポートIDが含まれています" };
+    }
+  }
+
+  // 同月のレポートが既に存在するか検知
+  const dataMonth = rows[0]?.data_month || null;
+  if (dataMonth) {
+    const { data: existingReports } = await adminSupabase
+      .from("monthly_reports")
+      .select("id, created_at")
+      .eq("data_month", dataMonth);
+
+    if (existingReports && existingReports.length > 0) {
+      // 上書き確認がまだの場合 → クライアントに確認を求める
+      if (!replaceReportIds || replaceReportIds.length === 0) {
+        return {
+          needsConfirmation: true,
+          existingReports: existingReports.map((r) => ({
+            id: r.id,
+            createdAt: r.created_at,
+          })),
+          dataMonth,
+        };
+      }
+
+      // agency_user の場合: 既存レポートのcsv_dataのupload_agency_idが閲覧可能か確認
+      if (user.role !== "system_admin") {
+        const { data: existingCsv } = await adminSupabase
+          .from("csv_data")
+          .select("upload_agency_id")
+          .in("monthly_report_id", replaceReportIds);
+
+        const unauthorizedRows = (existingCsv ?? []).filter(
+          (row) => row.upload_agency_id && !viewableIds.includes(row.upload_agency_id)
+        );
+        if (unauthorizedRows.length > 0) {
+          return { error: "他の代理店がアップロードしたデータは上書きできません" };
+        }
+      }
+    }
+  }
+
+  // 1. monthly_report 作成
   const { data: report, error: reportError } = await supabase
     .from("monthly_reports")
     .insert({
       rate,
       revenue_task: revenueTask,
-      data_month: rows[0]?.data_month || null,
+      data_month: dataMonth,
     })
     .select()
     .single();
@@ -412,8 +468,43 @@ export async function importCsvData(params: {
     };
   }
 
+  // 旧レポートの置換処理（replaceReportIds が指定されている場合）
+  if (replaceReportIds && replaceReportIds.length > 0) {
+    // 返金データを新レポートに移行
+    const { error: refundMigrateError } = await adminSupabase
+      .from("refunds")
+      .update({ monthly_report_id: report.id })
+      .in("monthly_report_id", replaceReportIds);
+
+    if (refundMigrateError) {
+      // 新レポートをロールバック
+      await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
+      return { error: `返金データの移行に失敗しました: ${refundMigrateError.message}` };
+    }
+
+    // 旧csv_dataを削除
+    const { error: csvDeleteError } = await adminSupabase
+      .from("csv_data")
+      .delete()
+      .in("monthly_report_id", replaceReportIds);
+
+    if (csvDeleteError) {
+      await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
+      return { error: `旧CSVデータの削除に失敗しました: ${csvDeleteError.message}` };
+    }
+
+    // 旧monthly_reportsを削除
+    const { error: reportDeleteError } = await adminSupabase
+      .from("monthly_reports")
+      .delete()
+      .in("id", replaceReportIds);
+
+    if (reportDeleteError) {
+      return { error: `旧レポートの削除に失敗しました: ${reportDeleteError.message}` };
+    }
+  }
+
   // 2. ライバーと代理店を並列取得（RLSバイパスで全レコード参照）
-  const adminSupabase = createAdminClient();
   const [{ data: allLivers }, { data: allAgencies }] = await Promise.all([
     adminSupabase.from("livers").select("id, liver_id, tiktok_username, agency_id"),
     adminSupabase.from("agencies").select("id, name, commission_rate"),

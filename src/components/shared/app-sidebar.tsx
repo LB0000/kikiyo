@@ -66,18 +66,11 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
     <Sidebar className="border-r-0">
       {/* ── Brand Header ── */}
       <SidebarHeader className="px-6 pt-8 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center">
-            <Image src="/logo.png" alt="KIKIYO" width={28} height={28} />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-wider text-foreground">
-              KIKIYO
-            </h1>
-            <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase">
-              Live Manager
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-1.5">
+          <Image src="/logo.png" alt="KIKIYO" width={48} height={48} />
+          <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            Live Manager
+          </p>
         </div>
       </SidebarHeader>
 

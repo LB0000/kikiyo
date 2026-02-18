@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
 import { importCsvData } from "@/lib/actions/dashboard";
+import type { ImportConfirmation } from "@/lib/actions/dashboard";
 import type { RevenueTask } from "@/lib/supabase/types";
 
 type Props = {
@@ -30,24 +31,57 @@ type Props = {
   uploadAgencyId: string | null;
 };
 
+type ConfirmState = {
+  confirmation: ImportConfirmation;
+  csvText: string;
+};
+
 export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(150);
   const [revenueTask, setRevenueTask] = useState<RevenueTask>("task_1");
   const [loading, setLoading] = useState(false);
   const [uploadStage, setUploadStage] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function resetForm() {
     setFile(null);
     setExchangeRate(150);
     setRevenueTask("task_1");
+    setConfirmState(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+  function handleImportSuccess(result: { success: true; totalRows: number; unlinkedLiverCount: number; unlinkedAgencyCount: number; linkedLiverCount: number; linkedAgencyCount: number }) {
+    const hasUnlinked =
+      result.unlinkedLiverCount > 0 || result.unlinkedAgencyCount > 0;
+    const parts: string[] = [
+      `${result.totalRows}件のデータを登録しました`,
+    ];
+    if (result.unlinkedLiverCount > 0) {
+      parts.push(`ライバー未紐付け: ${result.unlinkedLiverCount}件`);
+    }
+    if (result.unlinkedAgencyCount > 0) {
+      parts.push(`代理店未紐付け: ${result.unlinkedAgencyCount}件`);
+    }
+
+    if (hasUnlinked) {
+      toast.warning("CSVデータをインポートしました", {
+        description: parts.join(" / "),
+      });
+    } else {
+      toast.success("CSVデータをインポートしました", {
+        description: parts[0],
+      });
+    }
+    resetForm();
+    onOpenChange(false);
+  }
 
   async function handleUpload() {
     if (!file) {
@@ -83,34 +117,46 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
         toast.error("アップロードに失敗しました", {
           description: result.error,
         });
+      } else if ("needsConfirmation" in result) {
+        // 同月データが存在 → 上書き確認を表示
+        setConfirmState({ confirmation: result, csvText });
       } else {
-        const hasUnlinked =
-          result.unlinkedLiverCount > 0 || result.unlinkedAgencyCount > 0;
-        const parts: string[] = [
-          `${result.totalRows}件のデータを登録しました`,
-        ];
-        if (result.unlinkedLiverCount > 0) {
-          parts.push(
-            `ライバー未紐付け: ${result.unlinkedLiverCount}件`
-          );
-        }
-        if (result.unlinkedAgencyCount > 0) {
-          parts.push(
-            `代理店未紐付け: ${result.unlinkedAgencyCount}件`
-          );
-        }
+        handleImportSuccess(result);
+      }
+    } catch (err) {
+      toast.error("エラーが発生しました", {
+        description: err instanceof Error ? err.message : "不明なエラー",
+      });
+    } finally {
+      setUploadStage(null);
+      setLoading(false);
+    }
+  }
 
-        if (hasUnlinked) {
-          toast.warning("CSVデータをインポートしました", {
-            description: parts.join(" / "),
-          });
-        } else {
-          toast.success("CSVデータをインポートしました", {
-            description: parts[0],
-          });
-        }
-        resetForm();
-        onOpenChange(false);
+  async function handleReplace() {
+    if (!confirmState) return;
+
+    setLoading(true);
+
+    try {
+      setUploadStage("既存データを上書き中...");
+      const result = await importCsvData({
+        csvText: confirmState.csvText,
+        rate: exchangeRate,
+        revenueTask,
+        uploadAgencyId: uploadAgencyId ?? "",
+        replaceReportIds: confirmState.confirmation.existingReports.map((r) => r.id),
+      });
+
+      if ("error" in result) {
+        toast.error("上書きに失敗しました", {
+          description: result.error,
+        });
+      } else if ("needsConfirmation" in result) {
+        // 通常到達しないが安全のため
+        toast.error("予期しないエラーが発生しました");
+      } else {
+        handleImportSuccess(result);
       }
     } catch (err) {
       toast.error("エラーが発生しました", {
@@ -123,78 +169,123 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!loading) onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!loading) { setConfirmState(null); onOpenChange(v); } }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>CSVアップロード</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="csv-file">CSVファイル</Label>
-            <Input
-              id="csv-file"
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
+        {confirmState ? (
+          // 上書き確認画面
+          <>
+            <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-yellow-600 dark:text-yellow-500" />
+              <div className="space-y-1">
+                <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                  {confirmState.confirmation.dataMonth} のデータが既に登録されています
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  既存のCSVデータを削除し、新しいデータで上書きします。返金データは引き継がれます。
+                </p>
+              </div>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="exchange-rate">為替レート (JPY/USD)</Label>
-            <Input
-              id="exchange-rate"
-              type="number"
-              step="0.01"
-              min="0"
-              value={exchangeRate}
-              onChange={(e) =>
-                setExchangeRate(parseFloat(e.target.value) || 0)
-              }
-            />
-          </div>
+            {uploadStage && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                <span>{uploadStage}</span>
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="revenue-task">収益タスク</Label>
-            <Select
-              value={revenueTask}
-              onValueChange={(v) => setRevenueTask(v as RevenueTask)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="タスクを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(REVENUE_TASK_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmState(null)}
+                disabled={loading}
+              >
+                戻る
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReplace}
+                disabled={loading}
+              >
+                {loading ? "上書き中..." : "上書き"}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          // 通常のアップロードフォーム
+          <>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="csv-file">CSVファイル</Label>
+                <Input
+                  id="csv-file"
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
 
-        {uploadStage && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            <span>{uploadStage}</span>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="exchange-rate">為替レート (JPY/USD)</Label>
+                <Input
+                  id="exchange-rate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={exchangeRate}
+                  onChange={(e) =>
+                    setExchangeRate(parseFloat(e.target.value) || 0)
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="revenue-task">収益タスク</Label>
+                <Select
+                  value={revenueTask}
+                  onValueChange={(v) => setRevenueTask(v as RevenueTask)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="タスクを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(REVENUE_TASK_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {uploadStage && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                <span>{uploadStage}</span>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading}
+              >
+                キャンセル
+              </Button>
+              <Button onClick={handleUpload} disabled={loading || !file}>
+                {loading ? "アップロード中..." : "アップロード"}
+              </Button>
+            </DialogFooter>
+          </>
         )}
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
-            キャンセル
-          </Button>
-          <Button onClick={handleUpload} disabled={loading || !file}>
-            {loading ? "アップロード中..." : "アップロード"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -17,6 +17,7 @@ import { RefundFormDialog } from "./refund-form-dialog";
 import { ExchangeRateDialog } from "./exchange-rate-dialog";
 import {
   getDashboardData,
+  deleteMonthlyReport,
   type MonthlyReportItem,
   type DashboardData,
 } from "@/lib/actions/dashboard";
@@ -24,7 +25,18 @@ import { REVENUE_TASK_LABELS } from "@/lib/constants";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { Upload, Trash2 } from "lucide-react";
 import type { RevenueTask } from "@/lib/supabase/types";
 
 type Props = {
@@ -56,6 +68,8 @@ export function DashboardClient({
   const [csvOpen, setCsvOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [csvKey, setCsvKey] = useState(0);
   const [refundKey, setRefundKey] = useState(0);
   const [rateKey, setRateKey] = useState(0);
@@ -91,6 +105,28 @@ export function DashboardClient({
   }, [selectedReportId, agencyFilter]);
 
   const selectedReport = reports.find((r) => r.id === selectedReportId);
+
+  async function handleDeleteReport() {
+    if (!selectedReportId) return;
+    setDeleting(true);
+    try {
+      const result = await deleteMonthlyReport(selectedReportId);
+      if ("error" in result) {
+        toast.error("削除に失敗しました", { description: result.error });
+      } else {
+        toast.success("レポートを削除しました");
+        // 次のレポートを選択（削除したもの以外の先頭）
+        const remaining = reports.filter((r) => r.id !== selectedReportId);
+        setSelectedReportId(remaining[0]?.id ?? "");
+        setDashboardData(null);
+      }
+    } catch {
+      toast.error("エラーが発生しました");
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -143,6 +179,18 @@ export function DashboardClient({
               ))}
             </SelectContent>
           </Select>
+          {isAdmin && selectedReportId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 text-muted-foreground hover:text-destructive"
+              onClick={() => setDeleteOpen(true)}
+              disabled={deleting}
+              aria-label="レポートを削除"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </div>
 
         {isAdmin && (
@@ -294,6 +342,28 @@ export function DashboardClient({
           />
         </>
       )}
+
+      {/* レポート削除確認ダイアログ */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>このレポートを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              関連するCSVデータと返金データも全て削除されます。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteReport}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "削除中..." : "削除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

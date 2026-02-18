@@ -21,6 +21,7 @@ type CsvDataRow = {
   handle: string | null;
   creator_id: string | null;
   group: string | null;
+  creator_network_manager: string | null;
   diamonds: number;
   estimated_bonus: number;
   total_reward_jpy: number;
@@ -69,9 +70,10 @@ export function DataTable({ rows, livers }: Props) {
     () => [
       { header: "データ月", accessor: (r) => r.data_month },
       { header: "本名", accessor: (r) => (r.liver_id ? liverMap.get(r.liver_id) ?? "-" : "-") },
+      { header: "TikTokユーザー名", accessor: (r) => r.handle },
       { header: "クリエイターのニックネーム", accessor: (r) => r.creator_nickname },
-      { header: "クリエイターID", accessor: (r) => r.handle },
-      { header: "グループ", accessor: (r) => r.group },
+      { header: "クリエイターID", accessor: (r) => r.creator_id },
+      { header: "グループ", accessor: (r) => r.creator_network_manager },
       { header: "ダイヤモンド", accessor: (r) => r.diamonds },
       { header: "有効日数", accessor: (r) => r.valid_days },
       { header: "有効時間", accessor: (r) => r.live_duration },
@@ -119,6 +121,7 @@ export function DataTable({ rows, livers }: Props) {
             <TableRow>
               <TableHead>データ月</TableHead>
               <TableHead>本名</TableHead>
+              <TableHead>TikTokユーザー名</TableHead>
               <TableHead>クリエイターのニックネーム</TableHead>
               <TableHead>クリエイターID</TableHead>
               <TableHead>グループ</TableHead>
@@ -140,11 +143,14 @@ export function DataTable({ rows, livers }: Props) {
               <TableRow key={row.id}>
                 <TableCell>{row.data_month ?? "-"}</TableCell>
                 <TableCell>{row.liver_id ? liverMap.get(row.liver_id) ?? "-" : "-"}</TableCell>
-                <TableCell>{row.creator_nickname ?? "-"}</TableCell>
                 <TableCell className="font-mono text-xs">
                   {row.handle ?? "-"}
                 </TableCell>
-                <TableCell>{row.group ?? "-"}</TableCell>
+                <TableCell>{row.creator_nickname ?? "-"}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {row.creator_id ?? "-"}
+                </TableCell>
+                <TableCell>{row.creator_network_manager ?? "-"}</TableCell>
                 <TableCell className="text-right">{fmt(row.diamonds)}</TableCell>
                 <TableCell className="text-right">{row.valid_days ?? "0"}</TableCell>
                 <TableCell className="text-right">{row.live_duration ?? "0"}</TableCell>

@@ -141,7 +141,7 @@ export async function getDashboardData(
 
   let csvQuery = supabase
     .from("csv_data")
-    .select("id, creator_id, creator_nickname, handle, group, data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy, liver_id, bonus_rookie_half_milestone, bonus_rookie_milestone_1, bonus_rookie_retention, bonus_rookie_milestone_2, bonus_activeness, bonus_off_platform, bonus_revenue_scale")
+    .select("id, creator_id, creator_nickname, handle, group, creator_network_manager, data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy, liver_id, bonus_rookie_half_milestone, bonus_rookie_milestone_1, bonus_rookie_retention, bonus_rookie_milestone_2, bonus_activeness, bonus_off_platform, bonus_revenue_scale")
     .eq("monthly_report_id", monthlyReportId);
 
   if (agencyId) {
@@ -485,12 +485,13 @@ export async function importCsvData(params: {
 
     if (insertError) {
       // Cleanup: remove partial csv_data and orphaned monthly_report
+      // adminSupabase を使用してRLSをバイパス（確実にクリーンアップするため）
       await Promise.all([
-        supabase
+        adminSupabase
           .from("csv_data")
           .delete()
           .eq("monthly_report_id", report.id),
-        supabase
+        adminSupabase
           .from("monthly_reports")
           .delete()
           .eq("id", report.id),
@@ -626,13 +627,24 @@ export async function deleteRefund(
 }
 
 // ---------------------------------------------------------------------------
-// 6. updateExchangeRate
+// 6. previewRateChange
 // ---------------------------------------------------------------------------
 
-export async function updateExchangeRate(
+export type RateChangePreview = {
+  oldRate: number;
+  newRate: number;
+  csvRowCount: number;
+  refundRowCount: number;
+  oldTotalRewardJpy: number;
+  newTotalRewardJpy: number;
+  oldTotalRefundJpy: number;
+  newTotalRefundJpy: number;
+};
+
+export async function previewRateChange(
   monthlyReportId: string,
   newRate: number
-): Promise<{ success: true } | { error: string }> {
+): Promise<RateChangePreview | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
   if (user.role !== "system_admin") return { error: "権限がありません" };
@@ -641,6 +653,96 @@ export async function updateExchangeRate(
 
   const supabase = await createClient();
 
+  const [reportRes, csvRes, refundRes] = await Promise.all([
+    supabase
+      .from("monthly_reports")
+      .select("rate")
+      .eq("id", monthlyReportId)
+      .single(),
+    supabase
+      .from("csv_data")
+      .select("estimated_bonus, total_reward_jpy")
+      .eq("monthly_report_id", monthlyReportId),
+    supabase
+      .from("refunds")
+      .select("amount_usd, amount_jpy")
+      .eq("monthly_report_id", monthlyReportId)
+      .eq("is_deleted", false),
+  ]);
+
+  if (reportRes.error || !reportRes.data) {
+    return { error: "レポートの取得に失敗しました" };
+  }
+
+  const oldRate = reportRes.data.rate;
+  const csvRows = csvRes.data ?? [];
+  const refundRows = refundRes.data ?? [];
+
+  const oldTotalRewardJpy = csvRows.reduce((s, r) => s + r.total_reward_jpy, 0);
+  const newTotalRewardJpy = csvRows.reduce(
+    (s, r) => s + Math.round(r.estimated_bonus * newRate * 100) / 100,
+    0
+  );
+
+  const oldTotalRefundJpy = refundRows.reduce((s, r) => s + r.amount_jpy, 0);
+  const newTotalRefundJpy = refundRows.reduce(
+    (s, r) => s + Math.round(r.amount_usd * newRate * 100) / 100,
+    0
+  );
+
+  return {
+    oldRate,
+    newRate,
+    csvRowCount: csvRows.length,
+    refundRowCount: refundRows.length,
+    oldTotalRewardJpy,
+    newTotalRewardJpy,
+    oldTotalRefundJpy,
+    newTotalRefundJpy,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 7. updateExchangeRate
+// ---------------------------------------------------------------------------
+
+export async function updateExchangeRate(
+  monthlyReportId: string,
+  newRate: number
+): Promise<{ success: true; oldRate: number } | { error: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  if (newRate <= 0) return { error: "為替レートは正の数で入力してください" };
+
+  const supabase = await createClient();
+
+  // 旧レート・影響件数を取得
+  const [reportRes, csvCountRes, refundCountRes] = await Promise.all([
+    supabase
+      .from("monthly_reports")
+      .select("rate")
+      .eq("id", monthlyReportId)
+      .single(),
+    supabase
+      .from("csv_data")
+      .select("id", { count: "exact", head: true })
+      .eq("monthly_report_id", monthlyReportId),
+    supabase
+      .from("refunds")
+      .select("id", { count: "exact", head: true })
+      .eq("monthly_report_id", monthlyReportId)
+      .eq("is_deleted", false),
+  ]);
+
+  if (reportRes.error || !reportRes.data) {
+    return { error: "レポートの取得に失敗しました" };
+  }
+
+  const oldRate = reportRes.data.rate;
+
+  // RPC実行（再計算）
   const { error } = await supabase.rpc("update_exchange_rate", {
     p_monthly_report_id: monthlyReportId,
     p_new_rate: newRate,
@@ -648,6 +750,81 @@ export async function updateExchangeRate(
 
   if (error) {
     return { error: error.message };
+  }
+
+  // 変更履歴を保存（RLSバイパス、失敗しても本体は成功済み）
+  const adminSupabase = createAdminClient();
+  const { error: logError } = await adminSupabase
+    .from("rate_change_logs")
+    .insert({
+      monthly_report_id: monthlyReportId,
+      old_rate: oldRate,
+      new_rate: newRate,
+      affected_csv_rows: csvCountRes.count ?? 0,
+      affected_refund_rows: refundCountRes.count ?? 0,
+      changed_by: user.id,
+    });
+  if (logError) {
+    console.warn("為替レート変更履歴の保存に失敗:", logError.message);
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true, oldRate };
+}
+
+// ---------------------------------------------------------------------------
+// 8. deleteMonthlyReport
+// ---------------------------------------------------------------------------
+
+export async function deleteMonthlyReport(
+  monthlyReportId: string
+): Promise<{ success: true } | { error: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(monthlyReportId)) return { error: "無効なレポートIDです" };
+
+  const adminSupabase = createAdminClient();
+
+  // レポートの存在確認
+  const { data: report, error: reportError } = await adminSupabase
+    .from("monthly_reports")
+    .select("id")
+    .eq("id", monthlyReportId)
+    .single();
+
+  if (reportError || !report) {
+    return { error: "レポートが見つかりません" };
+  }
+
+  // 返金 → CSVデータ → レポートの順で削除（FK依存順）
+  const { error: refundError } = await adminSupabase
+    .from("refunds")
+    .delete()
+    .eq("monthly_report_id", monthlyReportId);
+
+  if (refundError) {
+    return { error: `返金データの削除に失敗しました: ${refundError.message}` };
+  }
+
+  const { error: csvError } = await adminSupabase
+    .from("csv_data")
+    .delete()
+    .eq("monthly_report_id", monthlyReportId);
+
+  if (csvError) {
+    return { error: `CSVデータの削除に失敗しました: ${csvError.message}` };
+  }
+
+  const { error: deleteError } = await adminSupabase
+    .from("monthly_reports")
+    .delete()
+    .eq("id", monthlyReportId);
+
+  if (deleteError) {
+    return { error: `レポートの削除に失敗しました: ${deleteError.message}` };
   }
 
   revalidatePath("/dashboard");

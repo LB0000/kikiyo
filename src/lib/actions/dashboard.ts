@@ -78,6 +78,14 @@ export type DashboardData = {
     live_duration: string | null;
     total_reward_jpy: number;
     agency_reward_jpy: number;
+    liver_id: string | null;
+    bonus_rookie_half_milestone: number;
+    bonus_rookie_milestone_1: number;
+    bonus_rookie_retention: number;
+    bonus_rookie_milestone_2: number;
+    bonus_activeness: number;
+    bonus_off_platform: number;
+    bonus_revenue_scale: number;
   }>;
   refunds: Array<{
     id: string;
@@ -132,7 +140,7 @@ export async function getDashboardData(
 
   let csvQuery = supabase
     .from("csv_data")
-    .select("id, creator_id, creator_nickname, handle, group, data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy")
+    .select("id, creator_id, creator_nickname, handle, group, data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy, liver_id, bonus_rookie_half_milestone, bonus_rookie_milestone_1, bonus_rookie_retention, bonus_rookie_milestone_2, bonus_activeness, bonus_off_platform, bonus_revenue_scale")
     .eq("monthly_report_id", monthlyReportId);
 
   if (agencyId) {

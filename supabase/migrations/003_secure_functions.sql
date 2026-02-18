@@ -32,4 +32,4 @@ BEGIN
   SET amount_jpy = ROUND(amount_usd * p_new_rate, 2)
   WHERE monthly_report_id = p_monthly_report_id AND is_deleted = false;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

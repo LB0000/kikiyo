@@ -33,6 +33,7 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -110,8 +111,16 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => setCapsLock(e.getModifierState("CapsLock"))}
+                onKeyUp={(e) => setCapsLock(e.getModifierState("CapsLock"))}
+                onBlur={() => setCapsLock(false)}
                 required
               />
+              {capsLock && (
+                <p className="text-xs text-amber-600">
+                  Caps Lockがオンになっています
+                </p>
+              )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "ログイン中..." : "ログイン"}

@@ -157,7 +157,7 @@ export function ApplicationForm({ agencyId }: Props) {
                   </div>
                 ))}
               </div>
-              <details className="group">
+              <details className="group" open={SECONDARY_TABS.includes(selectedTab) || undefined}>
                 <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
                   その他の申請種別を表示
                 </summary>

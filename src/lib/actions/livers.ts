@@ -1,10 +1,15 @@
 "use server";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { updateLiverSchema } from "@/lib/validations/liver";
 import type { ApplicationStatus } from "@/lib/supabase/types";
+
+const applicationStatusSchema = z.enum([
+  "completed", "released", "authorized", "pending", "rejected",
+]);
 
 export type LiverRow = {
   id: string;
@@ -129,11 +134,14 @@ export async function updateLiverStatus(id: string, status: ApplicationStatus) {
   if (!user) return { error: "認証が必要です" };
   if (user.role !== "system_admin") return { error: "権限がありません" };
 
+  const parsed = applicationStatusSchema.safeParse(status);
+  if (!parsed.success) return { error: "無効なステータスです" };
+
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("livers")
-    .update({ status })
+    .update({ status: parsed.data })
     .eq("id", id);
 
   if (error) {
@@ -152,11 +160,17 @@ export async function bulkUpdateLiverStatus(
   if (!user) return { error: "認証が必要です" };
   if (user.role !== "system_admin") return { error: "権限がありません" };
 
+  if (ids.length === 0) return { error: "IDが指定されていません" };
+  if (ids.length > 100) return { error: "一度に変更できるのは100件までです" };
+
+  const parsed = applicationStatusSchema.safeParse(status);
+  if (!parsed.success) return { error: "無効なステータスです" };
+
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("livers")
-    .update({ status })
+    .update({ status: parsed.data })
     .in("id", ids);
 
   if (error) {

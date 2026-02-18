@@ -38,9 +38,7 @@ export function LiversTable({ livers, onSelect }: Props) {
   const safePage = Math.min(page, totalPages);
   const pagedLivers = livers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  async function handleStatusChange(liverId: string, newStatus: ApplicationStatus) {
-    const liver = livers.find((l) => l.id === liverId);
-    const previousStatus = liver?.status;
+  async function handleStatusChange(liverId: string, newStatus: ApplicationStatus, currentStatus: ApplicationStatus) {
     setUpdatingId(liverId);
 
     const result = await updateLiverStatus(liverId, newStatus);
@@ -52,19 +50,17 @@ export function LiversTable({ livers, onSelect }: Props) {
     }
 
     toast.success("申請状況を変更しました", {
-      action: previousStatus
-        ? {
-            label: "元に戻す",
-            onClick: async () => {
-              const undo = await updateLiverStatus(liverId, previousStatus as ApplicationStatus);
-              if (undo.error) {
-                toast.error("元に戻せませんでした");
-              } else {
-                toast.success("ステータスを元に戻しました");
-              }
-            },
+      action: {
+        label: "元に戻す",
+        onClick: async () => {
+          const undo = await updateLiverStatus(liverId, currentStatus);
+          if (undo.error) {
+            toast.error("元に戻せませんでした");
+          } else {
+            toast.success("ステータスを元に戻しました");
           }
-        : undefined,
+        },
+      },
       duration: 5000,
     });
   }
@@ -110,7 +106,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                     <Select
                       value={liver.status}
                       onValueChange={(v) =>
-                        handleStatusChange(liver.id, v as ApplicationStatus)
+                        handleStatusChange(liver.id, v as ApplicationStatus, liver.status as ApplicationStatus)
                       }
                       disabled={updatingId === liver.id}
                     >

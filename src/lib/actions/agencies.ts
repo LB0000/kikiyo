@@ -66,8 +66,14 @@ export async function createAgency(values: AgencyFormValues) {
   }
   values = parsed.data;
 
-  const adminSupabase = await createAdminClient();
+  const adminSupabase = createAdminClient();
   const supabase = await createClient();
+
+  // 0. メールアドレス重複チェック
+  const { data: existingUsers } = await adminSupabase.auth.admin.listUsers();
+  if (existingUsers?.users?.some((u) => u.email === values.email)) {
+    return { error: "このメールアドレスは既に使用されています" };
+  }
 
   // 1. 代理店レコード作成
   const { data: agency, error: agencyError } = await supabase
@@ -98,20 +104,26 @@ export async function createAgency(values: AgencyFormValues) {
 
   if (authError || !authData.user) {
     console.error("createUser failed:", authError?.message, authError);
-    // ロールバック
     await adminSupabase.from("agencies").delete().eq("id", agency.id);
     return { error: authError?.message ?? "ユーザー作成に失敗しました" };
   }
 
+  // ロールバック用ヘルパー（adminSupabaseでRLSバイパス）
+  async function rollback() {
+    await Promise.all([
+      adminSupabase.from("agencies").delete().eq("id", agency.id),
+      adminSupabase.auth.admin.deleteUser(authData.user!.id),
+    ]);
+  }
+
   // 4. 代理店にuser_idを設定
-  const { error: linkError } = await supabase
+  const { error: linkError } = await adminSupabase
     .from("agencies")
     .update({ user_id: authData.user.id })
     .eq("id", agency.id);
 
   if (linkError) {
-    await supabase.from("agencies").delete().eq("id", agency.id);
-    await adminSupabase.auth.admin.deleteUser(authData.user.id);
+    await rollback();
     return { error: "代理店とユーザーの紐付けに失敗しました" };
   }
 
@@ -122,8 +134,7 @@ export async function createAgency(values: AgencyFormValues) {
     .eq("id", authData.user.id);
 
   if (profileError) {
-    await supabase.from("agencies").delete().eq("id", agency.id);
-    await adminSupabase.auth.admin.deleteUser(authData.user.id);
+    await rollback();
     return { error: "プロフィール更新に失敗しました" };
   }
 
@@ -136,8 +147,7 @@ export async function createAgency(values: AgencyFormValues) {
     });
 
   if (viewableError) {
-    await supabase.from("agencies").delete().eq("id", agency.id);
-    await adminSupabase.auth.admin.deleteUser(authData.user.id);
+    await rollback();
     return { error: "閲覧権限の設定に失敗しました" };
   }
 
@@ -283,11 +293,17 @@ export async function updateAgency(
 function generateTempPassword(): string {
   const chars =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
   let password = "";
   for (let i = 0; i < 12; i++) {
-    password += chars.charAt(bytes[i] % chars.length);
+    // rejection sampling でモジュロバイアスを回避
+    const limit = 256 - (256 % chars.length);
+    let byte: number;
+    do {
+      const buf = new Uint8Array(1);
+      crypto.getRandomValues(buf);
+      byte = buf[0];
+    } while (byte >= limit);
+    password += chars.charAt(byte % chars.length);
   }
   return password;
 }
@@ -306,7 +322,19 @@ async function sendRegistrationEmail(
   tempPassword: string,
   agencyName: string
 ) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const rawUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  // URLスキームを検証してjavascript:等のインジェクションを防止
+  let appUrl: string;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      appUrl = "http://localhost:3000";
+    } else {
+      appUrl = parsed.origin;
+    }
+  } catch {
+    appUrl = "http://localhost:3000";
+  }
   const safeAgencyName = escapeHtml(agencyName);
   const safeEmail = escapeHtml(email);
   const safePassword = escapeHtml(tempPassword);

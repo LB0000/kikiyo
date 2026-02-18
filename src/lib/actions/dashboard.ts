@@ -1,7 +1,7 @@
 "use server";
 
 import Papa from "papaparse";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import type { RevenueTask } from "@/lib/supabase/types";
@@ -348,6 +348,10 @@ export async function importCsvData(params: {
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
   if (!uploadAgencyId) return { error: "アップロード代理店が指定されていません" };
 
+  // UUID形式の検証
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(uploadAgencyId)) return { error: "無効な代理店IDです" };
+
   // サーバーサイドでCSV解析
   const parseResult = parseCsvText(csvText);
   if ("error" in parseResult) return parseResult;
@@ -386,10 +390,11 @@ export async function importCsvData(params: {
     };
   }
 
-  // 2. ライバーと代理店を並列取得
+  // 2. ライバーと代理店を並列取得（RLSバイパスで全レコード参照）
+  const adminSupabase = createAdminClient();
   const [{ data: allLivers }, { data: allAgencies }] = await Promise.all([
-    supabase.from("livers").select("id, liver_id, agency_id"),
-    supabase.from("agencies").select("id, name, commission_rate"),
+    adminSupabase.from("livers").select("id, liver_id, agency_id"),
+    adminSupabase.from("agencies").select("id, name, commission_rate"),
   ]);
 
   const liverMap = new Map(
@@ -534,7 +539,10 @@ export async function createRefund(params: {
   }
 
   // agency_userは閲覧可能代理店のライバーのみ返金登録可能
-  if (user.role !== "system_admin" && liver.agency_id) {
+  if (user.role !== "system_admin") {
+    if (!liver.agency_id) {
+      return { error: "所属代理店のないライバーへの返金は管理者のみ可能です" };
+    }
     const { data: viewable } = await supabase
       .from("profile_viewable_agencies")
       .select("agency_id")

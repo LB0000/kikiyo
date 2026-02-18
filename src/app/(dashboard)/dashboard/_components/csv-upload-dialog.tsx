@@ -123,7 +123,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!loading) onOpenChange(v); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>CSVアップロード</DialogTitle>

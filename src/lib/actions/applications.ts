@@ -1,10 +1,15 @@
 "use server";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { createApplicationSchema } from "@/lib/validations/application";
 import type { ApplicationStatus, FormTab } from "@/lib/supabase/types";
+
+const applicationStatusSchema = z.enum([
+  "completed", "released", "authorized", "pending", "rejected",
+]);
 
 export type ApplicationRow = {
   id: string;
@@ -120,11 +125,20 @@ export async function updateApplicationStatus(
   if (!user) return { error: "認証が必要です" };
   if (user.role !== "system_admin") return { error: "権限がありません" };
 
+  const parsed = applicationStatusSchema.safeParse(status);
+  if (!parsed.success) return { error: "無効なステータスです" };
+  const validStatus = parsed.data;
+
   const supabase = await createClient();
+
+  // 紐付け申請の承認時はライバー作成も行うため、先に申請データを取得
+  const { data: app } = validStatus === "authorized"
+    ? await supabase.from("applications").select("*").eq("id", id).single()
+    : { data: null };
 
   const { error } = await supabase
     .from("applications")
-    .update({ status })
+    .update({ status: validStatus })
     .eq("id", id);
 
   if (error) {
@@ -132,32 +146,24 @@ export async function updateApplicationStatus(
   }
 
   // 紐付け申請が承認された場合、ライバーレコードを作成
-  if (status === "authorized") {
-    const { data: app } = await supabase
-      .from("applications")
-      .select("*")
-      .eq("id", id)
-      .single();
+  if (validStatus === "authorized" && app && app.form_tab === "affiliation_check" && app.agency_id) {
+    const { error: liverError } = await supabase.from("livers").insert({
+      name: app.name || null,
+      address: app.address || null,
+      birth_date: app.birth_date || null,
+      contact: app.contact || null,
+      email: app.email || null,
+      tiktok_username: app.tiktok_username || null,
+      link: app.tiktok_account_link || null,
+      status: "authorized" as ApplicationStatus,
+      agency_id: app.agency_id,
+    });
 
-    if (app && app.form_tab === "affiliation_check" && app.agency_id) {
-      const { error: liverError } = await supabase.from("livers").insert({
-        name: app.name || null,
-        address: app.address || null,
-        birth_date: app.birth_date || null,
-        contact: app.contact || null,
-        email: app.email || null,
-        tiktok_username: app.tiktok_username || null,
-        link: app.tiktok_account_link || null,
-        status: "authorized" as ApplicationStatus,
-        agency_id: app.agency_id,
-      });
-
-      if (liverError) {
-        return { error: `ステータスは更新しましたが、ライバー作成に失敗: ${liverError.message}` };
-      }
-
-      revalidatePath("/livers");
+    if (liverError) {
+      return { error: `ステータスは更新しましたが、ライバー作成に失敗: ${liverError.message}` };
     }
+
+    revalidatePath("/livers");
   }
 
   revalidatePath("/all-applications");

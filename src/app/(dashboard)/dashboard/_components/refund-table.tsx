@@ -21,8 +21,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { deleteRefund } from "@/lib/actions/dashboard";
+import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 
 type RefundRow = {
   id: string;
@@ -36,6 +38,14 @@ type RefundRow = {
 type Props = {
   rows: RefundRow[];
 };
+
+const REFUND_COLUMNS: CsvColumn<RefundRow>[] = [
+  { header: "ライバー名", accessor: (r) => r.liver_name },
+  { header: "対象月", accessor: (r) => r.target_month },
+  { header: "返金額(USD)", accessor: (r) => r.amount_usd },
+  { header: "返金額(JPY)", accessor: (r) => r.amount_jpy },
+  { header: "理由", accessor: (r) => r.reason },
+];
 
 function fmt(n: number): string {
   return n.toLocaleString("ja-JP");
@@ -69,7 +79,20 @@ export function RefundTable({ rows }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div>
+      <div className="mb-2 flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            exportCsv(rows, REFUND_COLUMNS, `refund_${new Date().toISOString().slice(0, 10)}.csv`)
+          }
+        >
+          <Download className="size-4" />
+          CSVエクスポート
+        </Button>
+      </div>
+      <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -126,6 +149,7 @@ export function RefundTable({ rows }: Props) {
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

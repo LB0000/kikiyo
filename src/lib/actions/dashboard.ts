@@ -132,7 +132,7 @@ export async function getDashboardData(
 
   let csvQuery = supabase
     .from("csv_data")
-    .select("id, creator_id, creator_nickname, handle, \"group\", data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy")
+    .select("id, creator_id, creator_nickname, handle, group, data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy")
     .eq("monthly_report_id", monthlyReportId);
 
   if (agencyId) {

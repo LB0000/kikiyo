@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { NAV_ITEMS } from "@/lib/constants";
 import type { UserRole } from "@/lib/supabase/types";
+import { Button } from "@/components/ui/button";
 import {
   Users,
   Building2,
@@ -139,14 +140,14 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        <Button
+          variant="ghost"
+          className="mt-1 w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           onClick={handleLogout}
         >
           <LogOut className="size-4" />
           ログアウト
-        </button>
+        </Button>
       </SidebarFooter>
     </Sidebar>
   );

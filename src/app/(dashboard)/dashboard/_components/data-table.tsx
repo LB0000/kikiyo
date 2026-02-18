@@ -9,7 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
+import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 
 type CsvDataRow = {
   id: string;
@@ -32,6 +35,18 @@ type Props = {
 
 const PAGE_SIZE = 10;
 
+const EXPORT_COLUMNS: CsvColumn<CsvDataRow>[] = [
+  { header: "データ月", accessor: (r) => r.data_month },
+  { header: "本名", accessor: (r) => r.handle },
+  { header: "ニックネーム", accessor: (r) => r.creator_nickname },
+  { header: "クリエイターID", accessor: (r) => r.creator_id },
+  { header: "グループ", accessor: (r) => r.group },
+  { header: "ダイヤモンド", accessor: (r) => r.diamonds },
+  { header: "有効日数", accessor: (r) => r.valid_days },
+  { header: "有効時間", accessor: (r) => r.live_duration },
+  { header: "推定ボーナス", accessor: (r) => r.estimated_bonus },
+];
+
 function fmt(n: number): string {
   return n.toLocaleString("ja-JP");
 }
@@ -52,6 +67,18 @@ export function DataTable({ rows }: Props) {
 
   return (
     <div>
+      <div className="mb-2 flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            exportCsv(rows, EXPORT_COLUMNS, `data_${new Date().toISOString().slice(0, 10)}.csv`)
+          }
+        >
+          <Download className="size-4" />
+          CSVエクスポート
+        </Button>
+      </div>
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>

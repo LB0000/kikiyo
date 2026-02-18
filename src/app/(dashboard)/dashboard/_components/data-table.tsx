@@ -37,8 +37,8 @@ const PAGE_SIZE = 10;
 
 const EXPORT_COLUMNS: CsvColumn<CsvDataRow>[] = [
   { header: "データ月", accessor: (r) => r.data_month },
-  { header: "本名", accessor: (r) => r.handle },
   { header: "ニックネーム", accessor: (r) => r.creator_nickname },
+  { header: "ハンドル", accessor: (r) => r.handle },
   { header: "クリエイターID", accessor: (r) => r.creator_id },
   { header: "グループ", accessor: (r) => r.group },
   { header: "ダイヤモンド", accessor: (r) => r.diamonds },
@@ -84,8 +84,8 @@ export function DataTable({ rows }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>データ月</TableHead>
-              <TableHead>本名</TableHead>
               <TableHead>ニックネーム</TableHead>
+              <TableHead>ハンドル</TableHead>
               <TableHead>クリエイターID</TableHead>
               <TableHead>グループ</TableHead>
               <TableHead className="text-right">ダイヤモンド</TableHead>
@@ -98,8 +98,8 @@ export function DataTable({ rows }: Props) {
             {pagedRows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.data_month ?? "-"}</TableCell>
-                <TableCell>{row.handle ?? "-"}</TableCell>
                 <TableCell>{row.creator_nickname ?? "-"}</TableCell>
+                <TableCell>{row.handle ?? "-"}</TableCell>
                 <TableCell className="font-mono text-xs">
                   {row.creator_id ?? "-"}
                 </TableCell>

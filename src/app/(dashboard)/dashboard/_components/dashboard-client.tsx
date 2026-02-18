@@ -138,7 +138,7 @@ export function DashboardClient({
             <SelectContent>
               {reports.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {new Date(r.created_at).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" })}
+                  {r.data_month || new Date(r.created_at).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" })}
                 </SelectItem>
               ))}
             </SelectContent>

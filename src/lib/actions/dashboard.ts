@@ -48,6 +48,7 @@ export type MonthlyReportItem = {
   rate: number;
   revenue_task: RevenueTask | null;
   created_at: string;
+  data_month: string | null;
 };
 
 export type DashboardSummary = {
@@ -110,7 +111,7 @@ export async function getMonthlyReports(): Promise<MonthlyReportItem[]> {
 
   const { data, error } = await supabase
     .from("monthly_reports")
-    .select("id, rate, revenue_task, created_at")
+    .select("id, rate, revenue_task, created_at, data_month")
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
@@ -134,7 +135,7 @@ export async function getDashboardData(
   // report, csv_data, refunds を全て並列取得（必要カラムのみ SELECT）
   const reportQuery = supabase
     .from("monthly_reports")
-    .select("id, rate, revenue_task, created_at")
+    .select("id, rate, revenue_task, created_at, data_month")
     .eq("id", monthlyReportId)
     .single();
 
@@ -400,6 +401,7 @@ export async function importCsvData(params: {
     .insert({
       rate,
       revenue_task: revenueTask,
+      data_month: rows[0]?.data_month || null,
     })
     .select()
     .single();

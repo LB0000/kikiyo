@@ -179,18 +179,21 @@ export type Database = {
           rate: number;
           revenue_task: RevenueTask | null;
           created_at: string;
+          data_month: string | null;
         };
         Insert: {
           id?: string;
           rate: number;
           revenue_task?: RevenueTask | null;
           created_at?: string;
+          data_month?: string | null;
         };
         Update: {
           id?: string;
           rate?: number;
           revenue_task?: RevenueTask | null;
           created_at?: string;
+          data_month?: string | null;
         };
       };
       csv_data: {

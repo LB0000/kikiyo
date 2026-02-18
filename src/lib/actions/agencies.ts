@@ -103,7 +103,6 @@ export async function createAgency(values: AgencyFormValues) {
     });
 
   if (authError || !authData.user) {
-    console.error("createUser failed:", authError?.message, authError);
     await adminSupabase.from("agencies").delete().eq("id", agency.id);
     return { error: authError?.message ?? "ユーザー作成に失敗しました" };
   }

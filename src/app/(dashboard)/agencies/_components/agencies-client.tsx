@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { AgenciesTable } from "./agencies-table";
 import { AgencyFormDialog } from "./agency-form-dialog";
 import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
@@ -30,8 +29,17 @@ export function AgenciesClient({ agencies }: Props) {
 
   return (
     <>
-      <div className="flex justify-end">
-        <Button onClick={handleNew}>新規登録</Button>
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+          代理店リスト
+        </h1>
+        <button
+          className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+          onClick={handleNew}
+        >
+          代理店登録
+        </button>
       </div>
       <AgenciesTable agencies={agencies} onSelect={handleSelect} />
       <AgencyFormDialog

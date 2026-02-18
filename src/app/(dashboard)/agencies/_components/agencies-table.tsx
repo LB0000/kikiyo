@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Pencil } from "lucide-react";
 import { AGENCY_RANK_LABELS } from "@/lib/constants";
 import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
 import type { AgencyRank } from "@/lib/supabase/types";
@@ -25,38 +25,29 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
         <TableHeader>
           <TableRow>
             <TableHead>代理店名</TableHead>
-            <TableHead>ランク</TableHead>
-            <TableHead>手数料率</TableHead>
+            <TableHead>代理店ランク</TableHead>
             <TableHead>上位代理店</TableHead>
-            <TableHead>登録日</TableHead>
+            <TableHead>手数料率</TableHead>
+            <TableHead>メールアドレス</TableHead>
+            <TableHead>提携日</TableHead>
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {agencies.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                 データがありません
               </TableCell>
             </TableRow>
           ) : (
             agencies.map((agency) => (
-              <TableRow
-                key={agency.id}
-                className="cursor-pointer"
-                onClick={() => onSelect(agency)}
-              >
+              <TableRow key={agency.id}>
                 <TableCell className="font-medium">{agency.name}</TableCell>
                 <TableCell>
-                  {agency.rank ? (
-                    <Badge variant="secondary">
-                      {AGENCY_RANK_LABELS[agency.rank as AgencyRank]}
-                    </Badge>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {(agency.commission_rate * 100).toFixed(1)}%
+                  {agency.rank
+                    ? AGENCY_RANK_LABELS[agency.rank as AgencyRank]
+                    : "-"}
                 </TableCell>
                 <TableCell>
                   {agency.parent_agencies.length > 0
@@ -66,7 +57,20 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
                     : "-"}
                 </TableCell>
                 <TableCell>
+                  {(agency.commission_rate * 100).toFixed(1)}%
+                </TableCell>
+                <TableCell className="text-sm">-</TableCell>
+                <TableCell>
                   {new Date(agency.created_at).toLocaleDateString("ja-JP")}
+                </TableCell>
+                <TableCell>
+                  <button
+                    className="p-1 text-pink-400 hover:text-pink-600 transition-colors"
+                    onClick={() => onSelect(agency)}
+                    aria-label="編集"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
                 </TableCell>
               </TableRow>
             ))

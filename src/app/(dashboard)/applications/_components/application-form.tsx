@@ -1,18 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { FORM_TAB_LABELS } from "@/lib/constants";
@@ -102,7 +95,7 @@ export function ApplicationForm({ agencyId }: Props) {
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 i <= stepIndex
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-pink-400 text-white"
                   : "bg-muted text-muted-foreground"
               }`}
             >
@@ -125,130 +118,143 @@ export function ApplicationForm({ agencyId }: Props) {
       {/* Step: Input */}
       {step === "input" && (
         <form onSubmit={handleConfirm} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">申請種別</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup
-                value={selectedTab}
-                onValueChange={(v) => setSelectedTab(v as FormTab)}
-                className="grid gap-2"
-              >
-                {ALL_FORM_TABS.map((tab) => (
-                  <div key={tab} className="flex items-center space-x-2">
-                    <RadioGroupItem value={tab} id={tab} />
-                    <Label htmlFor={tab} className="font-normal">
-                      {FORM_TAB_LABELS[tab]}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </CardContent>
-          </Card>
+          {/* 申請種別 — 2×4 grid like Bubble */}
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">申請を選択してください</p>
+            <p className="text-sm text-muted-foreground">
+              以下の選択肢から申請種類を選び、必要な情報を入力してください。
+            </p>
+            <RadioGroup
+              value={selectedTab}
+              onValueChange={(v) => setSelectedTab(v as FormTab)}
+              className="grid grid-cols-4 gap-x-6 gap-y-2"
+            >
+              {ALL_FORM_TABS.map((tab) => (
+                <div key={tab} className="flex items-center space-x-2">
+                  <RadioGroupItem value={tab} id={tab} />
+                  <Label htmlFor={tab} className="font-normal text-sm whitespace-nowrap">
+                    {FORM_TAB_LABELS[tab]}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">申請情報</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+          <Separator />
+
+          {/* 申請種別タイトル */}
+          <div className="space-y-1">
+            <p className="font-medium">{FORM_TAB_LABELS[selectedTab]}</p>
+            <p className="text-sm text-muted-foreground">
+              {selectedTab === "affiliation_check"
+                ? "事務所所属チェックのための紐付け申請を行います。以下の情報を入力してください。"
+                : `${FORM_TAB_LABELS[selectedTab]}の申請を行います。以下の情報を入力してください。`}
+            </p>
+          </div>
+
+          {/* フォームフィールド */}
+          <div className="space-y-5">
+            {selectedTab === "affiliation_check" && (
+              <>
                 <div className="space-y-2">
-                  <Label>メールアドレス *</Label>
+                  <Label>氏名　※姓名つなげてご記入ください。</Label>
                   <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => updateField("email", e.target.value)}
-                    required
+                    value={form.name}
+                    onChange={(e) => updateField("name", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>TikTokユーザー名</Label>
+                  <Label>住所</Label>
                   <Input
-                    value={form.tiktok_username}
+                    value={form.address}
+                    onChange={(e) => updateField("address", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>生年月日　※18歳未満は登録不可となります。</Label>
+                  <Input
+                    type="date"
+                    value={form.birth_date}
+                    onChange={(e) => updateField("birth_date", e.target.value)}
+                    className="w-48"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>連絡先　※ハイフン無しでご入力ください</Label>
+                  <Input
+                    value={form.contact}
+                    onChange={(e) => updateField("contact", e.target.value)}
+                    placeholder="09099990000"
+                    className="w-48"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2">
+              <Label>メールアドレス</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => updateField("email", e.target.value)}
+                placeholder="example@email.com"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>TikTokユーザー名</Label>
+              <Input
+                value={form.tiktok_username}
+                onChange={(e) => updateField("tiktok_username", e.target.value)}
+              />
+            </div>
+
+            {selectedTab === "affiliation_check" && (
+              <>
+                <div className="space-y-2">
+                  <Label>TikTokアカウントリンク</Label>
+                  <Input
+                    value={form.tiktok_account_link}
                     onChange={(e) =>
-                      updateField("tiktok_username", e.target.value)
+                      updateField("tiktok_account_link", e.target.value)
                     }
                   />
                 </div>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="id_verified"
+                    checked={form.id_verified}
+                    onCheckedChange={(checked) =>
+                      updateField("id_verified", !!checked)
+                    }
+                  />
+                  <Label htmlFor="id_verified" className="font-normal">
+                    身分証明書を確認しましたか？
+                  </Label>
+                </div>
+              </>
+            )}
 
-              {selectedTab === "affiliation_check" && (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>氏名</Label>
-                      <Input
-                        value={form.name}
-                        onChange={(e) => updateField("name", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>連絡先</Label>
-                      <Input
-                        value={form.contact}
-                        onChange={(e) => updateField("contact", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>TikTokアカウントリンク</Label>
-                    <Input
-                      value={form.tiktok_account_link}
-                      onChange={(e) =>
-                        updateField("tiktok_account_link", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>住所</Label>
-                      <Input
-                        value={form.address}
-                        onChange={(e) => updateField("address", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>生年月日</Label>
-                      <Input
-                        type="date"
-                        value={form.birth_date}
-                        onChange={(e) =>
-                          updateField("birth_date", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="id_verified"
-                      checked={form.id_verified}
-                      onCheckedChange={(checked) =>
-                        updateField("id_verified", !!checked)
-                      }
-                    />
-                    <Label htmlFor="id_verified" className="font-normal">
-                      身分証明書を確認しましたか？
-                    </Label>
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-2">
-                <Label>追加情報・備考</Label>
-                <Textarea
-                  value={form.additional_info}
-                  onChange={(e) =>
-                    updateField("additional_info", e.target.value)
-                  }
-                  rows={4}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <div className="space-y-2">
+              <Label>追加情報・備考</Label>
+              <Textarea
+                value={form.additional_info}
+                onChange={(e) =>
+                  updateField("additional_info", e.target.value)
+                }
+                rows={4}
+              />
+            </div>
+          </div>
 
           <div className="flex justify-end">
-            <Button type="submit">確認画面へ</Button>
+            <button
+              type="submit"
+              className="rounded-full bg-pink-400 px-8 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+            >
+              確認画面へ
+            </button>
           </div>
         </form>
       )}
@@ -256,11 +262,9 @@ export function ApplicationForm({ agencyId }: Props) {
       {/* Step: Confirm */}
       {step === "confirm" && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">入力内容の確認</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <div className="rounded-lg border p-6 space-y-4">
+            <h2 className="text-lg font-medium">入力内容の確認</h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
               <ConfirmRow label="申請種別" value={FORM_TAB_LABELS[selectedTab]} />
               <ConfirmRow label="メールアドレス" value={form.email} />
               <ConfirmRow label="TikTokユーザー名" value={form.tiktok_username} />
@@ -281,33 +285,41 @@ export function ApplicationForm({ agencyId }: Props) {
                 </>
               )}
               <ConfirmRow label="追加情報" value={form.additional_info} />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep("input")}>
+            <button
+              className="rounded-full border border-pink-400 px-8 py-2 text-sm font-medium text-pink-400 hover:bg-pink-50 transition-colors"
+              onClick={() => setStep("input")}
+            >
               戻る
-            </Button>
-            <Button onClick={handleSubmit} disabled={loading}>
+            </button>
+            <button
+              className="rounded-full bg-pink-400 px-8 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors disabled:opacity-50"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
               {loading ? "送信中..." : "送信"}
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* Step: Complete */}
       {step === "complete" && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-lg font-medium">申請が完了しました</p>
-            <p className="mt-2 text-muted-foreground">
-              管理者による確認をお待ちください。
-            </p>
-            <Button className="mt-6" onClick={handleReset}>
-              新しい申請を作成
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border py-12 text-center">
+          <p className="text-lg font-medium">申請が完了しました</p>
+          <p className="mt-2 text-muted-foreground">
+            管理者による確認をお待ちください。
+          </p>
+          <button
+            className="mt-6 rounded-full bg-pink-400 px-8 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+            onClick={handleReset}
+          >
+            新しい申請を作成
+          </button>
+        </div>
       )}
     </div>
   );
@@ -315,11 +327,9 @@ export function ApplicationForm({ agencyId }: Props) {
 
 function ConfirmRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-4 py-1">
-      <span className="w-40 shrink-0 text-sm text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-sm">{value || "-"}</span>
+    <div>
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <p className="mt-1 text-sm">{value || "-"}</p>
     </div>
   );
 }

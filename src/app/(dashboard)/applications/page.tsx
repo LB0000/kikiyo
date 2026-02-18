@@ -7,8 +7,11 @@ export default async function ApplicationsPage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-bold">TikTok申請</h1>
+    <div className="space-y-6">
+      <h1 className="flex items-center gap-3 text-2xl font-bold">
+        <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+        TikTok申請
+      </h1>
       <ApplicationForm agencyId={user.agencyId} />
     </div>
   );

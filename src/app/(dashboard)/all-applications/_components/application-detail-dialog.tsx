@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -15,10 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   APPLICATION_STATUS_LABELS,
@@ -65,8 +60,9 @@ export function ApplicationDetailDialog({
   }
 
   const details: { label: string; value: string }[] = [
-    { label: "申請種別", value: FORM_TAB_LABELS[application.form_tab] },
+    { label: "代理店名", value: application.agency_name ?? "-" },
     { label: "氏名", value: application.name ?? "-" },
+    { label: "申請種別", value: FORM_TAB_LABELS[application.form_tab] },
     { label: "メールアドレス", value: application.email ?? "-" },
     { label: "連絡先", value: application.contact ?? "-" },
     { label: "TikTokユーザー名", value: application.tiktok_username ?? "-" },
@@ -81,7 +77,6 @@ export function ApplicationDetailDialog({
       value: application.id_verified ? "はい" : "いいえ",
     },
     { label: "追加情報", value: application.additional_info ?? "-" },
-    { label: "代理店", value: application.agency_name ?? "-" },
     {
       label: "申請日",
       value: new Date(application.created_at).toLocaleDateString("ja-JP"),
@@ -90,35 +85,25 @@ export function ApplicationDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>申請詳細</DialogTitle>
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold">
+            <span className="inline-block h-6 w-1 rounded bg-pink-400" />
+            申請詳細
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">現在のステータス:</span>
-            <Badge>
-              {APPLICATION_STATUS_LABELS[application.status]}
-            </Badge>
-          </div>
-
-          <Separator />
-
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 py-4">
           {details.map(({ label, value }) => (
-            <div key={label} className="flex gap-4 py-1">
-              <span className="w-40 shrink-0 text-sm text-muted-foreground">
-                {label}
-              </span>
-              <span className="text-sm break-all">{value}</span>
+            <div key={label}>
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <p className="mt-1 text-sm break-all">{value}</p>
             </div>
           ))}
         </div>
 
-        <Separator />
-
-        <div className="space-y-3">
-          <Label>ステータス変更</Label>
+        <div className="space-y-3 pt-2">
+          <span className="text-sm font-medium">申請ステータス変更</span>
           <Select
             value={status}
             onValueChange={(v) => setStatus(v as ApplicationStatus)}
@@ -138,14 +123,13 @@ export function ApplicationDetailDialog({
           </Select>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            閉じる
-          </Button>
-          <Button onClick={handleStatusChange} disabled={loading}>
-            {loading ? "変更中..." : "ステータスを変更"}
-          </Button>
-        </DialogFooter>
+        <button
+          className="mt-4 w-full rounded-lg bg-pink-400 py-3 text-sm font-medium text-white hover:bg-pink-500 transition-colors disabled:opacity-50"
+          onClick={handleStatusChange}
+          disabled={loading}
+        >
+          {loading ? "変更中..." : "更新する"}
+        </button>
       </DialogContent>
     </Dialog>
   );

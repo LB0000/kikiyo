@@ -7,18 +7,32 @@ import { createClient } from "@/lib/supabase/client";
 import { NAV_ITEMS } from "@/lib/constants";
 import type { UserRole } from "@/lib/supabase/types";
 import {
+  Users,
+  Building2,
+  Monitor,
+  ListOrdered,
+  FileText,
+  LogOut,
+} from "lucide-react";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  users: Users,
+  building2: Building2,
+  monitor: Monitor,
+  "list-ordered": ListOrdered,
+  "file-text": FileText,
+};
 
 type AppSidebarProps = {
   userRole: UserRole;
@@ -46,42 +60,48 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-4 py-4">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="" width={32} height={32} />
-          <h1 className="text-lg font-bold">TikTok Live Tool</h1>
+      <SidebarHeader className="px-6 py-6">
+        <div className="flex flex-col items-center gap-1">
+          <Image src="/logo.png" alt="KIKIYO" width={48} height={48} />
+          <span className="text-sm font-bold tracking-wide text-pink-400">
+            KIKIYO
+          </span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>メニュー</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.href}
-                  >
-                    <Link href={item.href}>{item.title}</Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {filteredItems.map((item) => {
+                const Icon = ICON_MAP[item.icon];
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href}
+                    >
+                      <Link href={item.href}>
+                        {Icon && <Icon className="size-4" />}
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
         <div className="space-y-2">
-          <p className="truncate text-sm text-muted-foreground">{userEmail}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
+          <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
+          <button
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-pink-50 hover:text-pink-500 transition-colors"
             onClick={handleLogout}
           >
+            <LogOut className="size-4" />
             ログアウト
-          </Button>
+          </button>
         </div>
       </SidebarFooter>
     </Sidebar>

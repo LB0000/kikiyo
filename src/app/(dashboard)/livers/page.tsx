@@ -10,8 +10,7 @@ export default async function LiversPage() {
   const livers = await getLivers();
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">ライバー名簿</h1>
+    <div className="space-y-6">
       <LiversClient livers={livers} />
     </div>
   );

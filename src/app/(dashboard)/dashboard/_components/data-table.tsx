@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -8,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Pagination } from "@/components/shared/pagination";
 
 type CsvDataRow = {
   id: string;
@@ -27,15 +29,17 @@ type Props = {
   rows: CsvDataRow[];
 };
 
+const PAGE_SIZE = 10;
+
 function fmt(n: number): string {
   return n.toLocaleString("ja-JP");
 }
 
-function fmtJpy(n: number): string {
-  return `${Math.round(n).toLocaleString("ja-JP")}`;
-}
-
 export function DataTable({ rows }: Props) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pagedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   if (rows.length === 0) {
     return (
       <div className="rounded-md border p-8 text-center text-muted-foreground">
@@ -45,47 +49,48 @@ export function DataTable({ rows }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Creator Nickname</TableHead>
-            <TableHead>Handle</TableHead>
-            <TableHead>Creator ID</TableHead>
-            <TableHead className="text-right">Diamonds</TableHead>
-            <TableHead className="text-right">Estimated Bonus</TableHead>
-            <TableHead className="text-right">Total Reward (JPY)</TableHead>
-            <TableHead className="text-right">Agency Reward (JPY)</TableHead>
-            <TableHead>Data Month</TableHead>
-            <TableHead>Live Duration</TableHead>
-            <TableHead>Valid Days</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.creator_nickname ?? "-"}</TableCell>
-              <TableCell>{row.handle ?? "-"}</TableCell>
-              <TableCell className="font-mono text-xs">
-                {row.creator_id ?? "-"}
-              </TableCell>
-              <TableCell className="text-right">{fmt(row.diamonds)}</TableCell>
-              <TableCell className="text-right">
-                {fmt(row.estimated_bonus)}
-              </TableCell>
-              <TableCell className="text-right">
-                {fmtJpy(row.total_reward_jpy)}
-              </TableCell>
-              <TableCell className="text-right">
-                {fmtJpy(row.agency_reward_jpy)}
-              </TableCell>
-              <TableCell>{row.data_month ?? "-"}</TableCell>
-              <TableCell>{row.live_duration ?? "-"}</TableCell>
-              <TableCell>{row.valid_days ?? "-"}</TableCell>
+    <div>
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>データ月</TableHead>
+              <TableHead>本名</TableHead>
+              <TableHead>ニックネーム</TableHead>
+              <TableHead>クリエイターID</TableHead>
+              <TableHead>グループ</TableHead>
+              <TableHead className="text-right">ダイヤモンド</TableHead>
+              <TableHead className="text-right">有効日数</TableHead>
+              <TableHead className="text-right">有効時間</TableHead>
+              <TableHead className="text-right">推定ボーナス</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {pagedRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.data_month ?? "-"}</TableCell>
+                <TableCell>{row.handle ?? "-"}</TableCell>
+                <TableCell>{row.creator_nickname ?? "-"}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {row.creator_id ?? "-"}
+                </TableCell>
+                <TableCell>-</TableCell>
+                <TableCell className="text-right">{fmt(row.diamonds)}</TableCell>
+                <TableCell className="text-right">{row.valid_days ?? "0"}</TableCell>
+                <TableCell className="text-right">{row.live_duration ?? "0"}</TableCell>
+                <TableCell className="text-right">
+                  {fmt(row.estimated_bonus)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

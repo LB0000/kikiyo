@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
 import type { RevenueTask } from "@/lib/supabase/types";
 
@@ -25,7 +24,7 @@ function fmt(n: number): string {
 }
 
 function fmtJpy(n: number): string {
-  return `${Math.round(n).toLocaleString("ja-JP")} JPY`;
+  return `¥${Math.round(n).toLocaleString("ja-JP")}`;
 }
 
 function fmtPercent(n: number): string {
@@ -44,37 +43,37 @@ export function SummaryCards({
 }: Props) {
   const cards: CardItem[] = [
     {
-      label: "収益タスク",
+      label: "レベニュー",
       value: revenueTask
         ? REVENUE_TASK_LABELS[revenueTask as RevenueTask] ?? revenueTask
         : "未設定",
     },
     {
       label: "為替レート",
-      value: `${fmt(exchangeRate)} JPY/USD`,
+      value: fmt(exchangeRate),
     },
     {
-      label: "合計ダイヤモンド",
+      label: "ダイヤ数(合計)",
       value: fmt(totalDiamonds),
     },
     {
-      label: "合計ボーナス",
+      label: "ボーナス(合計)",
       value: fmt(totalBonus),
     },
     {
-      label: "純額（税抜）",
+      label: "合計金額(税抜)",
       value: fmtJpy(netAmountExTax),
     },
     {
-      label: "純額（税込）",
+      label: "合計金額(税込)",
       value: fmtJpy(netAmountIncTax),
     },
     {
-      label: "手数料率",
-      value: fmtPercent(commissionRate),
+      label: "代理店手数料率",
+      value: commissionRate > 0 ? fmtPercent(commissionRate) : "-",
     },
     {
-      label: "代理店支払（税込）",
+      label: "お支払い金額(税込)",
       value: fmtJpy(agencyPaymentIncTax),
     },
   ];
@@ -82,12 +81,13 @@ export function SummaryCards({
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.label}>
-          <CardContent className="pt-0">
-            <p className="text-sm text-muted-foreground">{card.label}</p>
-            <p className="text-2xl font-bold">{card.value}</p>
-          </CardContent>
-        </Card>
+        <div
+          key={card.label}
+          className="rounded-lg border bg-white p-4"
+        >
+          <p className="text-xs text-muted-foreground">{card.label}</p>
+          <p className="mt-2 text-right text-2xl font-bold">{card.value}</p>
+        </div>
       ))}
     </div>
   );

@@ -9,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Pencil } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { APPLICATION_STATUS_LABELS } from "@/lib/constants";
 import { updateLiverStatus } from "@/lib/actions/livers";
 import { toast } from "sonner";
@@ -28,8 +29,13 @@ type Props = {
   onSelect: (liver: LiverRow) => void;
 };
 
+const PAGE_SIZE = 10;
+
 export function LiversTable({ livers, onSelect }: Props) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(livers.length / PAGE_SIZE));
+  const pagedLivers = livers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   async function handleStatusChange(liverId: string, status: ApplicationStatus) {
     setUpdatingId(liverId);
@@ -46,90 +52,104 @@ export function LiversTable({ livers, onSelect }: Props) {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>氏名</TableHead>
-            <TableHead>アカウント名</TableHead>
-            <TableHead>ライバーID</TableHead>
-            <TableHead>申請状況</TableHead>
-            <TableHead>メールアドレス</TableHead>
-            <TableHead>所属代理店</TableHead>
-            <TableHead>リンク</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {livers.length === 0 ? (
+    <div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                データがありません
-              </TableCell>
+              <TableHead>ライバー氏名</TableHead>
+              <TableHead>ライバーID</TableHead>
+              <TableHead>アカウント名</TableHead>
+              <TableHead>申請状況</TableHead>
+              <TableHead>配信開始日</TableHead>
+              <TableHead>獲得日</TableHead>
+              <TableHead>リンク</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
-          ) : (
-            livers.map((liver) => (
-              <TableRow key={liver.id}>
-                <TableCell
-                  className="font-medium cursor-pointer hover:underline"
-                  onClick={() => onSelect(liver)}
-                >
-                  {liver.name ?? "-"}
+          </TableHeader>
+          <TableBody>
+            {livers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  データがありません
                 </TableCell>
-                <TableCell>{liver.account_name ?? "-"}</TableCell>
-                <TableCell className="font-mono text-xs">
-                  {liver.liver_id ?? "-"}
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={liver.status}
-                    onValueChange={(v) =>
-                      handleStatusChange(liver.id, v as ApplicationStatus)
-                    }
-                    disabled={updatingId === liver.id}
-                  >
-                    <SelectTrigger className="w-28 h-8" aria-label="申請状況を変更">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(APPLICATION_STATUS_LABELS).map(
-                        ([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        )
-                      )}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="text-sm">
-                  {liver.email ?? "-"}
-                </TableCell>
-                <TableCell>{liver.agency_name ?? "-"}</TableCell>
-                <TableCell>
-                  {liver.link && /^https?:\/\//.test(liver.link) ? (
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0"
-                      asChild
+              </TableRow>
+            ) : (
+              pagedLivers.map((liver) => (
+                <TableRow key={liver.id}>
+                  <TableCell className="font-medium">
+                    {liver.name ?? "-"}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {liver.liver_id ?? "-"}
+                  </TableCell>
+                  <TableCell>{liver.account_name ?? "-"}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={liver.status}
+                      onValueChange={(v) =>
+                        handleStatusChange(liver.id, v as ApplicationStatus)
+                      }
+                      disabled={updatingId === liver.id}
                     >
+                      <SelectTrigger className="w-28 h-8" aria-label="申請状況を変更">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(APPLICATION_STATUS_LABELS).map(
+                          ([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {liver.streaming_start_date
+                      ? new Date(liver.streaming_start_date).toLocaleDateString("ja-JP")
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {liver.acquisition_date
+                      ? new Date(liver.acquisition_date).toLocaleDateString("ja-JP")
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {liver.link && /^https?:\/\//.test(liver.link) ? (
                       <a
                         href={liver.link}
                         target="_blank"
                         rel="noopener noreferrer"
+                        className="text-pink-500 hover:underline"
                       >
-                        開く
+                        {liver.link}
                       </a>
-                    </Button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      className="p-1 text-pink-400 hover:text-pink-600 transition-colors"
+                      onClick={() => onSelect(liver)}
+                      aria-label="編集"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

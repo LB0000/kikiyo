@@ -45,32 +45,38 @@ export type NavItem = {
   title: string;
   href: string;
   roles: UserRole[];
+  icon: string;
 };
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    title: "TikTokバックエンド",
-    href: "/dashboard",
-    roles: ["system_admin", "agency_user"],
-  },
-  {
     title: "ライバー名簿",
     href: "/livers",
     roles: ["system_admin", "agency_user"],
+    icon: "users",
   },
   {
     title: "代理店一覧",
     href: "/agencies",
     roles: ["system_admin"],
+    icon: "building2",
   },
   {
-    title: "TikTok申請",
-    href: "/applications",
+    title: "TikTokバックエンド",
+    href: "/dashboard",
     roles: ["system_admin", "agency_user"],
+    icon: "monitor",
   },
   {
     title: "申請一覧",
     href: "/all-applications",
     roles: ["system_admin"],
+    icon: "list-ordered",
+  },
+  {
+    title: "TikTok申請",
+    href: "/applications",
+    roles: ["system_admin", "agency_user"],
+    icon: "file-text",
   },
 ];

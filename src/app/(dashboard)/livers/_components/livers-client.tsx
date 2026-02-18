@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { LiversTable } from "./livers-table";
 import { LiverEditDialog } from "./liver-edit-dialog";
 import { BulkStatusDialog } from "./bulk-status-dialog";
@@ -23,10 +22,17 @@ export function LiversClient({ livers }: Props) {
 
   return (
     <>
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={() => setBulkOpen(true)}>
-          一括変更
-        </Button>
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+          ライバー名簿
+        </h1>
+        <button
+          className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+          onClick={() => setBulkOpen(true)}
+        >
+          申請状況一括変更
+        </button>
       </div>
       <LiversTable livers={livers} onSelect={handleSelect} />
       <LiverEditDialog

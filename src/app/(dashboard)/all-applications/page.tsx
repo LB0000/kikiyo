@@ -12,8 +12,7 @@ export default async function AllApplicationsPage() {
   const applications = await getApplications();
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">申請一覧</h1>
+    <div className="space-y-6">
       <AllApplicationsClient applications={applications} />
     </div>
   );

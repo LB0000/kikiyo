@@ -19,10 +19,9 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar userRole={user.role} userEmail={user.email} />
       <main className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center gap-2 border-b px-4">
+        <header className="flex h-12 items-center gap-2 border-b px-4 md:hidden">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
-          <h2 className="text-sm font-semibold">TikTok Live Tool</h2>
         </header>
         <div className="flex-1 overflow-auto p-6">{children}</div>
       </main>

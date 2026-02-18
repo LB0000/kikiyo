@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -9,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Combobox } from "@/components/ui/combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummaryCards } from "./summary-cards";
 import { CsvUploadDialog } from "./csv-upload-dialog";
@@ -43,7 +41,8 @@ export function DashboardClient({
   const [selectedReportId, setSelectedReportId] = useState(
     reports[0]?.id ?? ""
   );
-  const [selectedAgencyId, setSelectedAgencyId] = useState<string>("all");
+  const [filterMode, setFilterMode] = useState<"all" | "agency">("all");
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string>("");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
@@ -57,14 +56,17 @@ export function DashboardClient({
   const [refundKey, setRefundKey] = useState(0);
   const [rateKey, setRateKey] = useState(0);
 
+  const agencyFilter =
+    filterMode === "agency" && selectedAgencyId
+      ? selectedAgencyId
+      : undefined;
+
   useEffect(() => {
     if (!selectedReportId) return;
     let cancelled = false;
 
     async function fetchData() {
       setLoading(true);
-      const agencyFilter =
-        selectedAgencyId === "all" ? undefined : selectedAgencyId;
       const result = await getDashboardData(selectedReportId, agencyFilter);
       if (cancelled) return;
       if ("error" in result) {
@@ -79,30 +81,59 @@ export function DashboardClient({
     return () => {
       cancelled = true;
     };
-  }, [selectedReportId, selectedAgencyId]);
+  }, [selectedReportId, agencyFilter]);
 
   const selectedReport = reports.find((r) => r.id === selectedReportId);
 
   return (
     <div className="space-y-6">
+      {/* ページヘッダー */}
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+          オールインTikTokバックエンド
+        </h1>
+        <div className="flex gap-3">
+          {selectedReportId && dashboardData && (
+            <>
+              <button
+                className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+                onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}
+              >
+                為替レート変更
+              </button>
+              <button
+                className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+                onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}
+              >
+                返金登録
+              </button>
+            </>
+          )}
+          <button
+            className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+            onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}
+          >
+            CSV登録
+          </button>
+        </div>
+      </div>
+
       {/* フィルター行 */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">月次レポート</label>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">表示期間</span>
           <Select
             value={selectedReportId}
             onValueChange={setSelectedReportId}
           >
-            <SelectTrigger className="w-60" aria-label="月次レポートを選択">
+            <SelectTrigger className="w-48" aria-label="月次レポートを選択">
               <SelectValue placeholder="レポートを選択" />
             </SelectTrigger>
             <SelectContent>
               {reports.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {new Date(r.created_at).toLocaleDateString("ja-JP")} -{" "}
-                  {r.revenue_task
-                    ? REVENUE_TASK_LABELS[r.revenue_task as RevenueTask]
-                    : ""}
+                  {new Date(r.created_at).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" }).replace("/", "/")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -110,38 +141,46 @@ export function DashboardClient({
         </div>
 
         {isAdmin && (
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">代理店</label>
-            <Combobox
-              options={[
-                { value: "all", label: "全表示" },
-                ...agencies.map((a) => ({ value: a.id, label: a.name })),
-              ]}
-              value={selectedAgencyId}
-              onValueChange={(v) => setSelectedAgencyId(v || "all")}
-              placeholder="代理店でフィルター"
-              searchPlaceholder="代理店名で検索..."
-              emptyText="該当する代理店がありません"
-              className="w-48"
-            />
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="agencyFilter"
+                checked={filterMode === "all"}
+                onChange={() => setFilterMode("all")}
+                className="accent-pink-400"
+              />
+              <span className="text-sm">全表示</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="agencyFilter"
+                checked={filterMode === "agency"}
+                onChange={() => setFilterMode("agency")}
+                className="accent-pink-400"
+              />
+              <span className="text-sm">代理店指定</span>
+            </label>
+            {filterMode === "agency" && (
+              <Select
+                value={selectedAgencyId}
+                onValueChange={setSelectedAgencyId}
+              >
+                <SelectTrigger className="w-48" aria-label="代理店を選択">
+                  <SelectValue placeholder="代理店を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agencies.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         )}
-
-        <div className="ml-auto flex gap-2 self-end">
-          <Button variant="outline" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
-            CSVアップロード
-          </Button>
-          {selectedReportId && dashboardData && (
-            <>
-              <Button variant="outline" onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
-                返金登録
-              </Button>
-              <Button variant="outline" onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}>
-                為替レート変更
-              </Button>
-            </>
-          )}
-        </div>
       </div>
 
       {/* サマリーカード */}

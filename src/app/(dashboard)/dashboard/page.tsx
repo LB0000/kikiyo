@@ -22,8 +22,7 @@ export default async function DashboardPage() {
     .order("name");
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">TikTokバックエンド</h1>
+    <div className="space-y-6">
       <DashboardClient
         reports={reports}
         agencies={agenciesRaw ?? []}

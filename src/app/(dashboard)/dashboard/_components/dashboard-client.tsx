@@ -146,16 +146,91 @@ export function DashboardClient({
   return (
     <div className="space-y-6">
       {/* ページヘッダー */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold">
-            <span className="inline-block h-8 w-1 rounded bg-primary" />
-            オールインTikTokバックエンド
-          </h1>
-          <p className="mt-1 pl-7 text-sm text-muted-foreground">
-            月次レポートとデータの確認・管理
-          </p>
+      <div>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-primary" />
+          オールインTikTokバックエンド
+        </h1>
+        <p className="mt-1 pl-7 text-sm text-muted-foreground">
+          月次レポートとデータの確認・管理
+        </p>
+      </div>
+
+      {/* フィルター・アクション行 */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">表示期間</span>
+            <Select
+              value={selectedReportId}
+              onValueChange={setSelectedReportId}
+            >
+              <SelectTrigger className="w-48" aria-label="月次レポートを選択">
+                <SelectValue placeholder="レポートを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {reports.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {formatDataMonth(r.data_month, r.created_at)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isAdmin && selectedReportId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 text-muted-foreground hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+                disabled={deleting}
+                aria-label="レポートを削除"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
+
+          {isAdmin && (
+            <div className="flex items-center gap-4">
+              <RadioGroup
+                value={filterMode}
+                onValueChange={(v) => setFilterMode(v as "all" | "agency")}
+                className="flex items-center gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="all" id="filter-all" />
+                  <Label htmlFor="filter-all" className="text-sm font-normal cursor-pointer">
+                    全表示
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="agency" id="filter-agency" />
+                  <Label htmlFor="filter-agency" className="text-sm font-normal cursor-pointer">
+                    代理店指定
+                  </Label>
+                </div>
+              </RadioGroup>
+              {filterMode === "agency" && (
+                <Select
+                  value={selectedAgencyId}
+                  onValueChange={setSelectedAgencyId}
+                >
+                  <SelectTrigger className="w-48" aria-label="代理店を選択">
+                    <SelectValue placeholder="代理店を選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agencies.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="flex gap-3">
           {selectedReportId && dashboardData && (
             <>
@@ -173,80 +248,6 @@ export function DashboardClient({
             CSV登録
           </Button>
         </div>
-      </div>
-
-      {/* フィルター行 */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">表示期間</span>
-          <Select
-            value={selectedReportId}
-            onValueChange={setSelectedReportId}
-          >
-            <SelectTrigger className="w-48" aria-label="月次レポートを選択">
-              <SelectValue placeholder="レポートを選択" />
-            </SelectTrigger>
-            <SelectContent>
-              {reports.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {formatDataMonth(r.data_month, r.created_at)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {isAdmin && selectedReportId && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-muted-foreground hover:text-destructive"
-              onClick={() => setDeleteOpen(true)}
-              disabled={deleting}
-              aria-label="レポートを削除"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          )}
-        </div>
-
-        {isAdmin && (
-          <div className="flex items-center gap-4">
-            <RadioGroup
-              value={filterMode}
-              onValueChange={(v) => setFilterMode(v as "all" | "agency")}
-              className="flex items-center gap-4"
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="all" id="filter-all" />
-                <Label htmlFor="filter-all" className="text-sm font-normal cursor-pointer">
-                  全表示
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="agency" id="filter-agency" />
-                <Label htmlFor="filter-agency" className="text-sm font-normal cursor-pointer">
-                  代理店指定
-                </Label>
-              </div>
-            </RadioGroup>
-            {filterMode === "agency" && (
-              <Select
-                value={selectedAgencyId}
-                onValueChange={setSelectedAgencyId}
-              >
-                <SelectTrigger className="w-48" aria-label="代理店を選択">
-                  <SelectValue placeholder="代理店を選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agencies.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        )}
       </div>
 
       {/* サマリーカード */}

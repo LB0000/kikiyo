@@ -4,12 +4,10 @@ import { getAgencies } from "@/lib/actions/agencies";
 import { AgenciesClient } from "./_components/agencies-client";
 
 export default async function AgenciesPage() {
-  const user = await getAuthUser();
+  const [user, agencies] = await Promise.all([getAuthUser(), getAgencies()]);
   if (!user || user.role !== "system_admin") {
     redirect("/dashboard");
   }
-
-  const agencies = await getAgencies();
 
   return (
     <div className="space-y-6">

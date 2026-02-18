@@ -315,21 +315,25 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 -- Trigger: profilesテーブル自動作成
 -- ============================================
-CREATE OR REPLACE FUNCTION handle_new_user()
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO profiles (id, role)
-  VALUES (NEW.id, COALESCE(
-    (NEW.raw_user_meta_data->>'role')::user_role,
-    'agency_user'
-  ));
+  INSERT INTO public.profiles (id, role)
+  VALUES (
+    NEW.id,
+    COALESCE(
+      (NEW.raw_user_meta_data->>'role')::public.user_role,
+      'agency_user'::public.user_role
+    )
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
 -- Trigger: updated_at自動更新

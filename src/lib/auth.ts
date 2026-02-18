@@ -12,10 +12,13 @@ export type AuthUser = {
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient();
 
+  // Middleware が getUser() で JWT 検証済み + RLS が全DBクエリで JWT を再検証するため、
+  // ここでは高速な getSession()（Cookie読み取りのみ、ネットワーク不要）を使用
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
+  const user = session?.user;
   if (!user) return null;
 
   const { data: profile } = await supabase

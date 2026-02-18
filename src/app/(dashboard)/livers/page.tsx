@@ -4,10 +4,8 @@ import { getLivers } from "@/lib/actions/livers";
 import { LiversClient } from "./_components/livers-client";
 
 export default async function LiversPage() {
-  const user = await getAuthUser();
+  const [user, livers] = await Promise.all([getAuthUser(), getLivers()]);
   if (!user) redirect("/login");
-
-  const livers = await getLivers();
 
   return (
     <div className="space-y-6">

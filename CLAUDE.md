@@ -73,27 +73,35 @@ livers, liver_agencies, monthly_reports, csv_data, refunds, applications
 
 ## TikTok CSV → DB データフロー
 
-### 全フィールド対応表
+### 全フィールド対応表（確定）
 
-| TikTok CSVヘッダー | CsvRow | csv_data DB列 | UI表示 | 用途 |
+| # | TikTok CSVヘッダー | csv_data DB列 | UI表示名 | 用途 |
 |---|---|---|---|---|
-| Data Month | data_month | data_month | データ月 | 期間識別 |
-| Creator ID | creator_id | creator_id | クリエイターID | ライバー紐付けキー |
-| Creator nickname | creator_nickname | creator_nickname | ニックネーム | 表示名 |
-| Handle | handle | handle | ハンドル | TikTokハンドル |
-| Creator Network manager | creator_network_manager | creator_network_manager | — | 代理店紐付けキー |
-| Group | group | "group" | グループ | 分類 |
-| Group manager | group_manager | group_manager | — | 未使用 |
-| Is violative creators | is_violative_creators | is_violative | — | 非表示 |
-| The creator was Rookie... | the_creator_was_rookie... | was_rookie | — | 非表示 |
-| Diamonds | diamonds | diamonds | ダイヤモンド | 収益指標 |
-| Valid days(d) | valid_days | valid_days | 有効日数 | 活動指標 |
-| LIVE duration(h) | live_duration | live_duration | 有効時間 | 活動指標 |
-| Estimated bonus | estimated_bonus | estimated_bonus | 推定ボーナス | 主要指標(USD) |
-| — (派生) | — | total_reward_jpy | — | = estimated_bonus × rate |
-| — (派生) | — | agency_reward_jpy | — | = estimated_bonus × rate × commission_rate |
-| — (FK) | — | liver_id | — | creator_id → livers.liver_id |
-| — (FK) | — | agency_id | — | creator_network_manager → agencies.name |
+| 1 | Data Month | data_month | データ月 | 期間識別 |
+| 2 | — | liver_id → livers.name | 本名 | ライバー本名（DB結合） |
+| 3 | Creator nickname | creator_nickname | クリエイターのニックネーム | TikTok表示名 |
+| 4 | Handle | handle | クリエイターID | TikTokユーザー名 |
+| 5 | Group | group | グループ | 分類 |
+| 6 | Diamonds | diamonds | ダイヤモンド | 収益指標 |
+| 7 | Valid days(d) | valid_days | 有効日数 | 活動指標 |
+| 8 | LIVE duration(h) | live_duration | 有効時間 | 活動指標 |
+| 9 | Estimated bonus | estimated_bonus | 推定ボーナス | 主要指標(USD) |
+| 10 | Rookie half-milestone bonus task | bonus_rookie_half_milestone | ルーキーM0.5 | ボーナス内訳 |
+| 11 | Rookie milestone 1 bonus task | bonus_rookie_milestone_1 | ルーキーM1R | ボーナス内訳 |
+| 12 | Rookie milestone 1 retention bonus task | bonus_rookie_retention | ルーキーM１ | ボーナス内訳 |
+| 13 | Rookie milestone 2 bonus task | bonus_rookie_milestone_2 | ルーキーM２ | ボーナス内訳 |
+| 14 | Activeness task task | bonus_activeness | アクティブタスク | ボーナス内訳 |
+| 15 | Off-platform creator task task | bonus_off_platform | 新優良クリエイタータスク | ボーナス内訳 |
+| 16 | Revenue scale task task | bonus_revenue_scale | 収益スケール | ボーナス内訳 |
+| — | Creator ID | creator_id | (非表示) | ライバー紐付けキー |
+| — | Creator Network manager | creator_network_manager | (非表示) | 代理店紐付けキー |
+| — | Group manager | group_manager | (非表示) | 未使用 |
+| — | Is violative creators | is_violative | (非表示) | 違反フラグ |
+| — | The creator was Rookie... | was_rookie | (非表示) | ルーキーフラグ |
+| — | (派生) | total_reward_jpy | (非表示) | = estimated_bonus × rate |
+| — | (派生) | agency_reward_jpy | (非表示) | = estimated_bonus × rate × commission |
+| — | (FK) | liver_id | (非表示) | creator_id → livers.liver_id |
+| — | (FK) | agency_id | (非表示) | creator_network_manager → agencies.name |
 
 ### Bubble ↔ Next.js ボーナスフィールド対応表
 

@@ -66,59 +66,59 @@ export function LiversClient({ livers, agencies, isAdmin }: Props) {
 
   return (
     <>
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold">
-            <span className="inline-block h-8 w-1 rounded bg-primary" />
-            ライバー名簿
-          </h1>
-          <p className="mt-1 pl-7 text-sm text-muted-foreground">
-            配信者の情報管理と申請状況の確認
-          </p>
+      <div>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-primary" />
+          ライバー名簿
+        </h1>
+        <p className="mt-1 pl-7 text-sm text-muted-foreground">
+          配信者の情報管理と申請状況の確認
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="氏名・ID・アカウント名で検索"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-72 pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40" aria-label="ステータス絞り込み">
+              <SelectValue placeholder="すべて" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべて</SelectItem>
+              {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  <span className="flex items-center gap-2">
+                    <span className={`size-2 rounded-full ${STATUS_DOT_COLORS[value as ApplicationStatus]}`} />
+                    {label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">
+            {filtered.length}件
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportCsv(filtered, LIVER_COLUMNS, `livers_${new Date().toISOString().slice(0, 10)}.csv`)
+            }
+          >
+            <Download className="size-4" />
+            CSVエクスポート
+          </Button>
         </div>
         <Button className="rounded-full" onClick={() => setBulkOpen(true)}>
           申請状況一括変更
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="氏名・ID・アカウント名で検索"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-72 pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40" aria-label="ステータス絞り込み">
-            <SelectValue placeholder="すべて" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべて</SelectItem>
-            {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                <span className="flex items-center gap-2">
-                  <span className={`size-2 rounded-full ${STATUS_DOT_COLORS[value as ApplicationStatus]}`} />
-                  {label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground">
-          {filtered.length}件
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            exportCsv(filtered, LIVER_COLUMNS, `livers_${new Date().toISOString().slice(0, 10)}.csv`)
-          }
-        >
-          <Download className="size-4" />
-          CSVエクスポート
         </Button>
       </div>
 

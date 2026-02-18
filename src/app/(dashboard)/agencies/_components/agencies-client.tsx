@@ -8,6 +8,7 @@ import { AGENCY_RANK_LABELS } from "@/lib/constants";
 import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 import { AgenciesTable } from "./agencies-table";
 import { AgencyFormDialog } from "./agency-form-dialog";
+import { AgencyCompanyInfoDialog } from "./agency-company-info-dialog";
 import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
 import type { AgencyRank } from "@/lib/supabase/types";
 
@@ -30,6 +31,11 @@ export function AgenciesClient({ agencies }: Props) {
   const [dialogKey, setDialogKey] = useState(0);
   const [search, setSearch] = useState("");
 
+  const [companyInfoOpen, setCompanyInfoOpen] = useState(false);
+  const [companyInfoAgency, setCompanyInfoAgency] =
+    useState<AgencyWithHierarchy | null>(null);
+  const [companyInfoKey, setCompanyInfoKey] = useState(0);
+
   function handleNew() {
     setSelectedAgency(null);
     setDialogKey((k) => k + 1);
@@ -42,6 +48,12 @@ export function AgenciesClient({ agencies }: Props) {
     setDialogOpen(true);
   }
 
+  function handleCompanyInfo(agency: AgencyWithHierarchy) {
+    setCompanyInfoAgency(agency);
+    setCompanyInfoKey((k) => k + 1);
+    setCompanyInfoOpen(true);
+  }
+
   const filtered = agencies.filter((agency) => {
     if (search) {
       const q = search.toLowerCase();
@@ -52,43 +64,43 @@ export function AgenciesClient({ agencies }: Props) {
 
   return (
     <>
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold">
-            <span className="inline-block h-8 w-1 rounded bg-primary" />
-            代理店リスト
-          </h1>
-          <p className="mt-1 pl-7 text-sm text-muted-foreground">
-            代理店の登録情報と契約条件の管理
-          </p>
+      <div>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-primary" />
+          代理店リスト
+        </h1>
+        <p className="mt-1 pl-7 text-sm text-muted-foreground">
+          代理店の登録情報と契約条件の管理
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="代理店名で検索"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-72 pl-9"
+            />
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {filtered.length}件
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportCsv(filtered, AGENCY_COLUMNS, `agencies_${new Date().toISOString().slice(0, 10)}.csv`)
+            }
+          >
+            <Download className="size-4" />
+            CSVエクスポート
+          </Button>
         </div>
         <Button className="rounded-full" onClick={handleNew}>
           代理店登録
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="代理店名で検索"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-72 pl-9"
-          />
-        </div>
-        <span className="text-sm text-muted-foreground">
-          {filtered.length}件
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            exportCsv(filtered, AGENCY_COLUMNS, `agencies_${new Date().toISOString().slice(0, 10)}.csv`)
-          }
-        >
-          <Download className="size-4" />
-          CSVエクスポート
         </Button>
       </div>
 
@@ -96,6 +108,7 @@ export function AgenciesClient({ agencies }: Props) {
         key={search}
         agencies={filtered}
         onSelect={handleSelect}
+        onCompanyInfo={handleCompanyInfo}
       />
       <AgencyFormDialog
         key={dialogKey}
@@ -104,6 +117,15 @@ export function AgenciesClient({ agencies }: Props) {
         agency={selectedAgency}
         allAgencies={agencies}
       />
+      {companyInfoAgency && (
+        <AgencyCompanyInfoDialog
+          key={companyInfoKey}
+          open={companyInfoOpen}
+          onOpenChange={setCompanyInfoOpen}
+          agencyId={companyInfoAgency.id}
+          agencyName={companyInfoAgency.name}
+        />
+      )}
     </>
   );
 }

@@ -4,21 +4,21 @@ export default function DashboardLoading() {
   return (
     <div className="space-y-6">
       {/* ページヘッダー */}
-      <div className="flex items-end justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-8 w-1 rounded" />
-            <Skeleton className="h-7 w-48" />
-          </div>
-          <Skeleton className="ml-7 h-4 w-64" />
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-8 w-1 rounded" />
+          <Skeleton className="h-7 w-48" />
         </div>
-        <Skeleton className="h-9 w-32 rounded-full" />
+        <Skeleton className="ml-7 h-4 w-64" />
       </div>
 
       {/* ツールバー */}
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-9 w-72" />
-        <Skeleton className="h-9 w-32" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-72" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Skeleton className="h-9 w-32 rounded-full" />
       </div>
 
       {/* テーブル */}

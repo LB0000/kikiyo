@@ -62,15 +62,44 @@ export function AllApplicationsClient({ applications }: Props) {
 
   return (
     <>
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold">
-            <span className="inline-block h-8 w-1 rounded bg-primary" />
-            申請一覧
-          </h1>
-          <p className="mt-1 pl-7 text-sm text-muted-foreground">
-            すべての申請の確認とステータス管理
-          </p>
+      <div>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <span className="inline-block h-8 w-1 rounded bg-primary" />
+          申請一覧
+        </h1>
+        <p className="mt-1 pl-7 text-sm text-muted-foreground">
+          すべての申請の確認とステータス管理
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="代理店名・氏名・メールで検索"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-72 pl-9"
+            />
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {filtered.length}件
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportCsv(
+                filtered,
+                APPLICATION_COLUMNS,
+                `applications_${new Date().toISOString().slice(0, 10)}.csv`
+              )
+            }
+          >
+            <Download className="size-4" />
+            CSVエクスポート
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">絞り込み：</span>
@@ -88,35 +117,6 @@ export function AllApplicationsClient({ applications }: Props) {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="代理店名・氏名・メールで検索"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-72 pl-9"
-          />
-        </div>
-        <span className="text-sm text-muted-foreground">
-          {filtered.length}件
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            exportCsv(
-              filtered,
-              APPLICATION_COLUMNS,
-              `applications_${new Date().toISOString().slice(0, 10)}.csv`
-            )
-          }
-        >
-          <Download className="size-4" />
-          CSVエクスポート
-        </Button>
       </div>
 
       <ApplicationsTable applications={filtered} onSelect={handleSelect} />

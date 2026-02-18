@@ -228,6 +228,8 @@ export type ImportResult = {
 };
 
 // CSV行をパース（サーバーサイド）
+// TikTokエクスポートのヘッダー名はケースやサフィックスが不定のため、
+// 小文字正規化 + 部分一致で柔軟にマッチする
 function parseCsvText(csvText: string): CsvRow[] | { error: string } {
   // BOM（Byte Order Mark）を除去
   const cleanText = csvText.replace(/^\uFEFF/, "");
@@ -247,74 +249,95 @@ function parseCsvText(csvText: string): CsvRow[] | { error: string } {
     return { error: "CSVにデータがありません" };
   }
 
+  // ヘッダーキーを小文字正規化して検索
   const firstRow = parsed.data[0];
-  const hasCreatorId =
-    "Creator ID" in firstRow || "creator_id" in firstRow;
-  const hasEstimatedBonus =
-    "Estimated Bonus" in firstRow || "estimated_bonus" in firstRow;
+  const headerKeys = Object.keys(firstRow);
+  const lowerKeys = headerKeys.map((k) => k.toLowerCase());
+
+  const hasCreatorId = lowerKeys.some(
+    (k) => k === "creator id" || k === "creator_id"
+  );
+  const hasEstimatedBonus = lowerKeys.some(
+    (k) => k.includes("estimated bonus") || k === "estimated_bonus"
+  );
   if (!hasCreatorId || !hasEstimatedBonus) {
     return { error: "CSVに必須カラムが不足しています（Creator ID, Estimated Bonus が必要です）" };
   }
 
-  const safeFloat = (v: string | undefined) => {
-    const n = parseFloat(v ?? "0");
+  // 小文字キー → 元キーのマッピング
+  const keyMap = new Map<string, string>();
+  for (const key of headerKeys) {
+    keyMap.set(key.toLowerCase(), key);
+  }
+
+  // 完全一致（小文字）でフィールドを取得
+  function get(row: Record<string, string>, ...candidates: string[]): string {
+    for (const c of candidates) {
+      const orig = keyMap.get(c.toLowerCase());
+      if (orig && row[orig] !== undefined) return row[orig];
+    }
+    return "";
+  }
+
+  // 部分一致（小文字）でフィールドを取得（ボーナス系カラム用）
+  function getByPartial(row: Record<string, string>, ...fragments: string[]): string {
+    for (const frag of fragments) {
+      const lower = frag.toLowerCase();
+      for (const [lk, origKey] of keyMap) {
+        if (lk.includes(lower) && row[origKey] !== undefined) return row[origKey];
+      }
+    }
+    return "0";
+  }
+
+  const safeFloat = (v: string) => {
+    const n = parseFloat(v);
     return isNaN(n) ? 0 : n;
   };
 
+  const safeBool = (v: string) => {
+    const lower = v.toLowerCase().trim();
+    return lower === "true" || lower === "yes";
+  };
+
   return parsed.data.map((row) => ({
-    creator_id: row["Creator ID"] ?? row["creator_id"] ?? "",
-    creator_nickname:
-      row["Creator Nickname"] ?? row["creator_nickname"] ?? "",
-    handle: row["Handle"] ?? row["handle"] ?? "",
-    group: row["Group"] ?? row["group"] ?? "",
-    group_manager: row["Group Manager"] ?? row["group_manager"] ?? "",
-    creator_network_manager:
-      row["Creator Network Manager"] ??
-      row["creator_network_manager"] ??
-      "",
-    data_month: row["Data Month"] ?? row["data_month"] ?? "",
-    diamonds: safeFloat(row["Diamonds"] ?? row["diamonds"]),
-    estimated_bonus: safeFloat(
-      row["Estimated Bonus"] ?? row["estimated_bonus"]
+    creator_id: get(row, "Creator ID", "creator_id"),
+    creator_nickname: get(row, "Creator nickname", "Creator Nickname", "creator_nickname"),
+    handle: get(row, "Handle", "handle"),
+    group: get(row, "Group", "group"),
+    group_manager: get(row, "Group manager", "Group Manager", "group_manager"),
+    creator_network_manager: get(row, "Creator Network manager", "Creator Network Manager", "creator_network_manager"),
+    data_month: get(row, "Data Month", "data_month"),
+    diamonds: safeFloat(get(row, "Diamonds", "diamonds") || "0"),
+    estimated_bonus: safeFloat(get(row, "Estimated bonus", "Estimated Bonus", "estimated_bonus") || "0"),
+    valid_days: get(row, "Valid days(d)", "Valid Days", "valid_days"),
+    live_duration: get(row, "LIVE duration(h)", "Live Duration", "live_duration"),
+    is_violative_creators: safeBool(
+      get(row, "Is violative creators", "Is Violative Creators", "is_violative_creators") || "false"
     ),
-    valid_days: row["Valid Days"] ?? row["valid_days"] ?? "",
-    live_duration: row["Live Duration"] ?? row["live_duration"] ?? "",
-    is_violative_creators:
-      (
-        row["Is Violative Creators"] ??
-        row["is_violative_creators"] ??
-        "false"
-      ).toLowerCase() === "true",
-    the_creator_was_rookie_at_the_time_of_first_joining:
-      (
-        row["The Creator Was Rookie At The Time Of First Joining"] ??
-        row["the_creator_was_rookie_at_the_time_of_first_joining"] ??
-        "false"
-      ).toLowerCase() === "true",
+    the_creator_was_rookie_at_the_time_of_first_joining: safeBool(
+      get(row, "The creator was Rookie at the time of first joining", "The Creator Was Rookie At The Time Of First Joining", "the_creator_was_rookie_at_the_time_of_first_joining") || "false"
+    ),
     bonus_rookie_half_milestone: safeFloat(
-      row["Bonus - Rookie Half Milestone"] ??
-        row["bonus_rookie_half_milestone"]
+      getByPartial(row, "rookie half-milestone", "Rookie Half Milestone", "bonus_rookie_half_milestone")
     ),
     bonus_activeness: safeFloat(
-      row["Bonus - Activeness"] ?? row["bonus_activeness"]
+      getByPartial(row, "activeness", "bonus_activeness")
     ),
     bonus_revenue_scale: safeFloat(
-      row["Bonus - Revenue Scale"] ?? row["bonus_revenue_scale"]
+      getByPartial(row, "revenue scale", "Revenue Scale", "bonus_revenue_scale")
     ),
     bonus_rookie_milestone_1: safeFloat(
-      row["Bonus - Rookie Milestone 1"] ??
-        row["bonus_rookie_milestone_1"]
+      getByPartial(row, "rookie milestone 1 bonus", "Rookie Milestone 1", "bonus_rookie_milestone_1")
     ),
     bonus_rookie_milestone_2: safeFloat(
-      row["Bonus - Rookie Milestone 2"] ??
-        row["bonus_rookie_milestone_2"]
+      getByPartial(row, "rookie milestone 2", "Rookie Milestone 2", "bonus_rookie_milestone_2")
     ),
     bonus_off_platform: safeFloat(
-      row["Bonus - Off Platform"] ?? row["bonus_off_platform"]
+      getByPartial(row, "off-platform", "Off Platform", "bonus_off_platform")
     ),
     bonus_rookie_retention: safeFloat(
-      row["Bonus - Rookie Retention"] ??
-        row["bonus_rookie_retention"]
+      getByPartial(row, "retention", "Rookie Retention", "bonus_rookie_retention")
     ),
   }));
 }

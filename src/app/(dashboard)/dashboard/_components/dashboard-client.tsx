@@ -106,6 +106,21 @@ export function DashboardClient({
 
   const selectedReport = reports.find((r) => r.id === selectedReportId);
 
+  function formatDataMonth(dataMonth: string | null, createdAt: string): string {
+    if (dataMonth) {
+      // "202511" → "2025/11"
+      if (/^\d{6}$/.test(dataMonth)) {
+        return `${dataMonth.slice(0, 4)}/${dataMonth.slice(4)}`;
+      }
+      // "2025-11" → "2025/11"
+      if (/^\d{4}-\d{2}$/.test(dataMonth)) {
+        return dataMonth.replace("-", "/");
+      }
+      return dataMonth;
+    }
+    return new Date(createdAt).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" });
+  }
+
   async function handleDeleteReport() {
     if (!selectedReportId) return;
     setDeleting(true);
@@ -174,7 +189,7 @@ export function DashboardClient({
             <SelectContent>
               {reports.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {r.data_month || new Date(r.created_at).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" })}
+                  {formatDataMonth(r.data_month, r.created_at)}
                 </SelectItem>
               ))}
             </SelectContent>

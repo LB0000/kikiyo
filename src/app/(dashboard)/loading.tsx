@@ -4,7 +4,7 @@ export default function DashboardLoading() {
   return (
     <div className="space-y-6">
       {/* ページヘッダー */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-1 rounded" />

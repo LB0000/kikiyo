@@ -100,6 +100,7 @@ export async function createAgency(values: AgencyFormValues) {
       password: tempPassword,
       email_confirm: true,
       user_metadata: { role: "agency_user" },
+      app_metadata: { role: "agency_user", agency_id: agency.id },
     });
 
   if (authError || !authData.user) {

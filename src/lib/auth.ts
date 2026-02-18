@@ -12,8 +12,7 @@ export type AuthUser = {
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient();
 
-  // RLS が全 DB クエリで JWT を検証するため、
-  // ここでは高速な getSession()（Cookie 読み取りのみ、ネットワーク不要）を使用
+  // getSession() は Cookie 読み取りのみ（ネットワーク不要、< 1ms）
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -21,6 +20,18 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const user = session?.user;
   if (!user) return null;
 
+  // app_metadata に role が設定済みなら DB クエリ不要（< 1ms）
+  const metaRole = user.app_metadata?.role as UserRole | undefined;
+  if (metaRole) {
+    return {
+      id: user.id,
+      email: user.email ?? "",
+      role: metaRole,
+      agencyId: (user.app_metadata?.agency_id as string) ?? null,
+    };
+  }
+
+  // フォールバック: app_metadata 未設定ユーザー（移行前）は profiles テーブルを参照
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, agency_id")

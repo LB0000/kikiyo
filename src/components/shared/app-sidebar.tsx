@@ -107,7 +107,7 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border-l-[3px] border-transparent"
                       }
                     >
-                      <Link href={item.href}>
+                      <Link href={item.href} prefetch={true}>
                         {Icon && (
                           <Icon
                             className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground/70"}`}

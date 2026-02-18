@@ -13,13 +13,13 @@ import { createRefundSchema } from "@/lib/validations/refund";
 // ---------------------------------------------------------------------------
 
 // Bubble ↔ Next.js ボーナスフィールド対応表:
-//   Bubble task1  → bonus_rookie_half_milestone (Bonus - Rookie Half Milestone)
-//   Bubble task2  → bonus_activeness            (Bonus - Activeness)
-//   Bubble task3  → bonus_revenue_scale         (Bonus - Revenue Scale)
-//   Bubble task4  → bonus_rookie_milestone_1    (Bonus - Rookie Milestone 1)
-//   Bubble task5  → bonus_rookie_milestone_2    (Bonus - Rookie Milestone 2)
-//   Bubble task6+ → bonus_off_platform          (Bonus - Off Platform)
-//   (Bubbleなし)  → bonus_rookie_retention      (Bonus - Rookie Retention)
+//   Bubble task1  → bonus_rookie_half_milestone (Estimated bonus - Rookie half-milestone bonus task)
+//   Bubble task2  → bonus_activeness            (Estimated bonus - Activeness task task)
+//   Bubble task3  → bonus_revenue_scale         (Estimated bonus - Revenue scale task task)
+//   Bubble task4  → bonus_rookie_milestone_1    (Estimated bonus - Rookie milestone 1 bonus task)
+//   Bubble task5  → bonus_rookie_milestone_2    (Estimated bonus - Rookie milestone 2 bonus task)
+//   Bubble task6+ → bonus_off_platform          (Estimated bonus - Off-platform creator task task)
+//   (Bubbleなし)  → bonus_rookie_retention      (Estimated bonus - Rookie milestone 1 retention bonus task)
 type CsvRow = {
   creator_id: string;
   creator_nickname: string;
@@ -328,16 +328,16 @@ function parseCsvText(csvText: string): CsvRow[] | { error: string } {
       getByPartial(row, "revenue scale", "Revenue Scale", "bonus_revenue_scale")
     ),
     bonus_rookie_milestone_1: safeFloat(
-      getByPartial(row, "rookie milestone 1 bonus", "Rookie Milestone 1", "bonus_rookie_milestone_1")
+      getByPartial(row, "rookie milestone 1 bonus task", "bonus_rookie_milestone_1")
     ),
     bonus_rookie_milestone_2: safeFloat(
-      getByPartial(row, "rookie milestone 2", "Rookie Milestone 2", "bonus_rookie_milestone_2")
+      getByPartial(row, "rookie milestone 2", "bonus_rookie_milestone_2")
     ),
     bonus_off_platform: safeFloat(
-      getByPartial(row, "off-platform", "Off Platform", "bonus_off_platform")
+      getByPartial(row, "off-platform", "bonus_off_platform")
     ),
     bonus_rookie_retention: safeFloat(
-      getByPartial(row, "retention", "Rookie Retention", "bonus_rookie_retention")
+      getByPartial(row, "milestone 1 retention", "bonus_rookie_retention")
     ),
   }));
 }

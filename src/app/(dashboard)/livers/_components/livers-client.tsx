@@ -27,13 +27,16 @@ type Props = {
 };
 
 const LIVER_COLUMNS: CsvColumn<LiverRow>[] = [
-  { header: "ライバー氏名", accessor: (r) => r.name },
+  { header: "氏名", accessor: (r) => r.name },
   { header: "ライバーID", accessor: (r) => r.liver_id },
   { header: "アカウント名", accessor: (r) => r.account_name },
+  { header: "TikTokユーザー名", accessor: (r) => r.tiktok_username },
+  { header: "メールアドレス", accessor: (r) => r.email },
+  { header: "連絡先", accessor: (r) => r.contact },
   { header: "申請状況", accessor: (r) => APPLICATION_STATUS_LABELS[r.status] },
   { header: "配信開始日", accessor: (r) => r.streaming_start_date },
   { header: "獲得日", accessor: (r) => r.acquisition_date },
-  { header: "リンク", accessor: (r) => r.link },
+  { header: "TikTokアカウントリンク", accessor: (r) => r.link },
 ];
 
 export function LiversClient({ livers, agencies, isAdmin }: Props) {

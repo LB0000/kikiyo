@@ -149,6 +149,7 @@ export async function updateApplicationStatus(
   if (validStatus === "authorized" && app && app.form_tab === "affiliation_check" && app.agency_id) {
     const { data: newLiver, error: liverError } = await supabase.from("livers").insert({
       name: app.name || null,
+      account_name: app.tiktok_username || null,
       address: app.address || null,
       birth_date: app.birth_date || null,
       contact: app.contact || null,
@@ -157,6 +158,7 @@ export async function updateApplicationStatus(
       link: app.tiktok_account_link || null,
       status: "authorized" as ApplicationStatus,
       agency_id: app.agency_id,
+      acquisition_date: new Date().toISOString().slice(0, 10),
     }).select("id").single();
 
     if (liverError) {

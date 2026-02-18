@@ -75,7 +75,7 @@ export function LiverEditDialog({ open, onOpenChange, liver, agencies, isAdmin }
     { key: "liver_id", label: "ライバーID", type: "text" },
     { key: "tiktok_username", label: "TikTokユーザー名", type: "text" },
     { key: "email", label: "メールアドレス", type: "email" },
-    { key: "link", label: "リンク", type: "url" },
+    { key: "link", label: "TikTokアカウントリンク", type: "url" },
     { key: "address", label: "住所", type: "text" },
     { key: "contact", label: "連絡先", type: "text" },
     { key: "birth_date", label: "生年月日", type: "date" },

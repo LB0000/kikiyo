@@ -73,20 +73,23 @@ export function LiversTable({ livers, onSelect }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ライバー氏名</TableHead>
+              <TableHead>氏名</TableHead>
               <TableHead>ライバーID</TableHead>
               <TableHead>アカウント名</TableHead>
+              <TableHead>TikTokユーザー名</TableHead>
+              <TableHead>メールアドレス</TableHead>
+              <TableHead>連絡先</TableHead>
               <TableHead>申請状況</TableHead>
               <TableHead>配信開始日</TableHead>
               <TableHead>獲得日</TableHead>
-              <TableHead>リンク</TableHead>
+              <TableHead>TikTokアカウントリンク</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {livers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="p-0">
+                <TableCell colSpan={11} className="p-0">
                   <EmptyState
                     icon={Users}
                     title="ライバーがありません"
@@ -108,6 +111,15 @@ export function LiversTable({ livers, onSelect }: Props) {
                     {liver.liver_id ?? "-"}
                   </TableCell>
                   <TableCell>{liver.account_name ?? "-"}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {liver.tiktok_username ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {liver.email ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {liver.contact ?? "-"}
+                  </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={liver.status}

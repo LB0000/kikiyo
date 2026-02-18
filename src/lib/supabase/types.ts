@@ -326,6 +326,28 @@ export type Database = {
           created_at?: string;
         };
       };
+      rate_change_logs: {
+        Row: {
+          id: string;
+          monthly_report_id: string;
+          old_rate: number;
+          new_rate: number;
+          affected_csv_rows: number;
+          affected_refund_rows: number;
+          changed_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          monthly_report_id: string;
+          old_rate: number;
+          new_rate: number;
+          affected_csv_rows: number;
+          affected_refund_rows: number;
+          changed_by: string;
+          created_at?: string;
+        };
+      };
       applications: {
         Row: {
           id: string;

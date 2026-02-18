@@ -63,12 +63,12 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
       <SidebarHeader className="px-6 py-6">
         <div className="flex flex-col items-center gap-1">
           <Image src="/logo.png" alt="KIKIYO" width={48} height={48} />
-          <span className="text-sm font-bold tracking-wide text-pink-400">
+          <span className="text-sm font-bold tracking-wide text-primary">
             KIKIYO
           </span>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="text-base">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -96,7 +96,7 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
         <div className="space-y-2">
           <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
           <button
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-pink-50 hover:text-pink-500 transition-colors"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer"
             onClick={handleLogout}
           >
             <LogOut className="size-4" />

@@ -19,7 +19,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar userRole={user.role} userEmail={user.email} />
       <main className="flex flex-1 flex-col">
-        <header className="flex h-12 items-center gap-2 border-b px-4 md:hidden">
+        <header className="flex h-12 items-center gap-2 border-b px-4 bg-primary text-primary-foreground md:hidden">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
         </header>

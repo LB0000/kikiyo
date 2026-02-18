@@ -93,7 +93,7 @@ export function DashboardClient({
       {/* ページヘッダー */}
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-3 text-2xl font-bold">
-          <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+          <span className="inline-block h-8 w-1 rounded bg-primary" />
           オールインTikTokバックエンド
         </h1>
         <div className="flex gap-3">
@@ -101,14 +101,14 @@ export function DashboardClient({
             <>
               <button
                 type="button"
-                className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+                className="cursor-pointer rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}
               >
                 為替レート変更
               </button>
               <button
                 type="button"
-                className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+                className="cursor-pointer rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}
               >
                 返金登録
@@ -117,7 +117,7 @@ export function DashboardClient({
           )}
           <button
             type="button"
-            className="rounded-full bg-pink-400 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+            className="cursor-pointer rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}
           >
             CSV登録
@@ -154,7 +154,7 @@ export function DashboardClient({
                 name="agencyFilter"
                 checked={filterMode === "all"}
                 onChange={() => setFilterMode("all")}
-                className="accent-pink-400"
+                className="accent-primary"
               />
               <span className="text-sm">全表示</span>
             </label>
@@ -164,7 +164,7 @@ export function DashboardClient({
                 name="agencyFilter"
                 checked={filterMode === "agency"}
                 onChange={() => setFilterMode("agency")}
-                className="accent-pink-400"
+                className="accent-primary"
               />
               <span className="text-sm">代理店指定</span>
             </label>

@@ -65,7 +65,7 @@ export function ApplicationsTable({ applications, onSelect }: Props) {
                   <TableCell>
                     <button
                       type="button"
-                      className="rounded-md border border-pink-400 px-4 py-1 text-sm font-medium text-pink-400 hover:bg-pink-50 transition-colors"
+                      className="cursor-pointer rounded-md border border-primary px-4 py-1 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
                       onClick={() => onSelect(app)}
                     >
                       詳細

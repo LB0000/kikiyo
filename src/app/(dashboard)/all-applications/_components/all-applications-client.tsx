@@ -36,7 +36,7 @@ export function AllApplicationsClient({ applications }: Props) {
     <>
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-3 text-2xl font-bold">
-          <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+          <span className="inline-block h-8 w-1 rounded bg-primary" />
           申請一覧
         </h1>
         <div className="flex items-center gap-2">

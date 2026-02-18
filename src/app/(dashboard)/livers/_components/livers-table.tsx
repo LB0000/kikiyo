@@ -123,7 +123,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                         href={liver.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-pink-500 hover:underline"
+                        className="text-primary hover:underline"
                         title={liver.link}
                       >
                         {liver.link}
@@ -135,7 +135,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                   <TableCell>
                     <button
                       type="button"
-                      className="p-1 text-pink-400 hover:text-pink-600 transition-colors"
+                      className="cursor-pointer p-1 text-primary hover:text-primary/70 transition-colors"
                       onClick={() => onSelect(liver)}
                       aria-label="編集"
                     >

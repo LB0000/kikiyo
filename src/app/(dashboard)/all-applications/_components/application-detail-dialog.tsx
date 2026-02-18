@@ -88,7 +88,7 @@ export function ApplicationDetailDialog({
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl font-bold">
-            <span className="inline-block h-6 w-1 rounded bg-pink-400" />
+            <span className="inline-block h-6 w-1 rounded bg-primary" />
             申請詳細
           </DialogTitle>
         </DialogHeader>
@@ -125,7 +125,7 @@ export function ApplicationDetailDialog({
 
         <button
           type="button"
-          className="mt-4 w-full rounded-lg bg-pink-400 py-3 text-sm font-medium text-white hover:bg-pink-500 transition-colors disabled:opacity-50"
+          className="cursor-pointer mt-4 w-full rounded-lg bg-primary py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           onClick={handleStatusChange}
           disabled={loading}
         >

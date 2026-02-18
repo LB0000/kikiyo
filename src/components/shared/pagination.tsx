@@ -46,7 +46,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Props) {
     <nav aria-label="ページネーション" className="flex items-center justify-center gap-1 py-4">
       <button
         type="button"
-        className={cn(BTN_BASE, "text-muted-foreground hover:bg-pink-50 disabled:opacity-40")}
+        className={cn(BTN_BASE, "text-muted-foreground hover:bg-primary/5 disabled:opacity-40")}
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1}
         aria-label="最初のページ"
@@ -55,7 +55,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Props) {
       </button>
       <button
         type="button"
-        className={cn(BTN_BASE, "text-muted-foreground hover:bg-pink-50 disabled:opacity-40")}
+        className={cn(BTN_BASE, "text-muted-foreground hover:bg-primary/5 disabled:opacity-40")}
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
         aria-label="前のページ"
@@ -78,8 +78,8 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Props) {
             className={cn(
               BTN_BASE,
               page === currentPage
-                ? "bg-pink-400 text-white border-pink-400"
-                : "text-muted-foreground hover:bg-pink-50"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "text-muted-foreground hover:bg-primary/5"
             )}
             onClick={() => onPageChange(page)}
             aria-label={`ページ ${page}`}
@@ -92,7 +92,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Props) {
 
       <button
         type="button"
-        className={cn(BTN_BASE, "text-muted-foreground hover:bg-pink-50 disabled:opacity-40")}
+        className={cn(BTN_BASE, "text-muted-foreground hover:bg-primary/5 disabled:opacity-40")}
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
         aria-label="次のページ"
@@ -101,7 +101,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Props) {
       </button>
       <button
         type="button"
-        className={cn(BTN_BASE, "text-muted-foreground hover:bg-pink-50 disabled:opacity-40")}
+        className={cn(BTN_BASE, "text-muted-foreground hover:bg-primary/5 disabled:opacity-40")}
         onClick={() => onPageChange(totalPages)}
         disabled={currentPage === totalPages}
         aria-label="最後のページ"

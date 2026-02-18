@@ -95,7 +95,7 @@ export function ApplicationForm({ agencyId }: Props) {
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 i <= stepIndex
-                  ? "bg-pink-400 text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
               }`}
             >
@@ -251,7 +251,7 @@ export function ApplicationForm({ agencyId }: Props) {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="rounded-full bg-pink-400 px-8 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+              className="cursor-pointer rounded-full bg-primary px-8 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               確認画面へ
             </button>
@@ -290,13 +290,15 @@ export function ApplicationForm({ agencyId }: Props) {
 
           <div className="flex justify-between">
             <button
-              className="rounded-full border border-pink-400 px-8 py-2 text-sm font-medium text-pink-400 hover:bg-pink-50 transition-colors"
+              type="button"
+              className="cursor-pointer rounded-full border border-primary px-8 py-2 text-sm font-medium text-primary hover:bg-primary/5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={() => setStep("input")}
             >
               戻る
             </button>
             <button
-              className="rounded-full bg-pink-400 px-8 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors disabled:opacity-50"
+              type="button"
+              className="cursor-pointer rounded-full bg-primary px-8 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={handleSubmit}
               disabled={loading}
             >
@@ -314,7 +316,8 @@ export function ApplicationForm({ agencyId }: Props) {
             管理者による確認をお待ちください。
           </p>
           <button
-            className="mt-6 rounded-full bg-pink-400 px-8 py-2 text-sm font-medium text-white hover:bg-pink-500 transition-colors"
+            type="button"
+            className="cursor-pointer mt-6 rounded-full bg-primary px-8 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             onClick={handleReset}
           >
             新しい申請を作成

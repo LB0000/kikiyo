@@ -9,7 +9,7 @@ export default async function ApplicationsPage() {
   return (
     <div className="space-y-6">
       <h1 className="flex items-center gap-3 text-2xl font-bold">
-        <span className="inline-block h-8 w-1 rounded bg-pink-400" />
+        <span className="inline-block h-8 w-1 rounded bg-primary" />
         TikTok申請
       </h1>
       <ApplicationForm agencyId={user.agencyId} />

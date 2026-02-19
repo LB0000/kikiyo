@@ -167,14 +167,35 @@ export async function updateApplicationStatus(
       return { error: "この申請は既に処理済みです" };
     }
   } else {
-    const { error } = await supabase
+    const { data: updatedApp, error } = await supabase
       .from("applications")
       .update({ status: validStatus })
-      .eq("id", id);
+      .eq("id", id)
+      .select("liver_id")
+      .single();
 
     if (error) {
       return { error: "ステータスの更新に失敗しました" };
     }
+
+    // 紐付いたライバーが存在する場合、ライバーのステータスも同期
+    if (updatedApp?.liver_id) {
+      const { error: syncError } = await supabase
+        .from("livers")
+        .update({ status: validStatus })
+        .eq("id", updatedApp.liver_id);
+
+      if (syncError) {
+        console.error("[updateApplicationStatus] liver sync:", syncError.message);
+        revalidatePath("/all-applications");
+        return { error: "申請ステータスは更新しましたが、ライバー名簿への反映に失敗しました" };
+      }
+
+      revalidatePath("/livers");
+    }
+
+    revalidatePath("/all-applications");
+    return { success: true, liverCreated: false };
   }
 
   // 紐付け申請が承認された場合、ライバーレコードを作成

@@ -45,8 +45,9 @@ export async function requestPasswordReset(email: string) {
       `,
     });
   } catch (e) {
-    console.error("[requestPasswordReset]", e instanceof Error ? e.message : e);
-    return { error: "メール送信に失敗しました。しばらくしてからお試しください。" };
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("[requestPasswordReset]", detail);
+    return { error: `メール送信に失敗しました: ${detail}` };
   }
 
   return { success: true };

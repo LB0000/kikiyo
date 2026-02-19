@@ -174,7 +174,7 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
     title: `請求書 ${data.invoice_number}`,
     author: data.agency_name,
     subject: `請求書 ${data.invoice_number} - ${data.data_month ?? ""}`,
-    creator: "KIKIYO TikTok Live Tool",
+    creator: "KIKIYO LIVE MANAGER",
   });
 
   const pageWidth = 210;
@@ -503,7 +503,7 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
     doc.setFontSize(7);
     doc.setTextColor(160, 160, 160);
     doc.text(
-      "KIKIYO TikTok Live Tool により作成",
+      "KIKIYO LIVE MANAGER により作成",
       pageWidth / 2,
       FOOTER_Y,
       { align: "center" }

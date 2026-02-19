@@ -564,7 +564,7 @@ function buildEmailHtml({
     <!-- Header -->
     <div style="background-color:#0f172a;border-radius:12px 12px 0 0;padding:24px 32px;">
       <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">
-        TikTok Live Tool
+        KIKIYO LIVE MANAGER
       </h1>
     </div>
 
@@ -622,7 +622,7 @@ function buildEmailHtml({
     <!-- Footer -->
     <div style="background-color:#f9fafb;border-radius:0 0 12px 12px;padding:16px 32px;border:1px solid #e5e7eb;border-top:none;">
       <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-        &copy; TikTok Live Tool &#8212; このメールは自動送信です
+        &copy; KIKIYO LIVE MANAGER &#8212; このメールは自動送信です
       </p>
     </div>
 
@@ -640,7 +640,7 @@ async function sendRegistrationEmail(
 
   await sendEmail({
     to: email,
-    subject: "【TikTok Live Tool】代理店登録のご案内",
+    subject: "【KIKIYO LIVE MANAGER】代理店登録のご案内",
     html: buildEmailHtml({
       agencyName,
       email,
@@ -648,7 +648,7 @@ async function sendRegistrationEmail(
       loginUrl,
       heading: "代理店登録のご案内",
       messageLines: [
-        "TikTok Live Toolへの代理店登録が完了しました。",
+        "KIKIYO LIVE MANAGERへの代理店登録が完了しました。",
         "以下のログイン情報をご確認のうえ、システムにアクセスしてください。",
       ],
       note: "セキュリティのため、初回ログイン後に必ずパスワードを変更してください。仮パスワードは他の方に共有しないでください。",
@@ -665,7 +665,7 @@ async function sendResendEmail(
 
   await sendEmail({
     to: email,
-    subject: "【TikTok Live Tool】ログイン情報の再送",
+    subject: "【KIKIYO LIVE MANAGER】ログイン情報の再送",
     html: buildEmailHtml({
       agencyName,
       email,

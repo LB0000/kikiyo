@@ -190,7 +190,7 @@ export async function updateApplicationStatus(
       if (updatedApp.agency_id) {
         query = query.eq("agency_id", updatedApp.agency_id);
       }
-      const { data: matchedLiver } = await query.limit(1).single();
+      const { data: matchedLiver } = await query.limit(1).maybeSingle();
       if (matchedLiver) {
         targetLiverId = matchedLiver.id;
         // liver_id を申請に紐付け（次回以降は直接参照可能に）

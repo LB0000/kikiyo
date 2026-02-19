@@ -29,17 +29,27 @@ const AGENCY_COLUMNS: CsvColumn<AgencyWithHierarchy>[] = [
   { header: "上位代理店", accessor: (r) => r.parent_agencies.map((p) => p.parent_name).join(", ") },
   { header: "手数料率", accessor: (r) => `${(r.commission_rate * 100).toFixed(1)}%` },
   { header: "提携日", accessor: (r) => new Date(r.created_at).toLocaleDateString("ja-JP") },
-  { header: "メール送信日", accessor: (r) => r.registration_email_sent_at ? new Date(r.registration_email_sent_at).toLocaleDateString("ja-JP") : "未送信" },
-  { header: "最終ログイン日", accessor: (r) => r.last_sign_in_at ? new Date(r.last_sign_in_at).toLocaleDateString("ja-JP") : "未ログイン" },
+  { header: "ステータス", accessor: (r) => {
+    if (r.last_sign_in_at) return "利用開始";
+    if (r.registration_email_sent_at) return "招待済";
+    return "未招待";
+  }},
+  { header: "メール送信日", accessor: (r) => r.registration_email_sent_at ? new Date(r.registration_email_sent_at).toLocaleDateString("ja-JP") : "" },
+  { header: "最終ログイン日", accessor: (r) => r.last_sign_in_at ? new Date(r.last_sign_in_at).toLocaleDateString("ja-JP") : "" },
 ];
 
 const ONBOARDING_STATUS_OPTIONS = [
   { value: "all", label: "すべてのステータス" },
-  { value: "email_sent", label: "メール送信済" },
-  { value: "email_unsent", label: "メール未送信" },
-  { value: "logged_in", label: "ログイン済" },
-  { value: "not_logged_in", label: "未ログイン" },
+  { value: "not_invited", label: "未招待" },
+  { value: "invited", label: "招待済" },
+  { value: "active", label: "利用開始" },
 ] as const;
+
+function getOnboardingStatus(agency: AgencyWithHierarchy) {
+  if (agency.last_sign_in_at) return "active";
+  if (agency.registration_email_sent_at) return "invited";
+  return "not_invited";
+}
 
 export function AgenciesClient({ agencies }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -79,10 +89,7 @@ export function AgenciesClient({ agencies }: Props) {
       if (!agency.name.toLowerCase().includes(q)) return false;
     }
     if (rankFilter !== "all" && agency.rank !== rankFilter) return false;
-    if (statusFilter === "email_sent" && !agency.registration_email_sent_at) return false;
-    if (statusFilter === "email_unsent" && agency.registration_email_sent_at) return false;
-    if (statusFilter === "logged_in" && !agency.last_sign_in_at) return false;
-    if (statusFilter === "not_logged_in" && agency.last_sign_in_at) return false;
+    if (statusFilter !== "all" && getOnboardingStatus(agency) !== statusFilter) return false;
     return true;
   });
 

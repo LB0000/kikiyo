@@ -50,6 +50,34 @@ const RANK_BADGE_STYLES: Record<string, string> = {
 
 const RANK_ORDER: Record<string, number> = { rank_2: 2, rank_3: 3, rank_4: 4 };
 
+const ONBOARDING_BADGE_STYLES: Record<string, string> = {
+  not_invited: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400",
+  invited: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+};
+
+const ONBOARDING_LABELS: Record<string, string> = {
+  not_invited: "未招待",
+  invited: "招待済",
+  active: "利用開始",
+};
+
+function getOnboardingStatus(agency: AgencyWithHierarchy) {
+  if (agency.last_sign_in_at) return "active";
+  if (agency.registration_email_sent_at) return "invited";
+  return "not_invited";
+}
+
+function getOnboardingTooltip(agency: AgencyWithHierarchy): string | null {
+  if (agency.last_sign_in_at) {
+    return `最終ログイン: ${new Date(agency.last_sign_in_at).toLocaleDateString("ja-JP")}`;
+  }
+  if (agency.registration_email_sent_at) {
+    return `送信日: ${new Date(agency.registration_email_sent_at).toLocaleDateString("ja-JP")}`;
+  }
+  return null;
+}
+
 function SortableHead({
   children,
   sortKey: key,
@@ -146,15 +174,14 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
                 <SortableHead sortKey="created_at" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell">
                   提携日
                 </SortableHead>
-                <TableHead>メール送信</TableHead>
-                <TableHead>ログイン</TableHead>
+                <TableHead>ステータス</TableHead>
                 <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {agencies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="p-0">
+                  <TableCell colSpan={7} className="p-0">
                     <EmptyState
                       icon={Building2}
                       title="代理店がありません"
@@ -196,30 +223,28 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
                       {new Date(agency.created_at).toLocaleDateString("ja-JP")}
                     </TableCell>
                     <TableCell>
-                      {agency.registration_email_sent_at ? (
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span className="size-2 shrink-0 rounded-full bg-green-500" />
-                          {new Date(agency.registration_email_sent_at).toLocaleDateString("ja-JP")}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span className="size-2 shrink-0 rounded-full bg-amber-500" />
-                          <span className="text-amber-600">未送信</span>
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {agency.last_sign_in_at ? (
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span className="size-2 shrink-0 rounded-full bg-green-500" />
-                          {new Date(agency.last_sign_in_at).toLocaleDateString("ja-JP")}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span className="size-2 shrink-0 rounded-full bg-amber-500" />
-                          <span className="text-amber-600">未ログイン</span>
-                        </span>
-                      )}
+                      {(() => {
+                        const status = getOnboardingStatus(agency);
+                        const tooltip = getOnboardingTooltip(agency);
+                        const badge = (
+                          <Badge
+                            variant="outline"
+                            className={cn("border-transparent", ONBOARDING_BADGE_STYLES[status])}
+                          >
+                            {ONBOARDING_LABELS[status]}
+                          </Badge>
+                        );
+                        return tooltip ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-default">{badge}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>{tooltip}</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          badge
+                        );
+                      })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">

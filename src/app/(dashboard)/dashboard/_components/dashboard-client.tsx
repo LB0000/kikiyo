@@ -231,23 +231,23 @@ export function DashboardClient({
           )}
         </div>
 
-        <div className="flex gap-3">
-          {selectedReportId && dashboardData && (
-            <>
-              {isAdmin && (
+        {isAdmin && (
+          <div className="flex gap-3">
+            {selectedReportId && dashboardData && (
+              <>
                 <Button className="rounded-full" onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}>
                   為替レート変更
                 </Button>
-              )}
-              <Button className="rounded-full" onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
-                返金登録
-              </Button>
-            </>
-          )}
-          <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
-            CSV登録
-          </Button>
-        </div>
+                <Button className="rounded-full" onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
+                  返金登録
+                </Button>
+              </>
+            )}
+            <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
+              CSV登録
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* サマリーカード */}
@@ -326,9 +326,11 @@ export function DashboardClient({
               CSVファイルをアップロードしてダッシュボードを開始しましょう
             </p>
           </div>
-          <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
-            CSVをアップロード
-          </Button>
+          {isAdmin && (
+            <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
+              CSVをアップロード
+            </Button>
+          )}
         </div>
       ) : null}
 

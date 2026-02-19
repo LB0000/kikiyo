@@ -367,17 +367,15 @@ export async function importCsvData(params: {
 }): Promise<ImportResult | ImportConfirmation | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
 
   const { csvText, rate, revenueTask, uploadAgencyId, replaceReportIds } = params;
 
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
 
-  // UUID形式の検証（agency_userは必須、system_adminは任意）
+  // UUID形式の検証
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (user.role !== "system_admin") {
-    if (!uploadAgencyId) return { error: "アップロード代理店が指定されていません" };
-    if (!uuidRegex.test(uploadAgencyId)) return { error: "無効な代理店IDです" };
-  } else if (uploadAgencyId && !uuidRegex.test(uploadAgencyId)) {
+  if (uploadAgencyId && !uuidRegex.test(uploadAgencyId)) {
     return { error: "無効な代理店IDです" };
   }
 
@@ -390,20 +388,6 @@ export async function importCsvData(params: {
 
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
-
-  // agency_userは閲覧可能代理店のみ許可
-  let viewableIds: string[] = [];
-  if (user.role !== "system_admin") {
-    const { data: viewable } = await supabase
-      .from("profile_viewable_agencies")
-      .select("agency_id")
-      .eq("profile_id", user.id);
-
-    viewableIds = (viewable ?? []).map((v) => v.agency_id);
-    if (!viewableIds.includes(uploadAgencyId)) {
-      return { error: "権限がありません" };
-    }
-  }
 
   // replaceReportIdsのUUID形式検証
   if (replaceReportIds && replaceReportIds.length > 0) {
@@ -434,20 +418,6 @@ export async function importCsvData(params: {
         };
       }
 
-      // agency_user の場合: 既存レポートのcsv_dataのupload_agency_idが閲覧可能か確認
-      if (user.role !== "system_admin") {
-        const { data: existingCsv } = await adminSupabase
-          .from("csv_data")
-          .select("upload_agency_id")
-          .in("monthly_report_id", replaceReportIds);
-
-        const unauthorizedRows = (existingCsv ?? []).filter(
-          (row) => row.upload_agency_id && !viewableIds.includes(row.upload_agency_id)
-        );
-        if (unauthorizedRows.length > 0) {
-          return { error: "他の代理店がアップロードしたデータは上書きできません" };
-        }
-      }
     }
   }
 
@@ -616,6 +586,7 @@ export async function createRefund(params: {
 }): Promise<{ success: true } | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
 
   const parsed = createRefundSchema.safeParse(params);
   if (!parsed.success) {
@@ -655,22 +626,6 @@ export async function createRefund(params: {
   }
 
   const amountJpy = amountUsd * report.rate;
-
-  // agency_userは閲覧可能代理店のライバーのみ返金登録可能
-  if (user.role !== "system_admin") {
-    if (!liver.agency_id) {
-      return { error: "所属代理店のないライバーへの返金は管理者のみ可能です" };
-    }
-    const { data: viewable } = await supabase
-      .from("profile_viewable_agencies")
-      .select("agency_id")
-      .eq("profile_id", user.id);
-
-    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
-    if (!viewableIds.includes(liver.agency_id)) {
-      return { error: "権限がありません" };
-    }
-  }
 
   // Insert refund record
   const { error: insertError } = await supabase.from("refunds").insert({

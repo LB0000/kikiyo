@@ -9,7 +9,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Building2, FileText, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  ArrowUpDown,
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Pencil,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/shared/pagination";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AGENCY_RANK_LABELS } from "@/lib/constants";
@@ -24,110 +39,230 @@ type Props = {
 
 const PAGE_SIZE = 10;
 
+type SortKey = "name" | "rank" | "commission_rate" | "created_at" | null;
+type SortDir = "asc" | "desc";
+
+const RANK_BADGE_STYLES: Record<string, string> = {
+  rank_2: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  rank_3: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  rank_4: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+};
+
+const RANK_ORDER: Record<string, number> = { rank_2: 2, rank_3: 3, rank_4: 4 };
+
+function SortableHead({
+  children,
+  sortKey: key,
+  currentKey,
+  currentDir,
+  onSort,
+  className,
+}: {
+  children: React.ReactNode;
+  sortKey: SortKey;
+  currentKey: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const isActive = currentKey === key;
+  return (
+    <TableHead
+      className={cn("cursor-pointer select-none", className)}
+      onClick={() => onSort(key)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {isActive ? (
+          currentDir === "asc" ? (
+            <ChevronUp className="size-3.5" />
+          ) : (
+            <ChevronDown className="size-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3.5 text-muted-foreground/50" />
+        )}
+      </span>
+    </TableHead>
+  );
+}
+
 export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(agencies.length / PAGE_SIZE));
+  const [sortKey, setSortKey] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
+
+  const sorted = [...agencies].sort((a, b) => {
+    if (!sortKey) return 0;
+    let cmp = 0;
+    switch (sortKey) {
+      case "name":
+        cmp = a.name.localeCompare(b.name, "ja");
+        break;
+      case "rank":
+        cmp = (RANK_ORDER[a.rank ?? ""] ?? 99) - (RANK_ORDER[b.rank ?? ""] ?? 99);
+        break;
+      case "commission_rate":
+        cmp = a.commission_rate - b.commission_rate;
+        break;
+      case "created_at":
+        cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        break;
+    }
+    return sortDir === "desc" ? -cmp : cmp;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pagedAgencies = agencies.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pagedAgencies = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
-    <div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>代理店名</TableHead>
-              <TableHead>代理店ランク</TableHead>
-              <TableHead>上位代理店</TableHead>
-              <TableHead>手数料率</TableHead>
-              <TableHead>提携日</TableHead>
-              <TableHead>メール送信</TableHead>
-              <TableHead>ログイン</TableHead>
-              <TableHead className="w-20" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {agencies.length === 0 ? (
+    <TooltipProvider>
+      <div>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="p-0">
-                  <EmptyState
-                    icon={Building2}
-                    title="代理店がありません"
-                    description="新しい代理店を登録してください"
-                  />
-                </TableCell>
+                <SortableHead sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort}>
+                  代理店名
+                </SortableHead>
+                <SortableHead sortKey="rank" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort}>
+                  代理店ランク
+                </SortableHead>
+                <TableHead className="hidden md:table-cell">上位代理店</TableHead>
+                <SortableHead sortKey="commission_rate" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right">
+                  手数料率
+                </SortableHead>
+                <SortableHead sortKey="created_at" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell">
+                  提携日
+                </SortableHead>
+                <TableHead>メール送信</TableHead>
+                <TableHead>ログイン</TableHead>
+                <TableHead className="w-20" />
               </TableRow>
-            ) : (
-              pagedAgencies.map((agency) => (
-                <TableRow key={agency.id}>
-                  <TableCell className="font-medium">{agency.name}</TableCell>
-                  <TableCell>
-                    {agency.rank
-                      ? AGENCY_RANK_LABELS[agency.rank as AgencyRank]
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {agency.parent_agencies.length > 0
-                      ? agency.parent_agencies
-                          .map((p) => p.parent_name)
-                          .join(", ")
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {(agency.commission_rate * 100).toFixed(1)}%
-                  </TableCell>
-                  <TableCell>
-                    {new Date(agency.created_at).toLocaleDateString("ja-JP")}
-                  </TableCell>
-                  <TableCell>
-                    {agency.registration_email_sent_at ? (
-                      <span className="text-sm">
-                        ✓ {new Date(agency.registration_email_sent_at).toLocaleDateString("ja-JP")}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-amber-600">未送信</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {agency.last_sign_in_at ? (
-                      <span className="text-sm">
-                        ✓ {new Date(agency.last_sign_in_at).toLocaleDateString("ja-JP")}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-amber-600">未ログイン</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        className="cursor-pointer p-2.5 -m-1.5 text-muted-foreground hover:text-primary transition-colors"
-                        onClick={() => onCompanyInfo(agency)}
-                        aria-label="会社情報"
-                      >
-                        <FileText className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
-                        onClick={() => onSelect(agency)}
-                        aria-label="編集"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {agencies.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="p-0">
+                    <EmptyState
+                      icon={Building2}
+                      title="代理店がありません"
+                      description="新しい代理店を登録してください"
+                    />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                pagedAgencies.map((agency) => (
+                  <TableRow
+                    key={agency.id}
+                    className="cursor-pointer"
+                    onClick={() => onSelect(agency)}
+                  >
+                    <TableCell className="font-medium">{agency.name}</TableCell>
+                    <TableCell>
+                      {agency.rank ? (
+                        <Badge
+                          variant="outline"
+                          className={cn("border-transparent", RANK_BADGE_STYLES[agency.rank])}
+                        >
+                          {AGENCY_RANK_LABELS[agency.rank as AgencyRank]}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {agency.parent_agencies.length > 0
+                        ? agency.parent_agencies
+                            .map((p) => p.parent_name)
+                            .join(", ")
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {(agency.commission_rate * 100).toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {new Date(agency.created_at).toLocaleDateString("ja-JP")}
+                    </TableCell>
+                    <TableCell>
+                      {agency.registration_email_sent_at ? (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          <span className="size-2 shrink-0 rounded-full bg-green-500" />
+                          {new Date(agency.registration_email_sent_at).toLocaleDateString("ja-JP")}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          <span className="size-2 shrink-0 rounded-full bg-amber-500" />
+                          <span className="text-amber-600">未送信</span>
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {agency.last_sign_in_at ? (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          <span className="size-2 shrink-0 rounded-full bg-green-500" />
+                          {new Date(agency.last_sign_in_at).toLocaleDateString("ja-JP")}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          <span className="size-2 shrink-0 rounded-full bg-amber-500" />
+                          <span className="text-amber-600">未ログイン</span>
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="cursor-pointer p-2.5 -m-1.5 text-muted-foreground hover:text-primary transition-colors"
+                              onClick={() => onCompanyInfo(agency)}
+                              aria-label="会社情報"
+                            >
+                              <FileText className="size-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>会社情報</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
+                              onClick={() => onSelect(agency)}
+                              aria-label="編集"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>編集</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
-      <Pagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        onPageChange={setPage}
-      />
-    </div>
+    </TooltipProvider>
   );
 }

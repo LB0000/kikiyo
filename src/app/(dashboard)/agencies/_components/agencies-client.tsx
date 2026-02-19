@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Download, Search } from "lucide-react";
 import { AGENCY_RANK_LABELS } from "@/lib/constants";
 import { exportCsv, type CsvColumn } from "@/lib/csv-export";
@@ -26,12 +33,22 @@ const AGENCY_COLUMNS: CsvColumn<AgencyWithHierarchy>[] = [
   { header: "最終ログイン日", accessor: (r) => r.last_sign_in_at ? new Date(r.last_sign_in_at).toLocaleDateString("ja-JP") : "未ログイン" },
 ];
 
+const ONBOARDING_STATUS_OPTIONS = [
+  { value: "all", label: "すべてのステータス" },
+  { value: "email_sent", label: "メール送信済" },
+  { value: "email_unsent", label: "メール未送信" },
+  { value: "logged_in", label: "ログイン済" },
+  { value: "not_logged_in", label: "未ログイン" },
+] as const;
+
 export function AgenciesClient({ agencies }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAgency, setSelectedAgency] =
     useState<AgencyWithHierarchy | null>(null);
   const [dialogKey, setDialogKey] = useState(0);
   const [search, setSearch] = useState("");
+  const [rankFilter, setRankFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [companyInfoOpen, setCompanyInfoOpen] = useState(false);
   const [companyInfoAgency, setCompanyInfoAgency] =
@@ -61,6 +78,11 @@ export function AgenciesClient({ agencies }: Props) {
       const q = search.toLowerCase();
       if (!agency.name.toLowerCase().includes(q)) return false;
     }
+    if (rankFilter !== "all" && agency.rank !== rankFilter) return false;
+    if (statusFilter === "email_sent" && !agency.registration_email_sent_at) return false;
+    if (statusFilter === "email_unsent" && agency.registration_email_sent_at) return false;
+    if (statusFilter === "logged_in" && !agency.last_sign_in_at) return false;
+    if (statusFilter === "not_logged_in" && agency.last_sign_in_at) return false;
     return true;
   });
 
@@ -87,6 +109,31 @@ export function AgenciesClient({ agencies }: Props) {
               className="w-72 pl-9"
             />
           </div>
+          <Select value={rankFilter} onValueChange={setRankFilter}>
+            <SelectTrigger className="w-36" aria-label="ランク絞り込み">
+              <SelectValue placeholder="すべてのランク" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべてのランク</SelectItem>
+              {Object.entries(AGENCY_RANK_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-44" aria-label="ステータス絞り込み">
+              <SelectValue placeholder="すべてのステータス" />
+            </SelectTrigger>
+            <SelectContent>
+              {ONBOARDING_STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span className="text-sm text-muted-foreground">
             {filtered.length}件
           </span>
@@ -107,7 +154,7 @@ export function AgenciesClient({ agencies }: Props) {
       </div>
 
       <AgenciesTable
-        key={search}
+        key={search + rankFilter + statusFilter}
         agencies={filtered}
         onSelect={handleSelect}
         onCompanyInfo={handleCompanyInfo}

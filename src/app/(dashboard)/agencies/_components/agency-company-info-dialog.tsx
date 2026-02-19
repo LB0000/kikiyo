@@ -54,7 +54,7 @@ export function AgencyCompanyInfoDialog({
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  const form = useForm({
+  const form = useForm<AgencyCompanyInfoValues>({
     resolver: zodResolver(agencyCompanyInfoSchema),
     defaultValues: {
       invoice_registration_number: "",
@@ -62,7 +62,7 @@ export function AgencyCompanyInfoDialog({
       representative_name: "",
       bank_name: "",
       bank_branch: "",
-      bank_account_type: "" as "" | "futsu" | "toza",
+      bank_account_type: "",
       bank_account_number: "",
       bank_account_holder: "",
     },
@@ -70,28 +70,32 @@ export function AgencyCompanyInfoDialog({
 
   useEffect(() => {
     if (!open) return;
-    setFetching(true);
-    getAgencyCompanyInfo(agencyId).then((result) => {
-      if ("data" in result && result.data) {
-        form.reset({
-          invoice_registration_number:
-            result.data.invoice_registration_number ?? "",
-          company_address: result.data.company_address ?? "",
-          representative_name: result.data.representative_name ?? "",
-          bank_name: result.data.bank_name ?? "",
-          bank_branch: result.data.bank_branch ?? "",
-          bank_account_type: result.data.bank_account_type ?? null,
-          bank_account_number: result.data.bank_account_number ?? "",
-          bank_account_holder: result.data.bank_account_holder ?? "",
-        });
-      }
-      setFetching(false);
-    });
+    getAgencyCompanyInfo(agencyId)
+      .then((result) => {
+        if ("data" in result && result.data) {
+          form.reset({
+            invoice_registration_number:
+              result.data.invoice_registration_number ?? "",
+            company_address: result.data.company_address ?? "",
+            representative_name: result.data.representative_name ?? "",
+            bank_name: result.data.bank_name ?? "",
+            bank_branch: result.data.bank_branch ?? "",
+            bank_account_type: result.data.bank_account_type ?? "",
+            bank_account_number: result.data.bank_account_number ?? "",
+            bank_account_holder: result.data.bank_account_holder ?? "",
+          });
+        }
+        setFetching(false);
+      })
+      .catch(() => {
+        toast.error("会社情報の取得に失敗しました");
+        setFetching(false);
+      });
   }, [open, agencyId, form]);
 
-  async function onSubmit(values: Record<string, unknown>) {
+  async function onSubmit(values: AgencyCompanyInfoValues) {
     setLoading(true);
-    const result = await updateAgencyCompanyInfo(agencyId, values as Parameters<typeof updateAgencyCompanyInfo>[1]);
+    const result = await updateAgencyCompanyInfo(agencyId, values);
     if ("error" in result) {
       toast.error("更新に失敗しました", { description: result.error });
     } else {

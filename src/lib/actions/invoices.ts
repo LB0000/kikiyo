@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
+import { CONSUMPTION_TAX_RATE } from "@/lib/constants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -174,6 +175,9 @@ export async function getInvoicePreview(
 ): Promise<InvoicePreview | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  if (user.role !== "agency_user") {
+    return { error: "代理店ユーザーのみプレビューを取得できます" };
+  }
 
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
@@ -224,7 +228,7 @@ export async function getInvoicePreview(
     (sum, row) => sum + (row.agency_reward_jpy ?? 0),
     0
   );
-  const taxAmountJpy = subtotalJpy * 0.1;
+  const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 
   const isInvoiceRegistered = !!agency.invoice_registration_number;
@@ -272,17 +276,20 @@ export async function createAndSendInvoice(params: {
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
 
-  // agency_userは閲覧可能代理店のみ許可
-  if (user.role !== "system_admin") {
-    const { data: viewable } = await supabase
-      .from("profile_viewable_agencies")
-      .select("agency_id")
-      .eq("profile_id", user.id);
+  // 請求書作成は代理店ユーザーのみ
+  if (user.role !== "agency_user") {
+    return { error: "代理店ユーザーのみ請求書を作成できます" };
+  }
 
-    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
-    if (!viewableIds.includes(agencyId)) {
-      return { error: "権限がありません" };
-    }
+  // 閲覧可能代理店のみ許可
+  const { data: viewable } = await supabase
+    .from("profile_viewable_agencies")
+    .select("agency_id")
+    .eq("profile_id", user.id);
+
+  const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+  if (!viewableIds.includes(agencyId)) {
+    return { error: "権限がありません" };
   }
 
   // 代理店情報・月次レポートを並列取得
@@ -327,11 +334,23 @@ export async function createAndSendInvoice(params: {
     return { error: csvError.message };
   }
 
+  // 同一代理店+レポートの重複チェック
+  const { data: existingDuplicate } = await adminSupabase
+    .from("invoices")
+    .select("id")
+    .eq("agency_id", agencyId)
+    .eq("monthly_report_id", monthlyReportId)
+    .limit(1);
+
+  if (existingDuplicate && existingDuplicate.length > 0) {
+    return { error: "この代理店・月次レポートの請求書は既に作成済みです" };
+  }
+
   const subtotalJpy = (csvRows ?? []).reduce(
     (sum, row) => sum + (row.agency_reward_jpy ?? 0),
     0
   );
-  const taxAmountJpy = subtotalJpy * 0.1;
+  const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 
   const isInvoiceRegistered = !!agency.invoice_registration_number;
@@ -339,73 +358,92 @@ export async function createAndSendInvoice(params: {
 
   // 請求書番号の生成: INV-{YYYYMM}-{4桁連番}
   const dataMonth = report.data_month;
-  const monthPrefix = dataMonth
+  const cleanedMonth = dataMonth
     ? dataMonth.replace(/[^0-9]/g, "").slice(0, 6)
+    : "";
+  const monthPrefix = cleanedMonth.length >= 4
+    ? cleanedMonth
     : new Date().toISOString().slice(0, 7).replace("-", "");
 
   const invoicePrefix = `INV-${monthPrefix}-`;
 
-  // 既存の請求書から最大連番を取得
-  const { data: existingInvoices } = await adminSupabase
-    .from("invoices")
-    .select("invoice_number")
-    .like("invoice_number", `${invoicePrefix}%`)
-    .order("invoice_number", { ascending: false })
-    .limit(1);
+  // 請求書番号生成＋挿入（競合時リトライ）
+  const MAX_RETRIES = 3;
+  let invoice: { id: string; invoice_number: string } | null = null;
+  let lastInsertError: string | null = null;
 
-  let seq = 1;
-  if (existingInvoices && existingInvoices.length > 0) {
-    const lastNumber = existingInvoices[0].invoice_number;
-    const lastSeq = parseInt(lastNumber.replace(invoicePrefix, ""), 10);
-    if (!isNaN(lastSeq)) {
-      seq = lastSeq + 1;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    // 既存の請求書から最大連番を取得
+    const { data: existingInvoices } = await adminSupabase
+      .from("invoices")
+      .select("invoice_number")
+      .like("invoice_number", `${invoicePrefix}%`)
+      .order("invoice_number", { ascending: false })
+      .limit(1);
+
+    let seq = 1;
+    if (existingInvoices && existingInvoices.length > 0) {
+      const lastNumber = existingInvoices[0].invoice_number;
+      const lastSeq = parseInt(lastNumber.replace(invoicePrefix, ""), 10);
+      if (!isNaN(lastSeq)) {
+        seq = lastSeq + 1;
+      }
+    }
+
+    const invoiceNumber = `${invoicePrefix}${String(seq).padStart(4, "0")}`;
+
+    // 請求書レコード作成
+    const { data, error: insertError } = await adminSupabase
+      .from("invoices")
+      .insert({
+        invoice_number: invoiceNumber,
+        agency_id: agencyId,
+        monthly_report_id: monthlyReportId,
+        subtotal_jpy: subtotalJpy,
+        tax_rate: CONSUMPTION_TAX_RATE,
+        tax_amount_jpy: taxAmountJpy,
+        total_jpy: totalJpy,
+        is_invoice_registered: isInvoiceRegistered,
+        invoice_registration_number: agency.invoice_registration_number,
+        deductible_rate: deductibleRate,
+        agency_name: agency.name,
+        agency_address: agency.company_address,
+        agency_representative: agency.representative_name,
+        bank_name: agency.bank_name,
+        bank_branch: agency.bank_branch,
+        bank_account_type: agency.bank_account_type,
+        bank_account_number: agency.bank_account_number,
+        bank_account_holder: agency.bank_account_holder,
+        data_month: dataMonth,
+        exchange_rate: report.rate,
+        commission_rate: agency.commission_rate,
+        sent_at: new Date().toISOString(),
+        created_by: user.id,
+      })
+      .select("id, invoice_number")
+      .single();
+
+    if (!insertError && data) {
+      invoice = data;
+      break;
+    }
+
+    // UNIQUE制約違反の場合はリトライ
+    lastInsertError = insertError?.message ?? "請求書の作成に失敗しました";
+    if (!insertError?.message?.includes("unique") && !insertError?.message?.includes("duplicate")) {
+      break;
     }
   }
 
-  const invoiceNumber = `${invoicePrefix}${String(seq).padStart(4, "0")}`;
-
-  // 請求書レコード作成
-  const { data: invoice, error: insertError } = await adminSupabase
-    .from("invoices")
-    .insert({
-      invoice_number: invoiceNumber,
-      agency_id: agencyId,
-      monthly_report_id: monthlyReportId,
-      subtotal_jpy: subtotalJpy,
-      tax_rate: 0.1,
-      tax_amount_jpy: taxAmountJpy,
-      total_jpy: totalJpy,
-      is_invoice_registered: isInvoiceRegistered,
-      invoice_registration_number: agency.invoice_registration_number,
-      deductible_rate: deductibleRate,
-      agency_name: agency.name,
-      agency_address: agency.company_address,
-      agency_representative: agency.representative_name,
-      bank_name: agency.bank_name,
-      bank_branch: agency.bank_branch,
-      bank_account_type: agency.bank_account_type,
-      bank_account_number: agency.bank_account_number,
-      bank_account_holder: agency.bank_account_holder,
-      data_month: dataMonth,
-      exchange_rate: report.rate,
-      commission_rate: agency.commission_rate,
-      sent_at: new Date().toISOString(),
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-
-  if (insertError || !invoice) {
-    return {
-      error: insertError?.message ?? "請求書の作成に失敗しました",
-    };
+  if (!invoice) {
+    return { error: lastInsertError ?? "請求書の作成に失敗しました" };
   }
 
   // メール通知送信（失敗しても請求書作成は成功）
   try {
     await sendInvoiceNotificationEmail({
       agencyName: agency.name,
-      invoiceNumber,
+      invoiceNumber: invoice.invoice_number,
       totalJpy,
       dataMonth,
     });

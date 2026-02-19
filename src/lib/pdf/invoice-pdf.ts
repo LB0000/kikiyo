@@ -2,23 +2,31 @@ import { jsPDF } from "jspdf";
 import fs from "fs";
 import path from "path";
 
-// フォント登録（モジュールスコープで1回のみ）
-let fontRegistered = false;
+// フォントデータキャッシュ（ファイル読み取りは1回のみ）
+let fontBase64Cache: string | null = null;
+let fontChecked = false;
 
-function registerFont(doc: jsPDF) {
-  if (fontRegistered) return;
+function registerFont(doc: jsPDF): boolean {
+  if (!fontChecked) {
+    fontChecked = true;
+    try {
+      const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
+      if (fs.existsSync(fontPath)) {
+        fontBase64Cache = fs.readFileSync(fontPath).toString("base64");
+      }
+    } catch {
+      // フォント読み取り失敗時はデフォルトフォントを使用
+    }
+  }
+
+  if (!fontBase64Cache) return false;
 
   try {
-    const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansJP-Regular.ttf");
-    if (fs.existsSync(fontPath)) {
-      const fontData = fs.readFileSync(fontPath);
-      const base64 = fontData.toString("base64");
-      doc.addFileToVFS("NotoSansJP-Regular.ttf", base64);
-      doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
-      fontRegistered = true;
-    }
+    doc.addFileToVFS("NotoSansJP-Regular.ttf", fontBase64Cache);
+    doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+    return true;
   } catch {
-    // フォント登録失敗時はデフォルトフォントを使用
+    return false;
   }
 }
 
@@ -68,11 +76,11 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
     format: "a4",
   });
 
-  // フォント登録
-  registerFont(doc);
+  // フォント登録（各インスタンスに登録が必要）
+  const fontAvailable = registerFont(doc);
 
   // フォント設定（登録済みならNotoSansJP、なければHelvetica）
-  const fontName = fontRegistered ? "NotoSansJP" : "Helvetica";
+  const fontName = fontAvailable ? "NotoSansJP" : "Helvetica";
   doc.setFont(fontName, "normal");
 
   const pageWidth = 210;

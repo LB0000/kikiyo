@@ -67,7 +67,10 @@ CREATE TABLE invoices (
   -- メタ情報
   created_by UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  updated_at TIMESTAMPTZ DEFAULT now(),
+
+  -- 同一代理店+レポートの重複請求書を防止
+  CONSTRAINT uq_invoices_agency_report UNIQUE (agency_id, monthly_report_id)
 );
 
 -- ============================================
@@ -82,9 +85,9 @@ CREATE INDEX idx_invoices_sent_at ON invoices(sent_at DESC);
 -- ============================================
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 
--- 管理者は全請求書にフルアクセス
-CREATE POLICY "管理者は全請求書にフルアクセス" ON invoices
-  FOR ALL USING (get_user_role() = 'system_admin');
+-- 管理者は全請求書を閲覧可能（作成・更新は不可）
+CREATE POLICY "管理者は全請求書を閲覧可能" ON invoices
+  FOR SELECT USING (get_user_role() = 'system_admin');
 
 -- 代理店ユーザーは閲覧可能代理店の請求書のみ閲覧可能
 CREATE POLICY "代理店ユーザーは閲覧可能代理店の請求書のみ" ON invoices
@@ -106,6 +109,17 @@ CREATE POLICY "代理店ユーザーは未送付請求書のみ更新可能" ON 
     get_user_role() = 'agency_user'
     AND agency_id IN (SELECT get_viewable_agency_ids())
     AND sent_at IS NULL
+  )
+  WITH CHECK (
+    get_user_role() = 'agency_user'
+    AND agency_id IN (SELECT get_viewable_agency_ids())
+    AND sent_at IS NULL
+  );
+
+-- 代理店ユーザーは請求書を削除できない（明示的拒否）
+CREATE POLICY "代理店ユーザーは請求書削除不可" ON invoices
+  FOR DELETE USING (
+    get_user_role() = 'system_admin'
   );
 
 -- ============================================

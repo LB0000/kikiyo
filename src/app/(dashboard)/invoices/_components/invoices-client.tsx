@@ -9,13 +9,11 @@ import { CreateInvoiceDialog } from "./create-invoice-dialog";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import type { InvoiceListItem } from "@/lib/actions/invoices";
 import type { MonthlyReportItem } from "@/lib/actions/dashboard";
-import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
 import type { UserRole } from "@/lib/supabase/types";
 
 type Props = {
   invoices: InvoiceListItem[];
   reports: MonthlyReportItem[];
-  agencies: AgencyWithHierarchy[];
   userRole: UserRole;
   userAgencyId: string | null;
 };
@@ -23,7 +21,6 @@ type Props = {
 export function InvoicesClient({
   invoices,
   reports,
-  agencies,
   userRole,
   userAgencyId,
 }: Props) {
@@ -83,9 +80,11 @@ export function InvoicesClient({
             {filtered.length}件
           </span>
         </div>
-        <Button className="rounded-full" onClick={handleCreate}>
-          請求書作成
-        </Button>
+        {userRole === "agency_user" && userAgencyId && (
+          <Button className="rounded-full" onClick={handleCreate}>
+            請求書作成
+          </Button>
+        )}
       </div>
 
       <InvoicesTable
@@ -94,15 +93,15 @@ export function InvoicesClient({
         onDetail={handleDetail}
       />
 
-      <CreateInvoiceDialog
-        key={createKey}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        reports={reports}
-        agencies={agencies}
-        userRole={userRole}
-        userAgencyId={userAgencyId}
-      />
+      {userRole === "agency_user" && userAgencyId && (
+        <CreateInvoiceDialog
+          key={createKey}
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          reports={reports}
+          userAgencyId={userAgencyId}
+        />
+      )}
 
       {selectedInvoiceId && (
         <InvoiceDetailDialog

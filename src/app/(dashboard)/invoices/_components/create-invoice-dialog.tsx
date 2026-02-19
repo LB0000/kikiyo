@@ -24,61 +24,66 @@ import {
   type InvoicePreview,
 } from "@/lib/actions/invoices";
 import type { MonthlyReportItem } from "@/lib/actions/dashboard";
-import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
-import type { UserRole } from "@/lib/supabase/types";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reports: MonthlyReportItem[];
-  agencies: AgencyWithHierarchy[];
-  userRole: UserRole;
-  userAgencyId: string | null;
+  userAgencyId: string;
 };
 
 export function CreateInvoiceDialog({
   open,
   onOpenChange,
   reports,
-  agencies,
-  userRole,
   userAgencyId,
 }: Props) {
   const [selectedReportId, setSelectedReportId] = useState("");
-  const [selectedAgencyId, setSelectedAgencyId] = useState(
-    userRole === "agency_user" && userAgencyId ? userAgencyId : ""
-  );
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch preview when both selections are made
-  useEffect(() => {
-    if (!selectedReportId || !selectedAgencyId) {
-      setPreview(null);
-      return;
-    }
-
+  function handleReportChange(id: string) {
+    setSelectedReportId(id);
+    setPreview(null);
     setLoadingPreview(true);
-    getInvoicePreview(selectedAgencyId, selectedReportId).then((result) => {
-      if ("error" in result) {
-        toast.error("プレビュー取得に失敗しました", {
-          description: result.error,
-        });
-        setPreview(null);
-      } else {
-        setPreview(result);
-      }
-      setLoadingPreview(false);
-    });
-  }, [selectedReportId, selectedAgencyId]);
+  }
+
+  // Fetch preview when report is selected
+  useEffect(() => {
+    if (!selectedReportId) return;
+
+    let cancelled = false;
+    getInvoicePreview(userAgencyId, selectedReportId)
+      .then((result) => {
+        if (cancelled) return;
+        if ("error" in result) {
+          toast.error("プレビュー取得に失敗しました", {
+            description: result.error,
+          });
+          setPreview(null);
+        } else {
+          setPreview(result);
+        }
+        setLoadingPreview(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast.error("プレビュー取得に失敗しました");
+        setLoadingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReportId, userAgencyId]);
 
   async function handleSubmit() {
-    if (!selectedReportId || !selectedAgencyId) return;
+    if (!selectedReportId) return;
     setSubmitting(true);
 
     const result = await createAndSendInvoice({
-      agencyId: selectedAgencyId,
+      agencyId: userAgencyId,
       monthlyReportId: selectedReportId,
     });
 
@@ -107,7 +112,7 @@ export function CreateInvoiceDialog({
             <Label>月次レポート</Label>
             <Select
               value={selectedReportId}
-              onValueChange={setSelectedReportId}
+              onValueChange={handleReportChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="月次レポートを選択" />
@@ -122,28 +127,6 @@ export function CreateInvoiceDialog({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Agency Select (admin only) */}
-          {userRole === "system_admin" && (
-            <div className="space-y-2">
-              <Label>代理店</Label>
-              <Select
-                value={selectedAgencyId}
-                onValueChange={setSelectedAgencyId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="代理店を選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agencies.map((agency) => (
-                    <SelectItem key={agency.id} value={agency.id}>
-                      {agency.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           {/* Preview */}
           {loadingPreview && (

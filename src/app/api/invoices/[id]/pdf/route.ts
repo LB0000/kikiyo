@@ -55,7 +55,7 @@ export async function GET(
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${invoice.invoice_number}.pdf"`,
+      "Content-Disposition": `attachment; filename="${invoice.invoice_number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
     },
   });
 }

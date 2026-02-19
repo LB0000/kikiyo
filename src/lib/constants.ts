@@ -46,6 +46,9 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 
 export const TAX_RATE = 1.1;
 
+/** 消費税率（10%）— 請求書計算用 */
+export const CONSUMPTION_TAX_RATE = 0.1;
+
 export type NavItem = {
   title: string;
   href: string;
@@ -89,5 +92,11 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/applications",
     roles: ["system_admin", "agency_user"],
     icon: "file-text",
+  },
+  {
+    title: "TikTok Backstage",
+    href: "https://live-backstage.tiktok.com/",
+    roles: ["system_admin", "agency_user"],
+    icon: "external-link",
   },
 ];

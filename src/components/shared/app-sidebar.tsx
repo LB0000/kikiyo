@@ -14,6 +14,7 @@ import {
   ListOrdered,
   FileText,
   Receipt,
+  ExternalLink,
   LogOut,
 } from "lucide-react";
 import {
@@ -36,6 +37,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "list-ordered": ListOrdered,
   "file-text": FileText,
   receipt: Receipt,
+  "external-link": ExternalLink,
 };
 
 type AppSidebarProps = {
@@ -89,7 +91,8 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
             <SidebarMenu className="gap-1">
               {filteredItems.map((item) => {
                 const Icon = ICON_MAP[item.icon];
-                const isActive = pathname === item.href;
+                const isExternal = item.href.startsWith("http");
+                const isActive = !isExternal && pathname === item.href;
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -102,14 +105,25 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border-l-[3px] border-transparent"
                       }
                     >
-                      <Link href={item.href} prefetch={true}>
-                        {Icon && (
-                          <Icon
-                            className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground/70"}`}
-                          />
-                        )}
-                        <span className="text-[15px]">{item.title}</span>
-                      </Link>
+                      {isExternal ? (
+                        <a href={item.href} target="_blank" rel="noopener noreferrer">
+                          {Icon && (
+                            <Icon
+                              className="size-[18px] shrink-0 text-muted-foreground/70"
+                            />
+                          )}
+                          <span className="text-[15px]">{item.title}</span>
+                        </a>
+                      ) : (
+                        <Link href={item.href} prefetch={true}>
+                          {Icon && (
+                            <Icon
+                              className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground/70"}`}
+                            />
+                          )}
+                          <span className="text-[15px]">{item.title}</span>
+                        </Link>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

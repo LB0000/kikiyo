@@ -15,6 +15,11 @@ import { getInvoiceDetail, type InvoiceDetail } from "@/lib/actions/invoices";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/constants";
 import type { AccountType } from "@/lib/supabase/types";
 
+function maskAccountNumber(num: string): string {
+  if (num.length <= 4) return num;
+  return "*".repeat(num.length - 4) + num.slice(-4);
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,17 +38,22 @@ export function InvoiceDetailDialog({
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    getInvoiceDetail(invoiceId).then((result) => {
-      if ("error" in result) {
-        toast.error("請求書の取得に失敗しました", {
-          description: result.error,
-        });
-        setInvoice(null);
-      } else {
-        setInvoice(result);
-      }
-      setLoading(false);
-    });
+    getInvoiceDetail(invoiceId)
+      .then((result) => {
+        if ("error" in result) {
+          toast.error("請求書の取得に失敗しました", {
+            description: result.error,
+          });
+          setInvoice(null);
+        } else {
+          setInvoice(result);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        toast.error("請求書の取得に失敗しました");
+        setLoading(false);
+      });
   }, [open, invoiceId]);
 
   async function handleDownloadPdf() {
@@ -204,7 +214,7 @@ export function InvoiceDetailDialog({
                   {invoice.bank_account_number && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">口座番号</span>
-                      <span>{invoice.bank_account_number}</span>
+                      <span>{maskAccountNumber(invoice.bank_account_number)}</span>
                     </div>
                   )}
                   {invoice.bank_account_holder && (

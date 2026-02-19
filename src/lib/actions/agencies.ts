@@ -493,7 +493,7 @@ export async function resendRegistrationEmail(agencyId: string) {
 
   // メール送信
   try {
-    await sendRegistrationEmail(email, tempPassword, agency.name);
+    await sendResendEmail(email, tempPassword, agency.name);
     await adminSupabase
       .from("agencies")
       .update({ registration_email_sent_at: new Date().toISOString() })
@@ -525,31 +525,159 @@ function generateTempPassword(): string {
   return password;
 }
 
+// ---------------------------------------------------------------------------
+// メールテンプレート
+// ---------------------------------------------------------------------------
+
+function buildEmailHtml({
+  agencyName,
+  email,
+  tempPassword,
+  loginUrl,
+  heading,
+  messageLines,
+  note,
+}: {
+  agencyName: string;
+  email: string;
+  tempPassword: string;
+  loginUrl: string;
+  heading: string;
+  messageLines: string[];
+  note: string;
+}): string {
+  const safeAgencyName = escapeHtml(agencyName);
+  const safeEmail = escapeHtml(email);
+  const safePassword = escapeHtml(tempPassword);
+
+  const messageParagraphs = messageLines
+    .map((line) => `<p style="margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;">${line}</p>`)
+    .join("\n");
+
+  return `
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:'Helvetica Neue',Arial,'Hiragino Sans',sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+
+    <!-- Header -->
+    <div style="background-color:#0f172a;border-radius:12px 12px 0 0;padding:24px 32px;">
+      <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">
+        TikTok Live Tool
+      </h1>
+    </div>
+
+    <!-- Body -->
+    <div style="background-color:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+
+      <h2 style="margin:0 0 24px;color:#111827;font-size:20px;font-weight:700;">
+        ${escapeHtml(heading)}
+      </h2>
+
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+        ${safeAgencyName} 様
+      </p>
+
+      ${messageParagraphs}
+
+      <!-- Credentials Card -->
+      <div style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:24px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;width:120px;">メールアドレス</td>
+            <td style="padding:6px 0;color:#111827;font-size:15px;font-weight:600;">${safeEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:13px;">仮パスワード</td>
+            <td style="padding:6px 0;color:#111827;font-size:15px;font-weight:600;font-family:'Courier New',monospace;letter-spacing:1px;">${safePassword}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- CTA Button -->
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${loginUrl}" style="display:inline-block;background-color:#0f172a;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:600;">
+          ログインする
+        </a>
+      </div>
+
+      <!-- Steps -->
+      <div style="border-top:1px solid #e5e7eb;padding-top:20px;margin-top:20px;">
+        <p style="margin:0 0 12px;color:#374151;font-size:14px;font-weight:600;">ログイン手順</p>
+        <ol style="margin:0;padding-left:20px;color:#6b7280;font-size:14px;line-height:2;">
+          <li>上のボタンをクリックしてログインページを開く</li>
+          <li>メールアドレスと仮パスワードを入力</li>
+          <li>ログイン後、パスワードを変更してください</li>
+        </ol>
+      </div>
+
+      <!-- Note -->
+      <p style="margin:24px 0 0;padding:12px 16px;background-color:#fefce8;border-left:3px solid #eab308;color:#854d0e;font-size:13px;line-height:1.6;border-radius:0 4px 4px 0;">
+        ${escapeHtml(note)}
+      </p>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color:#f9fafb;border-radius:0 0 12px 12px;padding:16px 32px;border:1px solid #e5e7eb;border-top:none;">
+      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+        &copy; TikTok Live Tool &#8212; このメールは自動送信です
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
 async function sendRegistrationEmail(
   email: string,
   tempPassword: string,
   agencyName: string
 ) {
-  const appUrl = getValidAppUrl();
-  const safeAgencyName = escapeHtml(agencyName);
-  const safeEmail = escapeHtml(email);
-  const safePassword = escapeHtml(tempPassword);
+  const loginUrl = `${getValidAppUrl()}/login`;
 
   await sendEmail({
     to: email,
-    subject: "代理店登録通知",
-    html: `
-      <h2>代理店登録通知</h2>
-      <p>${safeAgencyName} 様</p>
-      <p>TikTok Live Toolへの代理店登録が完了しました。</p>
-      <p>以下の情報でログインしてください。</p>
-      <ul>
-        <li><strong>メールアドレス:</strong> ${safeEmail}</li>
-        <li><strong>仮パスワード:</strong> ${safePassword}</li>
-      </ul>
-      <p><a href="${appUrl}/login">ログインはこちら</a></p>
-      <p>初回ログイン後、パスワードの変更をお勧めします。</p>
-    `,
+    subject: "【TikTok Live Tool】代理店登録のご案内",
+    html: buildEmailHtml({
+      agencyName,
+      email,
+      tempPassword,
+      loginUrl,
+      heading: "代理店登録のご案内",
+      messageLines: [
+        "TikTok Live Toolへの代理店登録が完了しました。",
+        "以下のログイン情報をご確認のうえ、システムにアクセスしてください。",
+      ],
+      note: "セキュリティのため、初回ログイン後に必ずパスワードを変更してください。仮パスワードは他の方に共有しないでください。",
+    }),
+  });
+}
+
+async function sendResendEmail(
+  email: string,
+  tempPassword: string,
+  agencyName: string
+) {
+  const loginUrl = `${getValidAppUrl()}/login`;
+
+  await sendEmail({
+    to: email,
+    subject: "【TikTok Live Tool】ログイン情報の再送",
+    html: buildEmailHtml({
+      agencyName,
+      email,
+      tempPassword,
+      loginUrl,
+      heading: "ログイン情報の再送",
+      messageLines: [
+        "ログイン情報を再送いたします。以前のパスワードはリセットされました。",
+        "以下の新しいログイン情報をご利用ください。",
+      ],
+      note: "以前のパスワードは無効になっています。必ず以下の新しい仮パスワードをご使用ください。",
+    }),
   });
 }
 

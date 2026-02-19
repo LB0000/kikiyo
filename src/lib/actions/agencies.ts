@@ -156,16 +156,11 @@ export async function createAgency(values: AgencyFormValues) {
     return { error: "閲覧権限の設定に失敗しました" };
   }
 
-  // 7. 上位代理店リスト設定
-  if (values.parent_agency_ids.length > 0) {
-    // 自身を親に設定する循環参照を防止
-    const safeParentIds = values.parent_agency_ids.filter(
-      (pid) => pid !== agency.id
-    );
-    if (safeParentIds.length === 0) {
-      revalidatePath("/agencies");
-      return { success: true, tempPassword };
-    }
+  // 7. 上位代理店リスト設定（自身を親に設定する循環参照を防止）
+  const safeParentIds = values.parent_agency_ids.filter(
+    (pid) => pid !== agency.id
+  );
+  if (safeParentIds.length > 0) {
     const hierarchyRows = safeParentIds.map((parentId) => ({
       agency_id: agency.id,
       parent_agency_id: parentId,

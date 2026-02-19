@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { requestPasswordReset } from "@/lib/actions/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,16 +63,11 @@ export default function LoginPage() {
     e.preventDefault();
     setResetLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      resetEmail.trim(),
-      {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-      }
-    );
+    const result = await requestPasswordReset(resetEmail);
 
-    if (error) {
+    if (result.error) {
       toast.error("エラーが発生しました", {
-        description: "対象のメールアドレスは存在しません。",
+        description: result.error,
       });
     } else {
       toast.success("リセットリンクを記載したメールを送信しました。");

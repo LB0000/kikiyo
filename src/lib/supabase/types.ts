@@ -475,6 +475,7 @@ export type Database = {
           form_tab: FormTab;
           agency_id: string | null;
           liver_id: string | null;
+          form_data: Record<string, unknown> | null;
           created_at: string;
           updated_at: string;
         };
@@ -493,6 +494,7 @@ export type Database = {
           form_tab: FormTab;
           agency_id?: string | null;
           liver_id?: string | null;
+          form_data?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -511,6 +513,7 @@ export type Database = {
           form_tab?: FormTab;
           agency_id?: string | null;
           liver_id?: string | null;
+          form_data?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };

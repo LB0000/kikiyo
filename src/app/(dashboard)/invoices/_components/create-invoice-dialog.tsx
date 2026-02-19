@@ -92,7 +92,12 @@ export function CreateInvoiceDialog({
         description: result.error,
       });
     } else {
-      toast.success("請求書を作成・送信しました");
+      toast.success("請求書を作成しました");
+      if ("emailError" in result && result.emailError) {
+        toast.warning("通知メールの送信に失敗しました", {
+          description: String(result.emailError),
+        });
+      }
       onOpenChange(false);
     }
 

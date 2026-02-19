@@ -11,6 +11,7 @@ import {
   agencyCompanyInfoSchema,
   type AgencyCompanyInfoValues,
 } from "@/lib/validations/invoice";
+import { sendEmail, escapeHtml, getValidAppUrl } from "@/lib/email";
 
 export type AgencyWithHierarchy = {
   id: string;
@@ -189,14 +190,17 @@ export async function createAgency(values: AgencyFormValues) {
   }
 
   // 8. メール送信（Resend）
+  let emailError: string | null = null;
   try {
     await sendRegistrationEmail(values.email, tempPassword, values.name);
-  } catch {
-    // メール送信失敗してもアカウント作成は成功
+  } catch (e) {
+    emailError =
+      e instanceof Error ? e.message : "メール送信に失敗しました";
+    console.error("[sendRegistrationEmail]", emailError);
   }
 
   revalidatePath("/agencies");
-  return { success: true, tempPassword };
+  return { success: true, tempPassword, emailError };
 }
 
 const updateAgencySchema = agencyFormSchema.omit({ email: true });
@@ -312,65 +316,32 @@ function generateTempPassword(): string {
   return password;
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 async function sendRegistrationEmail(
   email: string,
   tempPassword: string,
   agencyName: string
 ) {
-  const rawUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  // URLスキームを検証してjavascript:等のインジェクションを防止
-  let appUrl: string;
-  try {
-    const parsed = new URL(rawUrl);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      appUrl = "http://localhost:3000";
-    } else {
-      appUrl = parsed.origin;
-    }
-  } catch {
-    appUrl = "http://localhost:3000";
-  }
+  const appUrl = getValidAppUrl();
   const safeAgencyName = escapeHtml(agencyName);
   const safeEmail = escapeHtml(email);
   const safePassword = escapeHtml(tempPassword);
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "TikTok Live Tool <noreply@resend.dev>",
-      to: [email],
-      subject: "代理店登録通知",
-      html: `
-        <h2>代理店登録通知</h2>
-        <p>${safeAgencyName} 様</p>
-        <p>TikTok Live Toolへの代理店登録が完了しました。</p>
-        <p>以下の情報でログインしてください。</p>
-        <ul>
-          <li><strong>メールアドレス:</strong> ${safeEmail}</li>
-          <li><strong>仮パスワード:</strong> ${safePassword}</li>
-        </ul>
-        <p><a href="${appUrl}/login">ログインはこちら</a></p>
-        <p>初回ログイン後、パスワードの変更をお勧めします。</p>
-      `,
-    }),
+  await sendEmail({
+    to: email,
+    subject: "代理店登録通知",
+    html: `
+      <h2>代理店登録通知</h2>
+      <p>${safeAgencyName} 様</p>
+      <p>TikTok Live Toolへの代理店登録が完了しました。</p>
+      <p>以下の情報でログインしてください。</p>
+      <ul>
+        <li><strong>メールアドレス:</strong> ${safeEmail}</li>
+        <li><strong>仮パスワード:</strong> ${safePassword}</li>
+      </ul>
+      <p><a href="${appUrl}/login">ログインはこちら</a></p>
+      <p>初回ログイン後、パスワードの変更をお勧めします。</p>
+    `,
   });
-
-  if (!res.ok) {
-    throw new Error("メール送信に失敗しました");
-  }
 }
 
 // ---------------------------------------------------------------------------

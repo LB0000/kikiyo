@@ -103,6 +103,11 @@ export function AgencyFormDialog({
         toast.error("登録に失敗しました", { description: result.error });
       } else {
         toast.success("代理店を登録しました");
+        if (result.emailError) {
+          toast.warning("登録メールの送信に失敗しました", {
+            description: "仮パスワードを直接お伝えください。",
+          });
+        }
         onOpenChange(false);
       }
     }

@@ -26,6 +26,34 @@ const ALL_FORM_TABS = Object.keys(FORM_TAB_LABELS) as FormTab[];
 const PRIMARY_TABS: FormTab[] = ["affiliation_check", "million_special", "streaming_auth"];
 const SECONDARY_TABS = ALL_FORM_TABS.filter((t) => !PRIMARY_TABS.includes(t));
 
+/** フォーム種別ごとの form_data フィールド定義 */
+const FORM_DATA_FIELDS: Record<string, { key: string; label: string; type: "text" | "textarea" | "date" }[]> = {
+  million_special: [
+    { key: "follower_count", label: "フォロワー数", type: "text" },
+  ],
+  streaming_auth: [
+    { key: "reason", label: "配信理由", type: "textarea" },
+  ],
+  subscription_cancel: [
+    { key: "reason", label: "解除理由", type: "textarea" },
+  ],
+  account_id_change: [
+    { key: "new_username", label: "新しいユーザー名", type: "text" },
+    { key: "reason", label: "変更理由", type: "textarea" },
+  ],
+  event_build: [
+    { key: "event_name", label: "イベント名", type: "text" },
+    { key: "event_date", label: "イベント日時", type: "date" },
+    { key: "event_description", label: "イベント説明", type: "textarea" },
+  ],
+  special_referral: [
+    { key: "referral_details", label: "送客詳細", type: "textarea" },
+  ],
+  objection: [
+    { key: "objection_details", label: "異議内容", type: "textarea" },
+  ],
+};
+
 export function ApplicationForm({ agencyId, agencies = [] }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [selectedTab, setSelectedTab] = useState<FormTab>("affiliation_check");
@@ -52,8 +80,14 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
     id_verified: false,
   });
 
+  const [formData, setFormData] = useState<Record<string, string>>({});
+
   function updateField(key: keyof typeof form, value: string | boolean) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateFormData(key: string, value: string) {
+    setFormData((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleConfirm(e: React.FormEvent) {
@@ -67,10 +101,17 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
 
   async function handleSubmit() {
     setLoading(true);
+    // form_data から空文字を除いたオブジェクトを作成
+    const cleanedFormData: Record<string, string> = {};
+    for (const [k, v] of Object.entries(formData)) {
+      if (v) cleanedFormData[k] = v;
+    }
+
     const result = await createApplication({
       ...form,
       form_tab: selectedTab,
       agency_id: effectiveAgencyId,
+      form_data: Object.keys(cleanedFormData).length > 0 ? cleanedFormData : undefined,
     });
 
     if (result.error) {
@@ -97,7 +138,10 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
       additional_info: "",
       id_verified: false,
     });
+    setFormData({});
   }
+
+  const currentFormDataFields = FORM_DATA_FIELDS[selectedTab] ?? [];
 
   // ステッププログレス
   const steps = ["入力", "確認", "完了"];
@@ -299,6 +343,27 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
               </>
             )}
 
+            {/* フォーム種別ごとの専用フィールド */}
+            {currentFormDataFields.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <Label>{field.label}</Label>
+                {field.type === "textarea" ? (
+                  <Textarea
+                    value={formData[field.key] ?? ""}
+                    onChange={(e) => updateFormData(field.key, e.target.value)}
+                    rows={3}
+                  />
+                ) : (
+                  <Input
+                    type={field.type === "date" ? "date" : "text"}
+                    value={formData[field.key] ?? ""}
+                    onChange={(e) => updateFormData(field.key, e.target.value)}
+                    className={field.type === "date" ? "w-48" : undefined}
+                  />
+                )}
+              </div>
+            ))}
+
             <div className="space-y-2">
               <Label>追加情報・備考</Label>
               <Textarea
@@ -350,6 +415,13 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                   />
                 </>
               )}
+              {currentFormDataFields.map((field) => (
+                <ConfirmRow
+                  key={field.key}
+                  label={field.label}
+                  value={formData[field.key] ?? ""}
+                />
+              ))}
               <ConfirmRow label="追加情報" value={form.additional_info} />
             </div>
           </div>

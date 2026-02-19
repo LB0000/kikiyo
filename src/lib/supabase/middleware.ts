@@ -36,19 +36,23 @@ export async function updateSession(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const isAuthPage =
-    request.nextUrl.pathname === "/login" ||
-    request.nextUrl.pathname === "/reset-password";
+  const pathname = request.nextUrl.pathname;
+
+  // 認証フロー用パスはリダイレクト対象外
+  const isPublicPath =
+    pathname === "/login" ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/auth/callback");
 
   // 未認証ユーザーを/loginにリダイレクト
-  if (!session && !isAuthPage) {
+  if (!session && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // 認証済みユーザーがログインページにアクセスした場合
-  if (session && isAuthPage) {
+  // 認証済みユーザーがログインページにアクセスした場合（reset-passwordは許可）
+  if (session && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

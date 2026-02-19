@@ -26,6 +26,7 @@ export type ApplicationRow = {
   form_tab: FormTab;
   agency_id: string | null;
   liver_id: string | null;
+  form_data: Record<string, unknown> | null;
   created_at: string;
   agency_name?: string;
 };
@@ -69,6 +70,7 @@ export async function createApplication(params: {
   id_verified?: boolean;
   form_tab: FormTab;
   agency_id?: string;
+  form_data?: Record<string, unknown>;
 }) {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
@@ -106,6 +108,7 @@ export async function createApplication(params: {
     status: "pending",
     form_tab: v.form_tab,
     agency_id: v.agency_id || null,
+    form_data: v.form_data ?? {},
   });
 
   if (error) {

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
 import { CONSUMPTION_TAX_RATE } from "@/lib/constants";
+import { sendEmail, escapeHtml, getValidAppUrl } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,28 +85,6 @@ function getDeductibleRate(
   if (referenceDate < new Date("2026-10-01")) return 0.8;
   if (referenceDate < new Date("2029-10-01")) return 0.5;
   return 0.0;
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function getValidAppUrl(): string {
-  const rawUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  try {
-    const parsed = new URL(rawUrl);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      return "http://localhost:3000";
-    }
-    return parsed.origin;
-  } catch {
-    return "http://localhost:3000";
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -262,7 +241,7 @@ export async function getInvoicePreview(
 export async function createAndSendInvoice(params: {
   agencyId: string;
   monthlyReportId: string;
-}): Promise<{ success: true; invoiceId: string } | { error: string }> {
+}): Promise<{ success: true; invoiceId: string; emailError?: string | null } | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
 
@@ -440,6 +419,7 @@ export async function createAndSendInvoice(params: {
   }
 
   // メール通知送信（失敗しても請求書作成は成功）
+  let emailError: string | null = null;
   try {
     await sendInvoiceNotificationEmail({
       agencyName: agency.name,
@@ -447,12 +427,14 @@ export async function createAndSendInvoice(params: {
       totalJpy,
       dataMonth,
     });
-  } catch {
-    // メール送信失敗しても請求書作成は成功
+  } catch (e) {
+    emailError =
+      e instanceof Error ? e.message : "メール送信に失敗しました";
+    console.error("[sendInvoiceNotificationEmail]", emailError);
   }
 
   revalidatePath("/invoices");
-  return { success: true, invoiceId: invoice.id };
+  return { success: true, invoiceId: invoice.id, emailError };
 }
 
 // ---------------------------------------------------------------------------
@@ -468,40 +450,29 @@ async function sendInvoiceNotificationEmail(params: {
   const { agencyName, invoiceNumber, totalJpy, dataMonth } = params;
   const appUrl = getValidAppUrl();
 
-  const adminEmail =
-    process.env.ADMIN_EMAIL ?? process.env.EMAIL_FROM ?? "noreply@resend.dev";
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    throw new Error("ADMIN_EMAIL が設定されていません");
+  }
+
   const safeAgencyName = escapeHtml(agencyName);
   const safeInvoiceNumber = escapeHtml(invoiceNumber);
   const formattedTotal = totalJpy.toLocaleString("ja-JP");
   const safeDataMonth = dataMonth ? escapeHtml(dataMonth) : "未指定";
 
-  const subject = `請求書送付通知: ${agencyName} (${dataMonth ?? "未指定"})`;
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "TikTok Live Tool <noreply@resend.dev>",
-      to: [adminEmail],
-      subject,
-      html: `
-        <h2>請求書送付通知</h2>
-        <p>以下の請求書が作成・送付されました。</p>
-        <ul>
-          <li><strong>代理店名:</strong> ${safeAgencyName}</li>
-          <li><strong>請求書番号:</strong> ${safeInvoiceNumber}</li>
-          <li><strong>対象月:</strong> ${safeDataMonth}</li>
-          <li><strong>合計金額:</strong> ${formattedTotal}円（税込）</li>
-        </ul>
-        <p><a href="${appUrl}/invoices">請求書一覧を確認する</a></p>
-      `,
-    }),
+  await sendEmail({
+    to: adminEmail,
+    subject: `請求書送付通知: ${escapeHtml(agencyName)} (${safeDataMonth})`,
+    html: `
+      <h2>請求書送付通知</h2>
+      <p>以下の請求書が作成・送付されました。</p>
+      <ul>
+        <li><strong>代理店名:</strong> ${safeAgencyName}</li>
+        <li><strong>請求書番号:</strong> ${safeInvoiceNumber}</li>
+        <li><strong>対象月:</strong> ${safeDataMonth}</li>
+        <li><strong>合計金額:</strong> ${formattedTotal}円（税込）</li>
+      </ul>
+      <p><a href="${appUrl}/invoices">請求書一覧を確認する</a></p>
+    `,
   });
-
-  if (!res.ok) {
-    throw new Error("メール送信に失敗しました");
-  }
 }

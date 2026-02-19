@@ -33,6 +33,7 @@ export const createApplicationSchema = z.object({
     message: "有効な申請種別を選択してください",
   }),
   agency_id: z.string().optional(),
+  form_data: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CreateApplicationValues = z.infer<typeof createApplicationSchema>;

@@ -101,6 +101,9 @@ export function ApplicationDetailDialog({
       } else if (result.liverCreated) {
         toast.success("ステータスを変更し、ライバーを作成しました");
         onOpenChange(false);
+      } else if (result.liverSynced) {
+        toast.success("ステータスを変更し、ライバー名簿に反映しました");
+        onOpenChange(false);
       } else {
         toast.success("ステータスを変更しました");
         onOpenChange(false);

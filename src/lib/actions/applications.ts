@@ -168,12 +168,9 @@ export async function updateApplicationStatus(
   }
 
   // --- 紐付け申請のライバー連携 ---
-  // pending / rejected への変更時はライバー作成・同期しない
-  if (
-    appData.form_tab === "affiliation_check" &&
-    validStatus !== "pending" &&
-    validStatus !== "rejected"
-  ) {
+  if (appData.form_tab === "affiliation_check" && validStatus !== "pending") {
+    const shouldCreateLiver = validStatus !== "rejected";
+
     // 1. liver_id で既存ライバーを探す
     let targetLiverId = appData.liver_id;
 
@@ -192,8 +189,32 @@ export async function updateApplicationStatus(
       }
     }
 
-    // 3. ライバーが存在しない場合は新規作成
-    if (!targetLiverId) {
+    if (targetLiverId) {
+      // 3a. 既存ライバーのステータスを同期
+      const { error: syncError } = await supabase
+        .from("livers")
+        .update({ status: validStatus })
+        .eq("id", targetLiverId);
+
+      if (syncError) {
+        console.error("[updateApplicationStatus] liver sync:", syncError.message);
+        revalidatePath("/all-applications");
+        return { error: "申請ステータスは更新しましたが、ライバー名簿への反映に失敗しました" };
+      }
+
+      // liver_id を申請に紐付け（未設定の場合）
+      if (appData.liver_id !== targetLiverId) {
+        await supabase
+          .from("applications")
+          .update({ liver_id: targetLiverId })
+          .eq("id", id);
+      }
+
+      revalidatePath("/livers");
+      revalidatePath("/all-applications");
+      return { success: true, liverCreated: false, liverSynced: true };
+    } else if (shouldCreateLiver) {
+      // 3b. ライバーが存在しない場合は新規作成（rejected以外）
       if (!appData.agency_id) {
         revalidatePath("/all-applications");
         return { error: "ステータスは更新しましたが、代理店が未設定のためライバーを作成できませんでした" };
@@ -219,34 +240,18 @@ export async function updateApplicationStatus(
         return { error: "ステータスは更新しましたが、ライバー作成に失敗しました" };
       }
 
-      targetLiverId = newLiver.id;
-    } else {
-      // 4. 既存ライバーのステータスを同期
-      const { error: syncError } = await supabase
-        .from("livers")
-        .update({ status: validStatus })
-        .eq("id", targetLiverId);
-
-      if (syncError) {
-        console.error("[updateApplicationStatus] liver sync:", syncError.message);
-        revalidatePath("/all-applications");
-        return { error: "申請ステータスは更新しましたが、ライバー名簿への反映に失敗しました" };
-      }
-    }
-
-    // liver_id を申請に紐付け（未設定の場合）
-    if (targetLiverId && appData.liver_id !== targetLiverId) {
+      // liver_id を申請に紐付け
       await supabase
         .from("applications")
-        .update({ liver_id: targetLiverId })
+        .update({ liver_id: newLiver.id })
         .eq("id", id);
-    }
 
-    revalidatePath("/livers");
-    revalidatePath("/all-applications");
-    return { success: true, liverCreated: !appData.liver_id };
+      revalidatePath("/livers");
+      revalidatePath("/all-applications");
+      return { success: true, liverCreated: true, liverSynced: false };
+    }
   }
 
   revalidatePath("/all-applications");
-  return { success: true, liverCreated: false };
+  return { success: true, liverCreated: false, liverSynced: false };
 }

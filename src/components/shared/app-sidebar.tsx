@@ -16,6 +16,7 @@ import {
   Receipt,
   ExternalLink,
   LogOut,
+  KeyRound,
 } from "lucide-react";
 import {
   Sidebar,
@@ -151,7 +152,17 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
         </div>
         <Button
           variant="ghost"
-          className="mt-1 w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="mt-1 w-full justify-start text-muted-foreground hover:text-foreground"
+          asChild
+        >
+          <Link href="/settings">
+            <KeyRound className="size-4" />
+            パスワード変更
+          </Link>
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           onClick={handleLogout}
         >
           <LogOut className="size-4" />

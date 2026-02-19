@@ -171,7 +171,7 @@ export async function updateApplicationStatus(
       .from("applications")
       .update({ status: validStatus })
       .eq("id", id)
-      .select("liver_id")
+      .select("liver_id, form_tab, tiktok_username, agency_id")
       .single();
 
     if (error) {
@@ -179,11 +179,33 @@ export async function updateApplicationStatus(
     }
 
     // 紐付いたライバーが存在する場合、ライバーのステータスも同期
-    if (updatedApp?.liver_id) {
+    let targetLiverId = updatedApp?.liver_id;
+
+    // liver_id が未設定だが紐付け申請の場合、tiktok_username + agency_id でライバーを検索
+    if (!targetLiverId && updatedApp?.form_tab === "affiliation_check" && updatedApp.tiktok_username) {
+      let query = supabase
+        .from("livers")
+        .select("id")
+        .ilike("tiktok_username", updatedApp.tiktok_username);
+      if (updatedApp.agency_id) {
+        query = query.eq("agency_id", updatedApp.agency_id);
+      }
+      const { data: matchedLiver } = await query.limit(1).single();
+      if (matchedLiver) {
+        targetLiverId = matchedLiver.id;
+        // liver_id を申請に紐付け（次回以降は直接参照可能に）
+        await supabase
+          .from("applications")
+          .update({ liver_id: matchedLiver.id })
+          .eq("id", id);
+      }
+    }
+
+    if (targetLiverId) {
       const { error: syncError } = await supabase
         .from("livers")
         .update({ status: validStatus })
-        .eq("id", updatedApp.liver_id);
+        .eq("id", targetLiverId);
 
       if (syncError) {
         console.error("[updateApplicationStatus] liver sync:", syncError.message);

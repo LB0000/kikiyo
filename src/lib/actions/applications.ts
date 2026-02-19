@@ -135,21 +135,18 @@ export async function updateApplicationStatus(
 
   const supabase = await createClient();
 
-  // 紐付け申請の承認時はライバー作成も行うため、先に申請データを取得
-  let app: { form_tab: string; agency_id: string | null; name: string | null; tiktok_username: string | null; address: string | null; birth_date: string | null; contact: string | null; email: string | null; tiktok_account_link: string | null } | null = null;
-  if (validStatus === "authorized") {
-    const { data, error: fetchError } = await supabase
-      .from("applications")
-      .select("form_tab, agency_id, name, tiktok_username, address, birth_date, contact, email, tiktok_account_link")
-      .eq("id", id)
-      .single();
-    if (fetchError) {
-      console.error("[updateApplicationStatus] fetch:", fetchError.message);
-      return { error: "申請データの取得に失敗しました" };
-    }
-    app = data;
+  // ライバー作成・同期に必要なため、先に申請データを取得
+  const { data: appData, error: fetchError } = await supabase
+    .from("applications")
+    .select("form_tab, agency_id, liver_id, name, tiktok_username, address, birth_date, contact, email, tiktok_account_link")
+    .eq("id", id)
+    .single();
+  if (fetchError) {
+    console.error("[updateApplicationStatus] fetch:", fetchError.message);
+    return { error: "申請データの取得に失敗しました" };
   }
 
+  // --- ステータス更新 ---
   // 楽観的ロック: 承認時は現在のステータスが pending の場合のみ更新（重複処理防止）
   if (validStatus === "authorized") {
     const { data: updated, error } = await supabase
@@ -159,49 +156,72 @@ export async function updateApplicationStatus(
       .eq("status", "pending")
       .select("id");
 
-    if (error) {
-      return { error: "ステータスの更新に失敗しました" };
-    }
-
-    if (!updated || updated.length === 0) {
-      return { error: "この申請は既に処理済みです" };
-    }
+    if (error) return { error: "ステータスの更新に失敗しました" };
+    if (!updated || updated.length === 0) return { error: "この申請は既に処理済みです" };
   } else {
-    const { data: updatedApp, error } = await supabase
+    const { error } = await supabase
       .from("applications")
       .update({ status: validStatus })
-      .eq("id", id)
-      .select("liver_id, form_tab, tiktok_username, agency_id")
-      .single();
+      .eq("id", id);
 
-    if (error) {
-      return { error: "ステータスの更新に失敗しました" };
-    }
+    if (error) return { error: "ステータスの更新に失敗しました" };
+  }
 
-    // 紐付いたライバーが存在する場合、ライバーのステータスも同期
-    let targetLiverId = updatedApp?.liver_id;
+  // --- 紐付け申請のライバー連携 ---
+  // pending / rejected への変更時はライバー作成・同期しない
+  if (
+    appData.form_tab === "affiliation_check" &&
+    validStatus !== "pending" &&
+    validStatus !== "rejected"
+  ) {
+    // 1. liver_id で既存ライバーを探す
+    let targetLiverId = appData.liver_id;
 
-    // liver_id が未設定だが紐付け申請の場合、tiktok_username + agency_id でライバーを検索
-    if (!targetLiverId && updatedApp?.form_tab === "affiliation_check" && updatedApp.tiktok_username) {
+    // 2. liver_id 未設定の場合、tiktok_username で検索
+    if (!targetLiverId && appData.tiktok_username) {
       let query = supabase
         .from("livers")
         .select("id")
-        .ilike("tiktok_username", updatedApp.tiktok_username);
-      if (updatedApp.agency_id) {
-        query = query.eq("agency_id", updatedApp.agency_id);
+        .ilike("tiktok_username", appData.tiktok_username);
+      if (appData.agency_id) {
+        query = query.eq("agency_id", appData.agency_id);
       }
       const { data: matchedLiver } = await query.limit(1).maybeSingle();
       if (matchedLiver) {
         targetLiverId = matchedLiver.id;
-        // liver_id を申請に紐付け（次回以降は直接参照可能に）
-        await supabase
-          .from("applications")
-          .update({ liver_id: matchedLiver.id })
-          .eq("id", id);
       }
     }
 
-    if (targetLiverId) {
+    // 3. ライバーが存在しない場合は新規作成
+    if (!targetLiverId) {
+      if (!appData.agency_id) {
+        revalidatePath("/all-applications");
+        return { error: "ステータスは更新しましたが、代理店が未設定のためライバーを作成できませんでした" };
+      }
+
+      const { data: newLiver, error: liverError } = await supabase.from("livers").insert({
+        name: appData.name || null,
+        account_name: appData.tiktok_username || null,
+        address: appData.address || null,
+        birth_date: appData.birth_date || null,
+        contact: appData.contact || null,
+        email: appData.email || null,
+        tiktok_username: appData.tiktok_username || null,
+        link: appData.tiktok_account_link || null,
+        status: validStatus,
+        agency_id: appData.agency_id,
+        acquisition_date: new Date().toISOString().slice(0, 10),
+      }).select("id").single();
+
+      if (liverError) {
+        console.error("[updateApplicationStatus] liver create:", liverError.message);
+        revalidatePath("/all-applications");
+        return { error: "ステータスは更新しましたが、ライバー作成に失敗しました" };
+      }
+
+      targetLiverId = newLiver.id;
+    } else {
+      // 4. 既存ライバーのステータスを同期
       const { error: syncError } = await supabase
         .from("livers")
         .update({ status: validStatus })
@@ -212,55 +232,19 @@ export async function updateApplicationStatus(
         revalidatePath("/all-applications");
         return { error: "申請ステータスは更新しましたが、ライバー名簿への反映に失敗しました" };
       }
-
-      revalidatePath("/livers");
     }
 
-    revalidatePath("/all-applications");
-    return { success: true, liverCreated: false };
-  }
-
-  // 紐付け申請が承認された場合、ライバーレコードを作成
-  if (validStatus === "authorized" && app && app.form_tab === "affiliation_check") {
-    if (!app.agency_id) {
-      revalidatePath("/all-applications");
-      return { error: "ステータスは更新しましたが、代理店が未設定のためライバーを作成できませんでした" };
-    }
-
-    const { data: newLiver, error: liverError } = await supabase.from("livers").insert({
-      name: app.name || null,
-      account_name: app.tiktok_username || null,
-      address: app.address || null,
-      birth_date: app.birth_date || null,
-      contact: app.contact || null,
-      email: app.email || null,
-      tiktok_username: app.tiktok_username || null,
-      link: app.tiktok_account_link || null,
-      status: "authorized" as ApplicationStatus,
-      agency_id: app.agency_id,
-      acquisition_date: new Date().toISOString().slice(0, 10),
-    }).select("id").single();
-
-    if (liverError) {
-      console.error("[updateApplicationStatus] liver:", liverError.message);
-      revalidatePath("/all-applications");
-      return { error: "ステータスは更新しましたが、ライバー作成に失敗しました" };
-    }
-
-    // 作成したライバーのIDを申請レコードに紐付け
-    if (newLiver) {
-      const { error: linkError } = await supabase
+    // liver_id を申請に紐付け（未設定の場合）
+    if (targetLiverId && appData.liver_id !== targetLiverId) {
+      await supabase
         .from("applications")
-        .update({ liver_id: newLiver.id })
+        .update({ liver_id: targetLiverId })
         .eq("id", id);
-      if (linkError) {
-        console.error("申請へのライバーID紐付けに失敗:", linkError.message);
-      }
     }
 
     revalidatePath("/livers");
     revalidatePath("/all-applications");
-    return { success: true, liverCreated: true };
+    return { success: true, liverCreated: !appData.liver_id };
   }
 
   revalidatePath("/all-applications");

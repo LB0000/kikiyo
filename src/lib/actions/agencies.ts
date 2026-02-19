@@ -597,7 +597,7 @@ function buildEmailHtml({
 
       <!-- CTA Button -->
       <div style="text-align:center;margin:28px 0;">
-        <a href="${loginUrl}" style="display:inline-block;background-color:#0f172a;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:600;">
+        <a href="${escapeHtml(loginUrl)}" style="display:inline-block;background-color:#0f172a;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:600;">
           ログインする
         </a>
       </div>

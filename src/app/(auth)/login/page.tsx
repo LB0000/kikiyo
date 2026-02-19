@@ -87,15 +87,12 @@ export default function LoginPage() {
       <Card className="relative w-full max-w-md overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-primary/70" />
         <CardHeader className="pt-8 text-center">
-          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
-            <Image src="/logo.png" alt="KIKIYO" width={36} height={36} />
+          <div className="mx-auto mb-1 flex flex-col items-center gap-1.5">
+            <Image src="/logo.png" alt="KIKIYO" width={48} height={48} />
+            <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase">
+              Live Manager
+            </p>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-wider">
-            KIKIYO
-          </CardTitle>
-          <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            Live Manager
-          </p>
           <CardDescription className="mt-2">
             アカウントにログインしてください
           </CardDescription>

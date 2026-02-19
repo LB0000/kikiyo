@@ -55,31 +55,23 @@ export function AgenciesClient({ agencies }: Props) {
   const [selectedAgency, setSelectedAgency] =
     useState<AgencyWithHierarchy | null>(null);
   const [dialogKey, setDialogKey] = useState(0);
-  const [defaultTab, setDefaultTab] = useState<"basic" | "company">("basic");
   const [search, setSearch] = useState("");
   const [rankFilter, setRankFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   function handleNew() {
     setSelectedAgency(null);
-    setDefaultTab("basic");
     setDialogKey((k) => k + 1);
     setDialogOpen(true);
   }
 
   function handleSelect(agency: AgencyWithHierarchy) {
     setSelectedAgency(agency);
-    setDefaultTab("basic");
     setDialogKey((k) => k + 1);
     setDialogOpen(true);
   }
 
-  function handleCompanyInfo(agency: AgencyWithHierarchy) {
-    setSelectedAgency(agency);
-    setDefaultTab("company");
-    setDialogKey((k) => k + 1);
-    setDialogOpen(true);
-  }
+
 
   const filtered = agencies.filter((agency) => {
     if (search) {
@@ -162,7 +154,6 @@ export function AgenciesClient({ agencies }: Props) {
         key={search + rankFilter + statusFilter}
         agencies={filtered}
         onSelect={handleSelect}
-        onCompanyInfo={handleCompanyInfo}
       />
       <AgencyFormDialog
         key={dialogKey}
@@ -170,7 +161,6 @@ export function AgenciesClient({ agencies }: Props) {
         onOpenChange={setDialogOpen}
         agency={selectedAgency}
         allAgencies={agencies}
-        defaultTab={defaultTab}
       />
     </>
   );

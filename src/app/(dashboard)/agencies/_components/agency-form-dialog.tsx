@@ -52,7 +52,6 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   agency: AgencyWithHierarchy | null;
   allAgencies: AgencyWithHierarchy[];
-  defaultTab?: "basic" | "company";
 };
 
 export function AgencyFormDialog({
@@ -60,7 +59,6 @@ export function AgencyFormDialog({
   onOpenChange,
   agency,
   allAgencies,
-  defaultTab = "basic",
 }: Props) {
   const [loading, setLoading] = useState(false);
   const isEdit = !!agency;
@@ -268,7 +266,7 @@ export function AgencyFormDialog({
           </DialogTitle>
         </DialogHeader>
         {isEdit ? (
-          <Tabs defaultValue={defaultTab}>
+          <Tabs defaultValue="basic">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="basic">基本情報</TabsTrigger>
               <TabsTrigger value="company">会社情報</TabsTrigger>

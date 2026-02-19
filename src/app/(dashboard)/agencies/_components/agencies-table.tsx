@@ -21,7 +21,6 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
-  FileText,
   Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,7 +33,6 @@ import type { AgencyRank } from "@/lib/supabase/types";
 type Props = {
   agencies: AgencyWithHierarchy[];
   onSelect: (agency: AgencyWithHierarchy) => void;
-  onCompanyInfo: (agency: AgencyWithHierarchy) => void;
 };
 
 const PAGE_SIZE = 10;
@@ -115,7 +113,7 @@ function SortableHead({
   );
 }
 
-export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
+export function AgenciesTable({ agencies, onSelect }: Props) {
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -247,34 +245,19 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
                       })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="cursor-pointer p-2.5 -m-1.5 text-muted-foreground hover:text-primary transition-colors"
-                              onClick={() => onCompanyInfo(agency)}
-                              aria-label="会社情報"
-                            >
-                              <FileText className="size-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>会社情報</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
-                              onClick={() => onSelect(agency)}
-                              aria-label="編集"
-                            >
-                              <Pencil className="size-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>編集</TooltipContent>
-                        </Tooltip>
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
+                            onClick={() => onSelect(agency)}
+                            aria-label="編集"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>編集</TooltipContent>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))

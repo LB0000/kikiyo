@@ -21,6 +21,8 @@ export type AgencyWithHierarchy = {
   user_id: string | null;
   created_at: string;
   parent_agencies: { parent_agency_id: string; parent_name: string }[];
+  registration_email_sent_at: string | null;
+  last_sign_in_at: string | null;
 };
 
 export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
@@ -28,12 +30,13 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
   if (!user) return [];
 
   const supabase = await createClient();
+  const isAdmin = user.role === "system_admin";
 
   // 代理店と階層を並列取得
   const [{ data: agencies, error }, { data: hierarchy }] = await Promise.all([
     supabase
       .from("agencies")
-      .select("id, name, commission_rate, rank, user_id, created_at")
+      .select("id, name, commission_rate, rank, user_id, created_at, registration_email_sent_at")
       .order("created_at", { ascending: false }),
     supabase
       .from("agency_hierarchy")
@@ -41,6 +44,36 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
   ]);
 
   if (error || !agencies) return [];
+
+  // 管理者のみ: Supabase Auth から最終ログイン日時を取得
+  const signInMap = new Map<string, string | null>();
+  if (isAdmin) {
+    const adminSupabase = createAdminClient();
+    const userIds = agencies.map((a) => a.user_id).filter(Boolean) as string[];
+    if (userIds.length > 0) {
+      // ページネーション付きで全ユーザー取得
+      let page = 1;
+      const perPage = 50;
+      let hasMore = true;
+      while (hasMore) {
+        const { data } = await adminSupabase.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+        if (data?.users) {
+          for (const u of data.users) {
+            if (userIds.includes(u.id)) {
+              signInMap.set(u.id, u.last_sign_in_at ?? null);
+            }
+          }
+          hasMore = data.users.length === perPage;
+        } else {
+          hasMore = false;
+        }
+        page++;
+      }
+    }
+  }
 
   const agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
 
@@ -57,6 +90,10 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
         parent_agency_id: h.parent_agency_id,
         parent_name: agencyMap.get(h.parent_agency_id) ?? "",
       })),
+    registration_email_sent_at: agency.registration_email_sent_at ?? null,
+    last_sign_in_at: agency.user_id
+      ? signInMap.get(agency.user_id) ?? null
+      : null,
   }));
 }
 
@@ -208,6 +245,11 @@ export async function createAgency(values: AgencyFormValues) {
   let emailError: string | null = null;
   try {
     await sendRegistrationEmail(values.email, tempPassword, values.name);
+    // メール送信成功を記録
+    await adminSupabase
+      .from("agencies")
+      .update({ registration_email_sent_at: new Date().toISOString() })
+      .eq("id", agency.id);
   } catch (e) {
     emailError =
       e instanceof Error ? e.message : "メール送信に失敗しました";

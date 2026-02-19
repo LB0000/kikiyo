@@ -41,13 +41,15 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
               <TableHead>上位代理店</TableHead>
               <TableHead>手数料率</TableHead>
               <TableHead>提携日</TableHead>
+              <TableHead>メール送信</TableHead>
+              <TableHead>ログイン</TableHead>
               <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {agencies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="p-0">
+                <TableCell colSpan={8} className="p-0">
                   <EmptyState
                     icon={Building2}
                     title="代理店がありません"
@@ -76,6 +78,24 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
                   </TableCell>
                   <TableCell>
                     {new Date(agency.created_at).toLocaleDateString("ja-JP")}
+                  </TableCell>
+                  <TableCell>
+                    {agency.registration_email_sent_at ? (
+                      <span className="text-sm">
+                        ✓ {new Date(agency.registration_email_sent_at).toLocaleDateString("ja-JP")}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-amber-600">未送信</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {agency.last_sign_in_at ? (
+                      <span className="text-sm">
+                        ✓ {new Date(agency.last_sign_in_at).toLocaleDateString("ja-JP")}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-amber-600">未ログイン</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

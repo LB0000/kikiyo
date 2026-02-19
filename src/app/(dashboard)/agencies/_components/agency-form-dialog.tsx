@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import {
@@ -34,17 +35,24 @@ import {
   type AgencyFormValues,
 } from "@/lib/validations/agency";
 import {
+  agencyCompanyInfoSchema,
+  type AgencyCompanyInfoValues,
+} from "@/lib/validations/invoice";
+import {
   createAgency,
   updateAgency,
+  getAgencyCompanyInfo,
+  updateAgencyCompanyInfo,
   type AgencyWithHierarchy,
 } from "@/lib/actions/agencies";
-import { AGENCY_RANK_LABELS } from "@/lib/constants";
+import { AGENCY_RANK_LABELS, ACCOUNT_TYPE_LABELS } from "@/lib/constants";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agency: AgencyWithHierarchy | null;
   allAgencies: AgencyWithHierarchy[];
+  defaultTab?: "basic" | "company";
 };
 
 export function AgencyFormDialog({
@@ -52,6 +60,7 @@ export function AgencyFormDialog({
   onOpenChange,
   agency,
   allAgencies,
+  defaultTab = "basic",
 }: Props) {
   const [loading, setLoading] = useState(false);
   const isEdit = !!agency;
@@ -81,7 +90,7 @@ export function AgencyFormDialog({
         },
   });
 
-  async function onSubmit(values: AgencyFormValues) {
+  async function onSubmitBasic(values: AgencyFormValues) {
     setLoading(true);
     try {
       if (isEdit) {
@@ -121,65 +130,312 @@ export function AgencyFormDialog({
 
   const availableParents = allAgencies.filter((a) => a.id !== agency?.id);
 
+  const basicForm = (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmitBasic)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>代理店名</FormLabel>
+              <FormControl>
+                <Input placeholder="代理店名を入力" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {!isEdit && (
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>メールアドレス</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="email@example.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        <FormField
+          control={form.control}
+          name="commission_rate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>手数料率 (%)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="10"
+                  value={field.value * 100}
+                  onChange={(e) =>
+                    field.onChange(parseFloat(e.target.value) / 100 || 0)
+                  }
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="rank"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>代理店ランク</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="ランクを選択" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.entries(AGENCY_RANK_LABELS).map(
+                    ([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="parent_agency_ids"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>上位代理店</FormLabel>
+              <FormControl>
+                <MultiCombobox
+                  options={availableParents.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                  }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="上位代理店を検索・選択"
+                  searchPlaceholder="代理店名で検索..."
+                  emptyText="該当する代理店がありません"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            キャンセル
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "保存中..." : "保存"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "代理店編集" : "代理店新規登録"}
+            {isEdit ? `${agency.name} - 代理店情報` : "代理店新規登録"}
           </DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>代理店名</FormLabel>
-                  <FormControl>
-                    <Input placeholder="代理店名を入力" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {!isEdit && (
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>メールアドレス</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="email@example.com"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+        {isEdit ? (
+          <Tabs defaultValue={defaultTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="basic">基本情報</TabsTrigger>
+              <TabsTrigger value="company">会社情報</TabsTrigger>
+            </TabsList>
+            <TabsContent value="basic">
+              {basicForm}
+            </TabsContent>
+            <TabsContent value="company">
+              <CompanyInfoTab
+                agencyId={agency.id}
+                open={open}
+                onClose={() => onOpenChange(false)}
               />
-            )}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          basicForm
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
+function CompanyInfoTab({
+  agencyId,
+  open,
+  onClose,
+}: {
+  agencyId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+
+  const form = useForm<AgencyCompanyInfoValues>({
+    resolver: zodResolver(agencyCompanyInfoSchema),
+    defaultValues: {
+      invoice_registration_number: "",
+      company_address: "",
+      representative_name: "",
+      bank_name: "",
+      bank_branch: "",
+      bank_account_type: "",
+      bank_account_number: "",
+      bank_account_holder: "",
+    },
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setFetching(true);
+    getAgencyCompanyInfo(agencyId)
+      .then((result) => {
+        if ("data" in result && result.data) {
+          form.reset({
+            invoice_registration_number:
+              result.data.invoice_registration_number ?? "",
+            company_address: result.data.company_address ?? "",
+            representative_name: result.data.representative_name ?? "",
+            bank_name: result.data.bank_name ?? "",
+            bank_branch: result.data.bank_branch ?? "",
+            bank_account_type: result.data.bank_account_type ?? "",
+            bank_account_number: result.data.bank_account_number ?? "",
+            bank_account_holder: result.data.bank_account_holder ?? "",
+          });
+        }
+        setFetching(false);
+      })
+      .catch(() => {
+        toast.error("会社情報の取得に失敗しました");
+        setFetching(false);
+      });
+  }, [open, agencyId, form]);
+
+  async function onSubmit(values: AgencyCompanyInfoValues) {
+    setLoading(true);
+    const result = await updateAgencyCompanyInfo(agencyId, values);
+    if ("error" in result) {
+      toast.error("更新に失敗しました", { description: result.error });
+    } else {
+      toast.success("会社情報を更新しました");
+      onClose();
+    }
+    setLoading(false);
+  }
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </div>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="invoice_registration_number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>インボイス登録番号</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="T1234567890123"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="company_address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>会社住所</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="東京都..."
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="representative_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>代表者名</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="山田太郎"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="rounded-lg border p-4 space-y-4">
+          <p className="text-sm font-medium">振込先口座</p>
+
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="commission_rate"
+              name="bank_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>手数料率 (%)</FormLabel>
+                  <FormLabel>銀行名</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      step="0.1"
-                      placeholder="10"
-                      value={field.value * 100}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) / 100 || 0)
-                      }
+                      placeholder="○○銀行"
+                      {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -189,21 +445,41 @@ export function AgencyFormDialog({
 
             <FormField
               control={form.control}
-              name="rank"
+              name="bank_branch"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>代理店ランク</FormLabel>
+                  <FormLabel>支店名</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="○○支店"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="bank_account_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>口座種別</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    value={field.value}
+                    value={field.value ?? ""}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="ランクを選択" />
+                        <SelectValue placeholder="選択してください" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(AGENCY_RANK_LABELS).map(
+                      {Object.entries(ACCOUNT_TYPE_LABELS).map(
                         ([value, label]) => (
                           <SelectItem key={value} value={value}>
                             {label}
@@ -219,43 +495,55 @@ export function AgencyFormDialog({
 
             <FormField
               control={form.control}
-              name="parent_agency_ids"
+              name="bank_account_number"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>上位代理店</FormLabel>
+                  <FormLabel>口座番号</FormLabel>
                   <FormControl>
-                    <MultiCombobox
-                      options={availableParents.map((a) => ({
-                        value: a.id,
-                        label: a.name,
-                      }))}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="上位代理店を検索・選択"
-                      searchPlaceholder="代理店名で検索..."
-                      emptyText="該当する代理店がありません"
+                    <Input
+                      placeholder="1234567"
+                      {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                キャンセル
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "保存中..." : "保存"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          <FormField
+            control={form.control}
+            name="bank_account_holder"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>口座名義</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="カ）○○○○"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+          >
+            キャンセル
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "保存中..." : "保存"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 }

@@ -15,7 +15,6 @@ import { AGENCY_RANK_LABELS } from "@/lib/constants";
 import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 import { AgenciesTable } from "./agencies-table";
 import { AgencyFormDialog } from "./agency-form-dialog";
-import { AgencyCompanyInfoDialog } from "./agency-company-info-dialog";
 import type { AgencyWithHierarchy } from "@/lib/actions/agencies";
 import type { AgencyRank } from "@/lib/supabase/types";
 
@@ -56,31 +55,30 @@ export function AgenciesClient({ agencies }: Props) {
   const [selectedAgency, setSelectedAgency] =
     useState<AgencyWithHierarchy | null>(null);
   const [dialogKey, setDialogKey] = useState(0);
+  const [defaultTab, setDefaultTab] = useState<"basic" | "company">("basic");
   const [search, setSearch] = useState("");
   const [rankFilter, setRankFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [companyInfoOpen, setCompanyInfoOpen] = useState(false);
-  const [companyInfoAgency, setCompanyInfoAgency] =
-    useState<AgencyWithHierarchy | null>(null);
-  const [companyInfoKey, setCompanyInfoKey] = useState(0);
-
   function handleNew() {
     setSelectedAgency(null);
+    setDefaultTab("basic");
     setDialogKey((k) => k + 1);
     setDialogOpen(true);
   }
 
   function handleSelect(agency: AgencyWithHierarchy) {
     setSelectedAgency(agency);
+    setDefaultTab("basic");
     setDialogKey((k) => k + 1);
     setDialogOpen(true);
   }
 
   function handleCompanyInfo(agency: AgencyWithHierarchy) {
-    setCompanyInfoAgency(agency);
-    setCompanyInfoKey((k) => k + 1);
-    setCompanyInfoOpen(true);
+    setSelectedAgency(agency);
+    setDefaultTab("company");
+    setDialogKey((k) => k + 1);
+    setDialogOpen(true);
   }
 
   const filtered = agencies.filter((agency) => {
@@ -172,16 +170,8 @@ export function AgenciesClient({ agencies }: Props) {
         onOpenChange={setDialogOpen}
         agency={selectedAgency}
         allAgencies={agencies}
+        defaultTab={defaultTab}
       />
-      {companyInfoAgency && (
-        <AgencyCompanyInfoDialog
-          key={companyInfoKey}
-          open={companyInfoOpen}
-          onOpenChange={setCompanyInfoOpen}
-          agencyId={companyInfoAgency.id}
-          agencyName={companyInfoAgency.name}
-        />
-      )}
     </>
   );
 }

@@ -63,3 +63,40 @@ export function getValidAppUrl(): string {
     return "http://localhost:3000";
   }
 }
+
+/**
+ * KIKIYO LIVE MANAGER 共通メールレイアウト。
+ * ヘッダー・フッター付きのカード風デザイン。
+ * `bodyHtml` にはメール本文のHTMLを渡す。
+ */
+export function wrapEmailLayout(bodyHtml: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:'Helvetica Neue',Arial,'Hiragino Sans',sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+
+    <!-- Header -->
+    <div style="background-color:#0f172a;border-radius:12px 12px 0 0;padding:24px 32px;">
+      <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">
+        KIKIYO LIVE MANAGER
+      </h1>
+    </div>
+
+    <!-- Body -->
+    <div style="background-color:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+      ${bodyHtml}
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color:#f9fafb;border-radius:0 0 12px 12px;padding:16px 32px;border:1px solid #e5e7eb;border-top:none;">
+      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+        &copy; KIKIYO LIVE MANAGER &#8212; このメールは自動送信です
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}

@@ -11,7 +11,7 @@ import {
   agencyCompanyInfoSchema,
   type AgencyCompanyInfoValues,
 } from "@/lib/validations/invoice";
-import { sendEmail, escapeHtml, getValidAppUrl } from "@/lib/email";
+import { sendEmail, escapeHtml, getValidAppUrl, wrapEmailLayout } from "@/lib/email";
 
 export type AgencyWithHierarchy = {
   id: string;
@@ -529,7 +529,7 @@ function generateTempPassword(): string {
 // メールテンプレート
 // ---------------------------------------------------------------------------
 
-function buildEmailHtml({
+function buildRegistrationEmailBody({
   agencyName,
   email,
   tempPassword,
@@ -554,23 +554,7 @@ function buildEmailHtml({
     .map((line) => `<p style="margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;">${line}</p>`)
     .join("\n");
 
-  return `
-<!DOCTYPE html>
-<html lang="ja">
-<head><meta charset="UTF-8" /></head>
-<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:'Helvetica Neue',Arial,'Hiragino Sans',sans-serif;">
-  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
-
-    <!-- Header -->
-    <div style="background-color:#0f172a;border-radius:12px 12px 0 0;padding:24px 32px;">
-      <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px;">
-        KIKIYO LIVE MANAGER
-      </h1>
-    </div>
-
-    <!-- Body -->
-    <div style="background-color:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
-
+  return wrapEmailLayout(`
       <h2 style="margin:0 0 24px;color:#111827;font-size:20px;font-weight:700;">
         ${escapeHtml(heading)}
       </h2>
@@ -616,19 +600,7 @@ function buildEmailHtml({
       <p style="margin:24px 0 0;padding:12px 16px;background-color:#fefce8;border-left:3px solid #eab308;color:#854d0e;font-size:13px;line-height:1.6;border-radius:0 4px 4px 0;">
         ${escapeHtml(note)}
       </p>
-
-    </div>
-
-    <!-- Footer -->
-    <div style="background-color:#f9fafb;border-radius:0 0 12px 12px;padding:16px 32px;border:1px solid #e5e7eb;border-top:none;">
-      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-        &copy; KIKIYO LIVE MANAGER &#8212; このメールは自動送信です
-      </p>
-    </div>
-
-  </div>
-</body>
-</html>`;
+  `);
 }
 
 async function sendRegistrationEmail(
@@ -641,7 +613,7 @@ async function sendRegistrationEmail(
   await sendEmail({
     to: email,
     subject: "【KIKIYO LIVE MANAGER】代理店登録のご案内",
-    html: buildEmailHtml({
+    html: buildRegistrationEmailBody({
       agencyName,
       email,
       tempPassword,
@@ -666,7 +638,7 @@ async function sendResendEmail(
   await sendEmail({
     to: email,
     subject: "【KIKIYO LIVE MANAGER】ログイン情報の再送",
-    html: buildEmailHtml({
+    html: buildRegistrationEmailBody({
       agencyName,
       email,
       tempPassword,

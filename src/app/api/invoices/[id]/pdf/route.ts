@@ -56,6 +56,7 @@ export async function GET(
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${invoice.invoice_number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
+      "Cache-Control": "private, max-age=3600, immutable",
     },
   });
 }

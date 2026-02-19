@@ -524,9 +524,9 @@ export async function importCsvData(params: {
     const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
     const agency = agencyByNameMap.get(row.creator_network_manager);
 
-    const totalRewardJpy = row.estimated_bonus * rate;
+    const totalRewardJpy = Math.round(row.estimated_bonus * rate * 100) / 100;
     const agencyCommissionRate = agency?.commission_rate ?? 0;
-    const agencyRewardJpy = row.estimated_bonus * rate * agencyCommissionRate;
+    const agencyRewardJpy = Math.round(row.estimated_bonus * rate * agencyCommissionRate * 100) / 100;
 
     return {
       creator_id: row.creator_id,
@@ -714,6 +714,9 @@ export type RateChangePreview = {
   newTotalRewardJpy: number;
   oldTotalRefundJpy: number;
   newTotalRefundJpy: number;
+  oldTotalAgencyRewardJpy: number;
+  newTotalAgencyRewardJpy: number;
+  invoiceCount: number;
 };
 
 export async function previewRateChange(
@@ -724,26 +727,34 @@ export async function previewRateChange(
   if (!user) return { error: "認証が必要です" };
   if (user.role !== "system_admin") return { error: "権限がありません" };
 
-  if (newRate <= 0) return { error: "為替レートは正の数で入力してください" };
+  if (newRate < 50 || newRate > 500) {
+    return { error: "為替レートは50〜500の範囲で入力してください" };
+  }
 
   const supabase = await createClient();
 
-  const [reportRes, csvRes, refundRes] = await Promise.all([
-    supabase
-      .from("monthly_reports")
-      .select("rate")
-      .eq("id", monthlyReportId)
-      .single(),
-    supabase
-      .from("csv_data")
-      .select("estimated_bonus, total_reward_jpy")
-      .eq("monthly_report_id", monthlyReportId),
-    supabase
-      .from("refunds")
-      .select("amount_usd, amount_jpy")
-      .eq("monthly_report_id", monthlyReportId)
-      .eq("is_deleted", false),
-  ]);
+  const [reportRes, csvRes, refundRes, agencyRes, invoiceRes] =
+    await Promise.all([
+      supabase
+        .from("monthly_reports")
+        .select("rate")
+        .eq("id", monthlyReportId)
+        .single(),
+      supabase
+        .from("csv_data")
+        .select("estimated_bonus, total_reward_jpy, agency_reward_jpy, agency_id")
+        .eq("monthly_report_id", monthlyReportId),
+      supabase
+        .from("refunds")
+        .select("amount_usd, amount_jpy")
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false),
+      supabase.from("agencies").select("id, commission_rate"),
+      supabase
+        .from("invoices")
+        .select("id", { count: "exact", head: true })
+        .eq("monthly_report_id", monthlyReportId),
+    ]);
 
   if (reportRes.error || !reportRes.data) {
     return { error: "レポートの取得に失敗しました" };
@@ -752,12 +763,24 @@ export async function previewRateChange(
   const oldRate = reportRes.data.rate;
   const csvRows = csvRes.data ?? [];
   const refundRows = refundRes.data ?? [];
+  const agencyMap = new Map(
+    (agencyRes.data ?? []).map((a) => [a.id, a.commission_rate])
+  );
 
   const oldTotalRewardJpy = csvRows.reduce((s, r) => s + r.total_reward_jpy, 0);
   const newTotalRewardJpy = csvRows.reduce(
     (s, r) => s + Math.round(r.estimated_bonus * newRate * 100) / 100,
     0
   );
+
+  const oldTotalAgencyRewardJpy = csvRows.reduce(
+    (s, r) => s + r.agency_reward_jpy,
+    0
+  );
+  const newTotalAgencyRewardJpy = csvRows.reduce((s, r) => {
+    const commission = r.agency_id ? (agencyMap.get(r.agency_id) ?? 0) : 0;
+    return s + Math.round(r.estimated_bonus * newRate * commission * 100) / 100;
+  }, 0);
 
   const oldTotalRefundJpy = refundRows.reduce((s, r) => s + r.amount_jpy, 0);
   const newTotalRefundJpy = refundRows.reduce(
@@ -774,6 +797,9 @@ export async function previewRateChange(
     newTotalRewardJpy,
     oldTotalRefundJpy,
     newTotalRefundJpy,
+    oldTotalAgencyRewardJpy,
+    newTotalAgencyRewardJpy,
+    invoiceCount: invoiceRes.count ?? 0,
   };
 }
 
@@ -789,7 +815,9 @@ export async function updateExchangeRate(
   if (!user) return { error: "認証が必要です" };
   if (user.role !== "system_admin") return { error: "権限がありません" };
 
-  if (newRate <= 0) return { error: "為替レートは正の数で入力してください" };
+  if (newRate < 50 || newRate > 500) {
+    return { error: "為替レートは50〜500の範囲で入力してください" };
+  }
 
   const supabase = await createClient();
 

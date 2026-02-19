@@ -73,6 +73,7 @@ export function DashboardClient({
   const [csvKey, setCsvKey] = useState(0);
   const [refundKey, setRefundKey] = useState(0);
   const [rateKey, setRateKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const agencyFilter = useMemo(
     () =>
@@ -115,7 +116,7 @@ export function DashboardClient({
     return () => {
       cancelled = true;
     };
-  }, [selectedReportId, agencyFilter]);
+  }, [selectedReportId, agencyFilter, refreshKey]);
 
   const selectedReport = reports.find((r) => r.id === selectedReportId);
 
@@ -377,6 +378,7 @@ export function DashboardClient({
             onOpenChange={setRateOpen}
             monthlyReportId={selectedReportId}
             currentRate={dashboardData.report.rate}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
           />
         </>
       )}

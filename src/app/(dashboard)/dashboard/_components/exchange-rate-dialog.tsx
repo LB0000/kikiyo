@@ -24,10 +24,11 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   monthlyReportId: string;
   currentRate: number;
+  onSuccess?: () => void;
 };
 
 function fmtJpy(n: number): string {
-  return `¥${Math.round(n).toLocaleString("ja-JP")}`;
+  return `\u00a5${Math.round(n).toLocaleString("ja-JP")}`;
 }
 
 function fmtRate(n: number): string {
@@ -55,6 +56,7 @@ export function ExchangeRateDialog({
   onOpenChange,
   monthlyReportId,
   currentRate,
+  onSuccess,
 }: Props) {
   const [newRate, setNewRate] = useState(currentRate.toString());
   const [loading, setLoading] = useState(false);
@@ -71,8 +73,8 @@ export function ExchangeRateDialog({
   async function handlePreview(e: React.FormEvent) {
     e.preventDefault();
     const rate = parseFloat(newRate);
-    if (isNaN(rate) || rate <= 0) {
-      toast.error("有効な為替レートを入力してください");
+    if (isNaN(rate) || rate < 50 || rate > 500) {
+      toast.error("為替レートは50〜500の範囲で入力してください");
       return;
     }
     if (rate === currentRate) {
@@ -81,36 +83,47 @@ export function ExchangeRateDialog({
     }
 
     setLoading(true);
-    const result = await previewRateChange(monthlyReportId, rate);
-    setLoading(false);
+    try {
+      const result = await previewRateChange(monthlyReportId, rate);
 
-    if ("error" in result) {
-      toast.error("プレビューの取得に失敗しました", {
-        description: result.error,
-      });
-      return;
+      if ("error" in result) {
+        toast.error("プレビューの取得に失敗しました", {
+          description: result.error,
+        });
+        return;
+      }
+
+      setPreview(result);
+    } catch {
+      toast.error("プレビューの取得中にエラーが発生しました");
+    } finally {
+      setLoading(false);
     }
-
-    setPreview(result);
   }
 
   async function handleConfirm() {
     if (!preview) return;
 
     setLoading(true);
-    const result = await updateExchangeRate(monthlyReportId, preview.newRate);
+    try {
+      const result = await updateExchangeRate(monthlyReportId, preview.newRate);
 
-    if ("error" in result) {
-      toast.error("為替レート変更に失敗しました", {
-        description: result.error,
-      });
-    } else {
-      toast.success("為替レートを変更しました", {
-        description: `${fmtRate(result.oldRate)} → ${fmtRate(preview.newRate)}`,
-      });
-      handleClose(false);
+      if ("error" in result) {
+        toast.error("為替レート変更に失敗しました", {
+          description: result.error,
+        });
+      } else {
+        toast.success("為替レートを変更しました", {
+          description: `${fmtRate(result.oldRate)} \u2192 ${fmtRate(preview.newRate)}`,
+        });
+        handleClose(false);
+        onSuccess?.();
+      }
+    } catch {
+      toast.error("為替レート変更中にエラーが発生しました");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   // ステップ2: プレビュー確認画面
@@ -131,7 +144,7 @@ export function ExchangeRateDialog({
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">為替レート</p>
               <p className="text-lg font-bold tabular-nums">
                 {fmtRate(preview.oldRate)}
-                <span className="mx-2 text-muted-foreground">→</span>
+                <span className="mx-2 text-muted-foreground">{"\u2192"}</span>
                 {fmtRate(preview.newRate)}
               </p>
             </div>
@@ -159,10 +172,21 @@ export function ExchangeRateDialog({
                   <span className="text-muted-foreground">合計報酬(JPY)</span>
                   <div className="text-right">
                     <span>{fmtJpy(preview.oldTotalRewardJpy)}</span>
-                    <span className="mx-1.5 text-muted-foreground">→</span>
+                    <span className="mx-1.5 text-muted-foreground">{"\u2192"}</span>
                     <span className="font-semibold">{fmtJpy(preview.newTotalRewardJpy)}</span>
                     <span className="ml-2 text-xs">
                       (<DiffValue oldVal={preview.oldTotalRewardJpy} newVal={preview.newTotalRewardJpy} />)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">代理店報酬(JPY)</span>
+                  <div className="text-right">
+                    <span>{fmtJpy(preview.oldTotalAgencyRewardJpy)}</span>
+                    <span className="mx-1.5 text-muted-foreground">{"\u2192"}</span>
+                    <span className="font-semibold">{fmtJpy(preview.newTotalAgencyRewardJpy)}</span>
+                    <span className="ml-2 text-xs">
+                      (<DiffValue oldVal={preview.oldTotalAgencyRewardJpy} newVal={preview.newTotalAgencyRewardJpy} />)
                     </span>
                   </div>
                 </div>
@@ -171,7 +195,7 @@ export function ExchangeRateDialog({
                     <span className="text-muted-foreground">返金合計(JPY)</span>
                     <div className="text-right">
                       <span>{fmtJpy(preview.oldTotalRefundJpy)}</span>
-                      <span className="mx-1.5 text-muted-foreground">→</span>
+                      <span className="mx-1.5 text-muted-foreground">{"\u2192"}</span>
                       <span className="font-semibold">{fmtJpy(preview.newTotalRefundJpy)}</span>
                       <span className="ml-2 text-xs">
                         (<DiffValue oldVal={preview.oldTotalRefundJpy} newVal={preview.newTotalRefundJpy} />)
@@ -181,6 +205,19 @@ export function ExchangeRateDialog({
                 )}
               </div>
             </div>
+
+            {/* 請求書への影響警告 */}
+            {preview.invoiceCount > 0 && (
+              <div className="rounded-xl border border-amber-300/60 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/20 p-4 space-y-1">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  発行済み請求書への影響
+                </p>
+                <p className="text-xs text-amber-600/80 dark:text-amber-400/70 leading-relaxed">
+                  このレポートに紐づく請求書が{preview.invoiceCount}件あります。
+                  発行済み請求書の金額は更新されません。必要に応じて再発行してください。
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -221,13 +258,14 @@ export function ExchangeRateDialog({
             <Input
               type="number"
               step="0.01"
-              min="0"
+              min="50"
+              max="500"
               value={newRate}
               onChange={(e) => setNewRate(e.target.value)}
               required
             />
             <p className="text-xs text-muted-foreground/70 leading-relaxed">
-              変更すると、関連する全CSVデータと返金データの円額が再計算されます。
+              変更すると、関連する全CSVデータと返金データの円額が再計算されます。(50〜500)
             </p>
           </div>
 

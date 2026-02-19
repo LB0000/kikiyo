@@ -52,14 +52,20 @@ export function escapeHtml(str: string): string {
 }
 
 export function getValidAppUrl(): string {
-  const rawUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const rawUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!rawUrl) {
+    console.warn("[getValidAppUrl] NEXT_PUBLIC_APP_URL is not set, falling back to localhost");
+    return "http://localhost:3000";
+  }
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      console.warn("[getValidAppUrl] Invalid protocol:", parsed.protocol);
       return "http://localhost:3000";
     }
     return parsed.origin;
   } catch {
+    console.warn("[getValidAppUrl] Invalid URL:", rawUrl);
     return "http://localhost:3000";
   }
 }

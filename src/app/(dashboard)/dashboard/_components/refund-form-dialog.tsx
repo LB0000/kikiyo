@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -66,13 +67,14 @@ export function RefundFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md gap-5">
         <DialogHeader>
           <DialogTitle>返金登録</DialogTitle>
+          <DialogDescription>ライバーの返金情報を登録します</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label>ライバー *</Label>
+            <Label>ライバー <span className="text-destructive/70">*</span></Label>
             <Combobox
               options={livers.map((liver) => ({
                 value: liver.id,
@@ -96,7 +98,7 @@ export function RefundFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>返金額 (USD) *</Label>
+            <Label>返金額 (USD) <span className="text-destructive/70">*</span></Label>
             <Input
               type="number"
               step="0.01"

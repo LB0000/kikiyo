@@ -101,27 +101,33 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
 
   async function handleSubmit() {
     setLoading(true);
-    // form_data から空文字を除いたオブジェクトを作成
-    const cleanedFormData: Record<string, string> = {};
-    for (const [k, v] of Object.entries(formData)) {
-      if (v) cleanedFormData[k] = v;
-    }
+    try {
+      // form_data から空文字を除いたオブジェクトを作成
+      const cleanedFormData: Record<string, string> = {};
+      for (const [k, v] of Object.entries(formData)) {
+        if (v) cleanedFormData[k] = v;
+      }
 
-    const result = await createApplication({
-      ...form,
-      form_tab: selectedTab,
-      agency_id: effectiveAgencyId,
-      form_data: Object.keys(cleanedFormData).length > 0 ? cleanedFormData : undefined,
-    });
+      const result = await createApplication({
+        ...form,
+        form_tab: selectedTab,
+        agency_id: effectiveAgencyId,
+        form_data: Object.keys(cleanedFormData).length > 0 ? cleanedFormData : undefined,
+      });
 
-    if (result.error) {
-      toast.error("申請に失敗しました", { description: result.error });
+      if (result.error) {
+        toast.error("申請に失敗しました", { description: result.error });
+        setStep("input");
+      } else {
+        toast.success("申請を送信しました");
+        setStep("complete");
+      }
+    } catch {
+      toast.error("申請の送信中にエラーが発生しました");
       setStep("input");
-    } else {
-      toast.success("申請を送信しました");
-      setStep("complete");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   function handleReset() {

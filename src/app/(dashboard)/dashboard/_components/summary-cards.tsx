@@ -106,36 +106,38 @@ export function SummaryCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
           <div
             key={card.label}
-            className={`rounded-lg border p-4 ${
+            className={`rounded-xl border p-5 transition-all duration-200 ${
               card.highlight
-                ? "bg-primary/5 border-primary/20 ring-1 ring-primary/10"
-                : "bg-card"
+                ? "border-primary/25 bg-gradient-to-br from-primary/[0.04] to-primary/[0.08] shadow-[var(--card-highlight-shadow)] hover:shadow-[var(--card-highlight-shadow-hover)] hover:-translate-y-0.5"
+                : "bg-card shadow-[var(--card-shadow)] hover:shadow-[var(--card-shadow-hover)] hover:-translate-y-0.5"
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
-                  card.highlight ? "bg-primary/10" : "bg-muted"
+                className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+                  card.highlight
+                    ? "bg-primary/12 ring-1 ring-primary/10"
+                    : "bg-muted/70 ring-1 ring-border/50"
                 }`}
               >
                 <Icon
-                  className={`size-3.5 ${card.highlight ? "text-primary" : card.iconColor}`}
+                  className={`size-4 ${card.highlight ? "text-primary" : card.iconColor}`}
                 />
               </div>
               <p
-                className={`text-xs ${card.highlight ? "font-medium text-primary/70" : "text-muted-foreground"}`}
+                className={`text-[11px] font-medium tracking-wide ${card.highlight ? "text-primary/80" : "text-muted-foreground/80"}`}
               >
                 {card.label}
               </p>
             </div>
             <p
-              className={`mt-2 text-right text-2xl font-bold ${card.highlight ? "text-primary" : ""}`}
+              className={`mt-3 text-right text-[1.625rem] font-bold tabular-nums tracking-tight ${card.highlight ? "text-primary" : "text-foreground"}`}
             >
               {card.value}
             </p>

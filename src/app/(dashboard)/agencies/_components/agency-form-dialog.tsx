@@ -83,36 +83,39 @@ export function AgencyFormDialog({
 
   async function onSubmit(values: AgencyFormValues) {
     setLoading(true);
-
-    if (isEdit) {
-      const result = await updateAgency(agency.id, {
-        name: values.name,
-        commission_rate: values.commission_rate,
-        rank: values.rank,
-        parent_agency_ids: values.parent_agency_ids,
-      });
-      if (result.error) {
-        toast.error("更新に失敗しました", { description: result.error });
-      } else {
-        toast.success("代理店情報を更新しました");
-        onOpenChange(false);
-      }
-    } else {
-      const result = await createAgency(values);
-      if (result.error) {
-        toast.error("登録に失敗しました", { description: result.error });
-      } else {
-        toast.success("代理店を登録しました");
-        if (result.emailError) {
-          toast.warning("登録メールの送信に失敗しました", {
-            description: "仮パスワードを直接お伝えください。",
-          });
+    try {
+      if (isEdit) {
+        const result = await updateAgency(agency.id, {
+          name: values.name,
+          commission_rate: values.commission_rate,
+          rank: values.rank,
+          parent_agency_ids: values.parent_agency_ids,
+        });
+        if (result.error) {
+          toast.error("更新に失敗しました", { description: result.error });
+        } else {
+          toast.success("代理店情報を更新しました");
+          onOpenChange(false);
         }
-        onOpenChange(false);
+      } else {
+        const result = await createAgency(values);
+        if (result.error) {
+          toast.error("登録に失敗しました", { description: result.error });
+        } else {
+          toast.success("代理店を登録しました");
+          if (result.emailError) {
+            toast.warning("登録メールの送信に失敗しました", {
+              description: "仮パスワードを直接お伝えください。",
+            });
+          }
+          onOpenChange(false);
+        }
       }
+    } catch {
+      toast.error("処理中にエラーが発生しました");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   const availableParents = allAgencies.filter((a) => a.id !== agency?.id);

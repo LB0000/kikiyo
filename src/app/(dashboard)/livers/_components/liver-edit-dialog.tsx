@@ -44,29 +44,33 @@ export function LiverEditDialog({ open, onOpenChange, liver, agencies, isAdmin }
     e.preventDefault();
     if (!liver) return;
     setLoading(true);
+    try {
+      const result = await updateLiver(liver.id, {
+        name: form.name || null,
+        account_name: form.account_name || null,
+        liver_id: form.liver_id || null,
+        tiktok_username: form.tiktok_username || null,
+        email: form.email || null,
+        link: form.link || null,
+        address: form.address || null,
+        contact: form.contact || null,
+        birth_date: form.birth_date || null,
+        acquisition_date: form.acquisition_date || null,
+        streaming_start_date: form.streaming_start_date || null,
+        ...(isAdmin ? { agency_id: form.agency_id || null } : {}),
+      });
 
-    const result = await updateLiver(liver.id, {
-      name: form.name || null,
-      account_name: form.account_name || null,
-      liver_id: form.liver_id || null,
-      tiktok_username: form.tiktok_username || null,
-      email: form.email || null,
-      link: form.link || null,
-      address: form.address || null,
-      contact: form.contact || null,
-      birth_date: form.birth_date || null,
-      acquisition_date: form.acquisition_date || null,
-      streaming_start_date: form.streaming_start_date || null,
-      ...(isAdmin ? { agency_id: form.agency_id || null } : {}),
-    });
-
-    if (result.error) {
-      toast.error("更新に失敗しました", { description: result.error });
-    } else {
-      toast.success("ライバー情報を更新しました");
-      onOpenChange(false);
+      if (result.error) {
+        toast.error("更新に失敗しました", { description: result.error });
+      } else {
+        toast.success("ライバー情報を更新しました");
+        onOpenChange(false);
+      }
+    } catch {
+      toast.error("更新中にエラーが発生しました");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   const fields: { key: keyof typeof form; label: string; type: string }[] = [

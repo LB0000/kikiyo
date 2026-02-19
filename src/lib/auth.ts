@@ -12,12 +12,11 @@ export type AuthUser = {
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient();
 
-  // getSession() は Cookie 読み取りのみ（ネットワーク不要、< 1ms）
+  // getUser() は JWT を Supabase Auth サーバーで検証（改ざん防止）
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const user = session?.user;
   if (!user) return null;
 
   // app_metadata に role が設定済みなら DB クエリ不要（< 1ms）

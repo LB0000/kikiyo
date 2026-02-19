@@ -73,7 +73,7 @@ export function RefundTable({ rows }: Props) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-border/60">
         <EmptyState
           icon={ReceiptText}
           title="返金データがありません"
@@ -85,19 +85,20 @@ export function RefundTable({ rows }: Props) {
 
   return (
     <div>
-      <div className="mb-2 flex justify-end">
+      <div className="mb-3 flex justify-end">
         <Button
           variant="outline"
           size="sm"
+          className="text-muted-foreground hover:text-foreground"
           onClick={() =>
             exportCsv(rows, REFUND_COLUMNS, `refund_${new Date().toISOString().slice(0, 10)}.csv`)
           }
         >
-          <Download className="size-4" />
+          <Download className="size-3.5" />
           CSVエクスポート
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-border/60 shadow-[var(--card-shadow)]">
         <Table>
           <TableHeader>
             <TableRow>
@@ -114,10 +115,10 @@ export function RefundTable({ rows }: Props) {
               <TableRow key={row.id}>
                 <TableCell>{row.liver_name ?? "-"}</TableCell>
                 <TableCell>{row.target_month}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right tabular-nums">
                   {fmt(row.amount_usd)}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right tabular-nums">
                   {fmt(row.amount_jpy)}
                 </TableCell>
                 <TableCell className="max-w-[200px] truncate">
@@ -127,8 +128,9 @@ export function RefundTable({ rows }: Props) {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        variant="destructive"
+                        variant="outline"
                         size="sm"
+                        className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:border-destructive/50"
                         disabled={deletingId === row.id}
                       >
                         {deletingId === row.id ? "削除中..." : "削除"}

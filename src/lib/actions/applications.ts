@@ -112,7 +112,8 @@ export async function createApplication(params: {
   });
 
   if (error) {
-    return { error: error.message };
+    console.error("[createApplication]", error.message);
+    return { error: "申請の作成に失敗しました" };
   }
 
   revalidatePath("/applications");
@@ -143,18 +144,37 @@ export async function updateApplicationStatus(
       .eq("id", id)
       .single();
     if (fetchError) {
-      return { error: `申請データの取得に失敗: ${fetchError.message}` };
+      console.error("[updateApplicationStatus] fetch:", fetchError.message);
+      return { error: "申請データの取得に失敗しました" };
     }
     app = data;
   }
 
-  const { error } = await supabase
-    .from("applications")
-    .update({ status: validStatus })
-    .eq("id", id);
+  // 楽観的ロック: 承認時は現在のステータスが pending の場合のみ更新（重複処理防止）
+  if (validStatus === "authorized") {
+    const { data: updated, error } = await supabase
+      .from("applications")
+      .update({ status: validStatus })
+      .eq("id", id)
+      .eq("status", "pending")
+      .select("id");
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: "ステータスの更新に失敗しました" };
+    }
+
+    if (!updated || updated.length === 0) {
+      return { error: "この申請は既に処理済みです" };
+    }
+  } else {
+    const { error } = await supabase
+      .from("applications")
+      .update({ status: validStatus })
+      .eq("id", id);
+
+    if (error) {
+      return { error: "ステータスの更新に失敗しました" };
+    }
   }
 
   // 紐付け申請が承認された場合、ライバーレコードを作成
@@ -179,8 +199,9 @@ export async function updateApplicationStatus(
     }).select("id").single();
 
     if (liverError) {
+      console.error("[updateApplicationStatus] liver:", liverError.message);
       revalidatePath("/all-applications");
-      return { error: `ステータスは更新しましたが、ライバー作成に失敗: ${liverError.message}` };
+      return { error: "ステータスは更新しましたが、ライバー作成に失敗しました" };
     }
 
     // 作成したライバーのIDを申請レコードに紐付け

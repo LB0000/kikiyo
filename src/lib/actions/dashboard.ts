@@ -1,12 +1,17 @@
 "use server";
 
+import { z } from "zod";
 import Papa from "papaparse";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import type { RevenueTask } from "@/lib/supabase/types";
-import { TAX_RATE } from "@/lib/constants";
+import { TAX_MULTIPLIER } from "@/lib/constants";
 import { createRefundSchema } from "@/lib/validations/refund";
+
+const revenueTaskSchema = z.enum([
+  "task_1", "task_2", "task_3", "task_4", "task_5", "task_6_plus",
+]);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,6 +136,19 @@ export async function getDashboardData(
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
 
+  // 代理店ユーザーは自分の閲覧可能代理店のデータのみ取得可能
+  if (user.role !== "system_admin" && agencyId) {
+    const supabaseCheck = await createClient();
+    const { data: viewable } = await supabaseCheck
+      .from("profile_viewable_agencies")
+      .select("agency_id")
+      .eq("profile_id", user.id);
+    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    if (!viewableIds.includes(agencyId)) {
+      return { error: "権限がありません" };
+    }
+  }
+
   const supabase = await createClient();
 
   // report, csv_data, refunds を全て並列取得（必要カラムのみ SELECT）
@@ -166,15 +184,18 @@ export async function getDashboardData(
   ] = await Promise.all([reportQuery, csvQuery, refundQuery]);
 
   if (reportError || !report) {
-    return { error: reportError?.message ?? "月次レポートが見つかりません" };
+    if (reportError) console.error("[getDashboardData] report:", reportError.message);
+    return { error: "月次レポートが見つかりません" };
   }
 
   if (csvError) {
-    return { error: csvError.message };
+    console.error("[getDashboardData] csv:", csvError.message);
+    return { error: "CSVデータの取得に失敗しました" };
   }
 
   if (refundError) {
-    return { error: refundError.message };
+    console.error("[getDashboardData] refund:", refundError.message);
+    return { error: "返金データの取得に失敗しました" };
   }
 
   const rows = csvRows ?? [];
@@ -199,8 +220,8 @@ export async function getDashboardData(
     totalRewardJpy > 0 ? totalAgencyRewardJpy / totalRewardJpy : 0;
 
   const netAmountExTax = totalRewardJpy - totalRefundJpy;
-  const netAmountIncTax = netAmountExTax * TAX_RATE;
-  const agencyPaymentIncTax = totalAgencyRewardJpy * TAX_RATE;
+  const netAmountIncTax = netAmountExTax * TAX_MULTIPLIER;
+  const agencyPaymentIncTax = totalAgencyRewardJpy * TAX_MULTIPLIER;
 
   const summary: DashboardSummary = {
     totalDiamonds,
@@ -208,7 +229,7 @@ export async function getDashboardData(
     totalRewardJpy,
     totalAgencyRewardJpy,
     totalRefundJpy,
-    taxRate: TAX_RATE,
+    taxRate: TAX_MULTIPLIER,
     netAmountExTax,
     netAmountIncTax,
     agencyPaymentIncTax,
@@ -371,7 +392,14 @@ export async function importCsvData(params: {
 
   const { csvText, rate, revenueTask, uploadAgencyId, replaceReportIds } = params;
 
+  // H3: csvText サイズ制限（5MB）
+  if (csvText.length > 5_000_000) return { error: "CSVファイルが大きすぎます（上限5MB）" };
+
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
+
+  // H2: revenueTask のバリデーション
+  const parsedTask = revenueTaskSchema.safeParse(revenueTask);
+  if (!parsedTask.success) return { error: "無効な収益タスク区分です" };
 
   // UUID形式の検証
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -665,7 +693,8 @@ export async function deleteRefund(
     .eq("id", refundId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[deleteRefund]", error.message);
+    return { error: "返金の削除に失敗しました" };
   }
 
   revalidatePath("/dashboard");
@@ -795,7 +824,8 @@ export async function updateExchangeRate(
   });
 
   if (error) {
-    return { error: error.message };
+    console.error("[updateExchangeRate]", error.message);
+    return { error: "為替レートの更新に失敗しました" };
   }
 
   // 変更履歴を保存（RLSバイパス、失敗しても本体は成功済み）

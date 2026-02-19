@@ -40,7 +40,6 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
               <TableHead>代理店ランク</TableHead>
               <TableHead>上位代理店</TableHead>
               <TableHead>手数料率</TableHead>
-              <TableHead>メールアドレス</TableHead>
               <TableHead>提携日</TableHead>
               <TableHead className="w-20" />
             </TableRow>
@@ -48,7 +47,7 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
           <TableBody>
             {agencies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="p-0">
+                <TableCell colSpan={6} className="p-0">
                   <EmptyState
                     icon={Building2}
                     title="代理店がありません"
@@ -75,7 +74,6 @@ export function AgenciesTable({ agencies, onSelect, onCompanyInfo }: Props) {
                   <TableCell>
                     {(agency.commission_rate * 100).toFixed(1)}%
                   </TableCell>
-                  <TableCell className="text-sm">-</TableCell>
                   <TableCell>
                     {new Date(agency.created_at).toLocaleDateString("ja-JP")}
                   </TableCell>

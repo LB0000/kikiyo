@@ -33,7 +33,7 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
   const [{ data: agencies, error }, { data: hierarchy }] = await Promise.all([
     supabase
       .from("agencies")
-      .select("*")
+      .select("id, name, commission_rate, rank, user_id, created_at")
       .order("created_at", { ascending: false }),
     supabase
       .from("agency_hierarchy")
@@ -352,6 +352,19 @@ export async function getAgencyCompanyInfo(agencyId: string) {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
 
+  // 代理店ユーザーは自分の閲覧可能代理店のみアクセス可能
+  if (user.role !== "system_admin") {
+    const supabaseCheck = await createClient();
+    const { data: viewable } = await supabaseCheck
+      .from("profile_viewable_agencies")
+      .select("agency_id")
+      .eq("profile_id", user.id);
+    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    if (!viewableIds.includes(agencyId)) {
+      return { error: "権限がありません" };
+    }
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agencies")
@@ -361,7 +374,8 @@ export async function getAgencyCompanyInfo(agencyId: string) {
     .eq("id", agencyId)
     .single();
 
-  if (error || !data) return { error: error?.message ?? "代理店が見つかりません" };
+  if (error) console.error("[getAgencyCompanyInfo]", error.message);
+  if (error || !data) return { error: "代理店情報の取得に失敗しました" };
   return { data };
 }
 

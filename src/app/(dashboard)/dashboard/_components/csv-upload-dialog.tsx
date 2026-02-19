@@ -5,6 +5,7 @@ import { Loader2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -170,29 +171,32 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!loading) { setConfirmState(null); onOpenChange(v); } }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg gap-5">
         <DialogHeader>
           <DialogTitle>CSVアップロード</DialogTitle>
+          <DialogDescription>月次レポートのCSVファイルを登録します</DialogDescription>
         </DialogHeader>
 
         {confirmState ? (
           // 上書き確認画面
           <>
-            <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
-              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-yellow-600 dark:text-yellow-500" />
+            <div className="flex items-start gap-3.5 rounded-xl border border-amber-200/70 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+              </div>
               <div className="space-y-1">
-                <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                <p className="font-medium text-amber-800 dark:text-amber-200">
                   {confirmState.confirmation.dataMonth} のデータが既に登録されています
                 </p>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
                   既存のCSVデータを削除し、新しいデータで上書きします。返金データは引き継がれます。
                 </p>
               </div>
             </div>
 
             {uploadStage && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
+              <div className="flex items-center gap-2.5 rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin text-primary" />
                 <span>{uploadStage}</span>
               </div>
             )}
@@ -218,7 +222,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
         ) : (
           // 通常のアップロードフォーム
           <>
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="csv-file">CSVファイル</Label>
                 <Input
@@ -265,8 +269,8 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
             </div>
 
             {uploadStage && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
+              <div className="flex items-center gap-2.5 rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin text-primary" />
                 <span>{uploadStage}</span>
               </div>
             )}

@@ -92,20 +92,24 @@ export function ApplicationDetailDialog({
   async function handleStatusChange() {
     if (!application) return;
     setLoading(true);
-
-    const result = await updateApplicationStatus(application.id, status);
-    if ("error" in result) {
-      toast.error("ステータス変更に失敗しました", {
-        description: result.error,
-      });
-    } else if (result.liverCreated) {
-      toast.success("ステータスを変更し、ライバーを作成しました");
-      onOpenChange(false);
-    } else {
-      toast.success("ステータスを変更しました");
-      onOpenChange(false);
+    try {
+      const result = await updateApplicationStatus(application.id, status);
+      if ("error" in result) {
+        toast.error("ステータス変更に失敗しました", {
+          description: result.error,
+        });
+      } else if (result.liverCreated) {
+        toast.success("ステータスを変更し、ライバーを作成しました");
+        onOpenChange(false);
+      } else {
+        toast.success("ステータスを変更しました");
+        onOpenChange(false);
+      }
+    } catch {
+      toast.error("ステータス変更中にエラーが発生しました");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   const formDataDetails = getFormDataDetails(

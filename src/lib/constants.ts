@@ -44,10 +44,11 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   toza: "当座",
 };
 
-export const TAX_RATE = 1.1;
-
-/** 消費税率（10%）— 請求書計算用 */
+/** 消費税率（10%） */
 export const CONSUMPTION_TAX_RATE = 0.1;
+
+/** 税込み乗数（1 + 消費税率） — ダッシュボード計算用 */
+export const TAX_MULTIPLIER = 1 + CONSUMPTION_TAX_RATE;
 
 export type NavItem = {
   title: string;

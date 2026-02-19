@@ -42,16 +42,21 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
     }
 
     setLoading(true);
-    const result = await bulkUpdateLiverStatus(selectedIds, status);
+    try {
+      const result = await bulkUpdateLiverStatus(selectedIds, status);
 
-    if (result.error) {
-      toast.error("一括変更に失敗しました", { description: result.error });
-    } else {
-      toast.success("申請状況を一括変更しました");
-      setSelectedIds([]);
-      onOpenChange(false);
+      if (result.error) {
+        toast.error("一括変更に失敗しました", { description: result.error });
+      } else {
+        toast.success("申請状況を一括変更しました");
+        setSelectedIds([]);
+        onOpenChange(false);
+      }
+    } catch {
+      toast.error("一括変更中にエラーが発生しました");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (

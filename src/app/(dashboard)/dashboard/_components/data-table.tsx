@@ -91,7 +91,7 @@ export function DataTable({ rows, livers }: Props) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-border/60">
         <EmptyState
           icon={Database}
           title="データがありません"
@@ -103,19 +103,20 @@ export function DataTable({ rows, livers }: Props) {
 
   return (
     <div>
-      <div className="mb-2 flex justify-end">
+      <div className="mb-3 flex justify-end">
         <Button
           variant="outline"
           size="sm"
+          className="text-muted-foreground hover:text-foreground"
           onClick={() =>
             exportCsv(rows, exportColumns, `data_${new Date().toISOString().slice(0, 10)}.csv`)
           }
         >
-          <Download className="size-4" />
+          <Download className="size-3.5" />
           CSVエクスポート
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-border/60 shadow-[var(--card-shadow)]">
         <Table>
           <TableHeader>
             <TableRow>
@@ -143,25 +144,25 @@ export function DataTable({ rows, livers }: Props) {
               <TableRow key={row.id}>
                 <TableCell>{row.data_month ?? "-"}</TableCell>
                 <TableCell>{row.liver_id ? liverMap.get(row.liver_id) ?? "-" : "-"}</TableCell>
-                <TableCell className="font-mono text-xs">
+                <TableCell className="font-mono text-xs text-muted-foreground">
                   {row.handle ?? "-"}
                 </TableCell>
                 <TableCell>{row.creator_nickname ?? "-"}</TableCell>
-                <TableCell className="font-mono text-xs">
+                <TableCell className="font-mono text-xs text-muted-foreground">
                   {row.creator_id ?? "-"}
                 </TableCell>
                 <TableCell>{row.creator_network_manager ?? "-"}</TableCell>
-                <TableCell className="text-right">{fmt(row.diamonds)}</TableCell>
-                <TableCell className="text-right">{row.valid_days ?? "0"}</TableCell>
-                <TableCell className="text-right">{row.live_duration ?? "0"}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.estimated_bonus)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_rookie_half_milestone)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_rookie_milestone_1)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_rookie_retention)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_rookie_milestone_2)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_activeness)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_off_platform)}</TableCell>
-                <TableCell className="text-right">{fmtBonus(row.bonus_revenue_scale)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(row.diamonds)}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.valid_days ?? "0"}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.live_duration ?? "0"}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.estimated_bonus)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_rookie_half_milestone)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_rookie_milestone_1)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_rookie_retention)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_rookie_milestone_2)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_activeness)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_off_platform)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtBonus(row.bonus_revenue_scale)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

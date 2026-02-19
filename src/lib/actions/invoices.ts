@@ -99,6 +99,23 @@ export async function getInvoices(
 
   const supabase = await createClient();
 
+  // 代理店ユーザーは自分の閲覧可能代理店の請求書のみ取得
+  let effectiveAgencyId = agencyId;
+  if (user.role !== "system_admin") {
+    const { data: viewable } = await supabase
+      .from("profile_viewable_agencies")
+      .select("agency_id")
+      .eq("profile_id", user.id);
+    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    if (agencyId && !viewableIds.includes(agencyId)) {
+      return [];
+    }
+    // agency_user は必ず閲覧可能代理店でフィルタ
+    if (!effectiveAgencyId && viewableIds.length > 0) {
+      effectiveAgencyId = viewableIds[0];
+    }
+  }
+
   let query = supabase
     .from("invoices")
     .select(
@@ -106,8 +123,8 @@ export async function getInvoices(
     )
     .order("created_at", { ascending: false });
 
-  if (agencyId) {
-    query = query.eq("agency_id", agencyId);
+  if (effectiveAgencyId) {
+    query = query.eq("agency_id", effectiveAgencyId);
   }
 
   const { data, error } = await query;
@@ -138,7 +155,19 @@ export async function getInvoiceDetail(
     .single();
 
   if (error || !data) {
-    return { error: error?.message ?? "請求書が見つかりません" };
+    return { error: "請求書が見つかりません" };
+  }
+
+  // 代理店ユーザーは自分の閲覧可能代理店の請求書のみ閲覧可能
+  if (user.role !== "system_admin") {
+    const { data: viewable } = await supabase
+      .from("profile_viewable_agencies")
+      .select("agency_id")
+      .eq("profile_id", user.id);
+    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    if (!viewableIds.includes(data.agency_id)) {
+      return { error: "権限がありません" };
+    }
   }
 
   return data;
@@ -179,13 +208,13 @@ export async function getInvoicePreview(
 
   if (agencyRes.error || !agencyRes.data) {
     return {
-      error: agencyRes.error?.message ?? "代理店が見つかりません",
+      error: "代理店が見つかりません",
     };
   }
 
   if (reportRes.error || !reportRes.data) {
     return {
-      error: reportRes.error?.message ?? "月次レポートが見つかりません",
+      error: "月次レポートが見つかりません",
     };
   }
 
@@ -289,13 +318,13 @@ export async function createAndSendInvoice(params: {
 
   if (agencyRes.error || !agencyRes.data) {
     return {
-      error: agencyRes.error?.message ?? "代理店が見つかりません",
+      error: "代理店が見つかりません",
     };
   }
 
   if (reportRes.error || !reportRes.data) {
     return {
-      error: reportRes.error?.message ?? "月次レポートが見つかりません",
+      error: "月次レポートが見つかりません",
     };
   }
 
@@ -462,7 +491,7 @@ async function sendInvoiceNotificationEmail(params: {
 
   await sendEmail({
     to: adminEmail,
-    subject: `請求書送付通知: ${escapeHtml(agencyName)} (${safeDataMonth})`,
+    subject: `請求書送付通知: ${agencyName} (${dataMonth ?? "未指定"})`,
     html: `
       <h2>請求書送付通知</h2>
       <p>以下の請求書が作成・送付されました。</p>

@@ -88,14 +88,23 @@ export function DashboardClient({
 
     async function fetchData() {
       setLoading(true);
-      const result = await getDashboardData(selectedReportId, agencyFilter);
-      if (cancelled) return;
-      if ("error" in result) {
-        setDashboardData(null);
-      } else {
-        setDashboardData(result);
+      try {
+        const result = await getDashboardData(selectedReportId, agencyFilter);
+        if (cancelled) return;
+        if ("error" in result) {
+          setDashboardData(null);
+          toast.error("データの取得に失敗しました", { description: result.error });
+        } else {
+          setDashboardData(result);
+        }
+      } catch {
+        if (!cancelled) {
+          setDashboardData(null);
+          toast.error("データの取得中にエラーが発生しました");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchData();
@@ -143,24 +152,26 @@ export function DashboardClient({
     }
   }
 
+  const outlineActionClass = "rounded-full border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40";
+
   return (
     <div className="space-y-6">
       {/* ページヘッダー */}
       <div>
-        <h1 className="flex items-center gap-3 text-2xl font-bold">
-          <span className="inline-block h-8 w-1 rounded bg-primary" />
+        <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight">
+          <span className="inline-block h-7 w-1 rounded-full bg-gradient-to-b from-primary to-primary/60" />
           オールインTikTokバックエンド
         </h1>
-        <p className="mt-1 pl-7 text-sm text-muted-foreground">
+        <p className="mt-1.5 pl-7 text-sm text-muted-foreground/70">
           月次レポートとデータの確認・管理
         </p>
       </div>
 
       {/* フィルター・アクション行 */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/50 bg-muted/30 px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">表示期間</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">表示期間</span>
             <Select
               value={selectedReportId}
               onValueChange={setSelectedReportId}
@@ -235,15 +246,15 @@ export function DashboardClient({
           <div className="flex gap-3">
             {selectedReportId && dashboardData && (
               <>
-                <Button className="rounded-full" onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}>
+                <Button variant="outline" className={outlineActionClass} onClick={() => { setRateKey((k) => k + 1); setRateOpen(true); }}>
                   為替レート変更
                 </Button>
-                <Button className="rounded-full" onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
+                <Button variant="outline" className={outlineActionClass} onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
                   返金登録
                 </Button>
               </>
             )}
-            <Button className="rounded-full" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
+            <Button className="rounded-full shadow-sm" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
               CSV登録
             </Button>
           </div>
@@ -252,14 +263,14 @@ export function DashboardClient({
 
       {/* サマリーカード */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-lg border bg-card p-4">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 animate-pulse rounded-md bg-muted" />
-                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+            <div key={i} className="rounded-xl border bg-card p-5 shadow-[var(--card-shadow)]">
+              <div className="flex items-center gap-3">
+                <div className="size-9 animate-shimmer rounded-lg" />
+                <div className="h-3 w-20 animate-shimmer rounded" />
               </div>
-              <div className="mt-4 ml-auto h-7 w-24 animate-pulse rounded bg-muted" />
+              <div className="mt-5 ml-auto h-7 w-28 animate-shimmer rounded" />
             </div>
           ))}
         </div>
@@ -284,18 +295,21 @@ export function DashboardClient({
 
       {/* データ/返金タブ */}
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex gap-2">
-            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
-            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-9 w-28 animate-shimmer rounded-lg" />
+            <div className="h-9 w-28 animate-shimmer rounded-lg" />
           </div>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-12 animate-pulse rounded bg-muted" />
-          ))}
+          <div className="overflow-hidden rounded-xl border">
+            <div className="h-11 animate-shimmer" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-[46px] animate-shimmer border-t border-border/40" />
+            ))}
+          </div>
         </div>
       ) : dashboardData ? (
         <Tabs defaultValue="data">
-          <TabsList>
+          <TabsList variant="line">
             <TabsTrigger value="data">データ一覧</TabsTrigger>
             <TabsTrigger value="refund">返金一覧</TabsTrigger>
           </TabsList>
@@ -318,11 +332,13 @@ export function DashboardClient({
           </TabsContent>
         </Tabs>
       ) : reports.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <Upload className="size-12 text-muted-foreground/40" />
+        <div className="flex flex-col items-center justify-center py-20 gap-5">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-muted/60 ring-1 ring-border/50">
+            <Upload className="size-7 text-muted-foreground/50" />
+          </div>
           <div className="text-center">
-            <p className="font-medium">まだデータがありません</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-sm font-semibold text-foreground/80">まだデータがありません</p>
+            <p className="mt-1.5 text-xs text-muted-foreground/70">
               CSVファイルをアップロードしてダッシュボードを開始しましょう
             </p>
           </div>

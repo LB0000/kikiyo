@@ -129,7 +129,8 @@ export async function updateLiver(
     .eq("id", id);
 
   if (error) {
-    return { error: error.message };
+    console.error("[updateLiver]", error.message);
+    return { error: "ライバー情報の更新に失敗しました" };
   }
 
   revalidatePath("/livers");
@@ -152,7 +153,8 @@ export async function updateLiverStatus(id: string, status: ApplicationStatus) {
     .eq("id", id);
 
   if (error) {
-    return { error: error.message };
+    console.error("[updateLiverStatus]", error.message);
+    return { error: "ステータスの更新に失敗しました" };
   }
 
   revalidatePath("/livers");
@@ -181,7 +183,8 @@ export async function bulkUpdateLiverStatus(
     .in("id", ids);
 
   if (error) {
-    return { error: error.message };
+    console.error("[bulkUpdateLiverStatus]", error.message);
+    return { error: "一括ステータス更新に失敗しました" };
   }
 
   revalidatePath("/livers");

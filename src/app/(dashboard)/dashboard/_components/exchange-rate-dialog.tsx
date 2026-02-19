@@ -38,7 +38,7 @@ function DiffValue({ oldVal, newVal }: { oldVal: number; newVal: number }) {
   const diff = newVal - oldVal;
   const color =
     diff > 0
-      ? "text-emerald-600"
+      ? "text-emerald-600 dark:text-emerald-400"
       : diff < 0
         ? "text-destructive"
         : "text-muted-foreground";
@@ -117,7 +117,7 @@ export function ExchangeRateDialog({
   if (preview) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md gap-5">
           <DialogHeader>
             <DialogTitle>変更内容の確認</DialogTitle>
             <DialogDescription>
@@ -127,9 +127,9 @@ export function ExchangeRateDialog({
 
           <div className="space-y-4">
             {/* レート変更 */}
-            <div className="rounded-lg border p-4 space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">為替レート</p>
-              <p className="text-lg font-bold">
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">為替レート</p>
+              <p className="text-lg font-bold tabular-nums">
                 {fmtRate(preview.oldRate)}
                 <span className="mx-2 text-muted-foreground">→</span>
                 {fmtRate(preview.newRate)}
@@ -137,8 +137,8 @@ export function ExchangeRateDialog({
             </div>
 
             {/* 影響範囲 */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">影響範囲</p>
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">影響範囲</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-muted-foreground">CSVデータ</p>
@@ -152,8 +152,8 @@ export function ExchangeRateDialog({
             </div>
 
             {/* 金額差分 */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">金額の変化</p>
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">金額の変化</p>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">合計報酬(JPY)</span>
@@ -203,14 +203,15 @@ export function ExchangeRateDialog({
   // ステップ1: レート入力画面
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm gap-5">
         <DialogHeader>
           <DialogTitle>為替レート変更</DialogTitle>
+          <DialogDescription>為替レートを変更して金額を再計算します</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handlePreview} className="space-y-4">
+        <form onSubmit={handlePreview} className="space-y-5">
           <div className="space-y-2">
             <Label>現在のレート</Label>
-            <p className="text-lg font-semibold">
+            <p className="text-lg font-semibold tabular-nums">
               {fmtRate(currentRate)}
             </p>
           </div>
@@ -225,7 +226,7 @@ export function ExchangeRateDialog({
               onChange={(e) => setNewRate(e.target.value)}
               required
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground/70 leading-relaxed">
               変更すると、関連する全CSVデータと返金データの円額が再計算されます。
             </p>
           </div>

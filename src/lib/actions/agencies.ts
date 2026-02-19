@@ -74,12 +74,6 @@ export async function createAgency(values: AgencyFormValues) {
   const adminSupabase = createAdminClient();
   const supabase = await createClient();
 
-  // 0. メールアドレス重複チェック
-  const { data: existingUsers } = await adminSupabase.auth.admin.listUsers();
-  if (existingUsers?.users?.some((u) => u.email === values.email)) {
-    return { error: "このメールアドレスは既に使用されています" };
-  }
-
   // 1. 代理店レコード作成
   const { data: agency, error: agencyError } = await supabase
     .from("agencies")
@@ -99,6 +93,7 @@ export async function createAgency(values: AgencyFormValues) {
   const tempPassword = generateTempPassword();
 
   // 3. ユーザーアカウント作成（Admin API使用）
+  //    メール重複は createUser のエラーで検出（listUsers はページネーション上限あり）
   const { data: authData, error: authError } =
     await adminSupabase.auth.admin.createUser({
       email: values.email,
@@ -110,15 +105,24 @@ export async function createAgency(values: AgencyFormValues) {
 
   if (authError || !authData.user) {
     await adminSupabase.from("agencies").delete().eq("id", agency.id);
-    return { error: authError?.message ?? "ユーザー作成に失敗しました" };
+    const msg = authError?.message ?? "ユーザー作成に失敗しました";
+    if (msg.includes("already been registered")) {
+      return { error: "このメールアドレスは既に使用されています" };
+    }
+    return { error: msg };
   }
 
   // ロールバック用ヘルパー（adminSupabaseでRLSバイパス）
   async function rollback() {
-    await Promise.all([
+    const results = await Promise.allSettled([
       adminSupabase.from("agencies").delete().eq("id", agency.id),
       adminSupabase.auth.admin.deleteUser(authData.user!.id),
     ]);
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("[createAgency] rollback failed:", r.reason);
+      }
+    }
   }
 
   // 4. 代理店にuser_idを設定
@@ -165,21 +169,37 @@ export async function createAgency(values: AgencyFormValues) {
       agency_id: agency.id,
       parent_agency_id: parentId,
     }));
-    await supabase.from("agency_hierarchy").insert(hierarchyRows);
+    const { error: hierarchyError } = await adminSupabase
+      .from("agency_hierarchy")
+      .insert(hierarchyRows);
+
+    if (hierarchyError) {
+      console.error("[createAgency] agency_hierarchy insert:", hierarchyError.message);
+      await rollback();
+      return { error: "上位代理店の設定に失敗しました" };
+    }
 
     // 上位代理店のユーザーに閲覧権限を追加
     for (const parentId of safeParentIds) {
-      const { data: parentAgency } = await supabase
+      const { data: parentAgency } = await adminSupabase
         .from("agencies")
         .select("user_id")
         .eq("id", parentId)
         .single();
 
       if (parentAgency?.user_id) {
-        await adminSupabase.from("profile_viewable_agencies").upsert({
-          profile_id: parentAgency.user_id,
-          agency_id: agency.id,
-        });
+        const { error: parentViewError } = await adminSupabase
+          .from("profile_viewable_agencies")
+          .upsert({
+            profile_id: parentAgency.user_id,
+            agency_id: agency.id,
+          });
+
+        if (parentViewError) {
+          console.error("[createAgency] parent viewable upsert:", parentViewError.message);
+          await rollback();
+          return { error: "上位代理店の閲覧権限設定に失敗しました" };
+        }
       }
     }
   }
@@ -215,28 +235,90 @@ export async function updateAgency(
   values = parsed.data;
 
   const supabase = await createClient();
-  const adminSupabase = await createAdminClient();
+  const adminSupabase = createAdminClient();
+
+  // 0. 復元用に旧データを取得
+  const [
+    { data: oldAgency },
+    { data: oldHierarchy },
+  ] = await Promise.all([
+    supabase
+      .from("agencies")
+      .select("name, commission_rate, rank")
+      .eq("id", agencyId)
+      .single(),
+    adminSupabase
+      .from("agency_hierarchy")
+      .select("parent_agency_id")
+      .eq("agency_id", agencyId),
+  ]);
+
+  if (!oldAgency) {
+    return { error: "代理店が見つかりません" };
+  }
+
+  // narrowing 後の値をキャプチャ（クロージャ内でnull安全に参照）
+  const savedAgency = oldAgency;
+
+  // 復元用ヘルパー: 代理店情報と階層を旧状態に戻す
+  async function restoreAgency() {
+    const results = await Promise.allSettled([
+      adminSupabase
+        .from("agencies")
+        .update({
+          name: savedAgency.name,
+          commission_rate: savedAgency.commission_rate,
+          rank: savedAgency.rank,
+        })
+        .eq("id", agencyId),
+      restoreHierarchy(),
+    ]);
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("[updateAgency] restore failed:", r.reason);
+      }
+    }
+  }
+
+  async function restoreHierarchy() {
+    // 現在の階層を削除して旧階層を復元
+    await adminSupabase
+      .from("agency_hierarchy")
+      .delete()
+      .eq("agency_id", agencyId);
+
+    if (oldHierarchy && oldHierarchy.length > 0) {
+      await adminSupabase
+        .from("agency_hierarchy")
+        .insert(
+          oldHierarchy.map((h) => ({
+            agency_id: agencyId,
+            parent_agency_id: h.parent_agency_id,
+          }))
+        );
+    }
+  }
 
   // 1. 旧上位代理店リストのユーザーから閲覧権限を削除
-  const { data: oldHierarchy } = await supabase
-    .from("agency_hierarchy")
-    .select("parent_agency_id")
-    .eq("agency_id", agencyId);
-
   if (oldHierarchy) {
     for (const h of oldHierarchy) {
-      const { data: parentAgency } = await supabase
+      const { data: parentAgency } = await adminSupabase
         .from("agencies")
         .select("user_id")
         .eq("id", h.parent_agency_id)
         .single();
 
       if (parentAgency?.user_id) {
-        await adminSupabase
+        const { error: delViewError } = await adminSupabase
           .from("profile_viewable_agencies")
           .delete()
           .eq("profile_id", parentAgency.user_id)
           .eq("agency_id", agencyId);
+
+        if (delViewError) {
+          console.error("[updateAgency] old viewable delete:", delViewError.message);
+          return { error: "旧上位代理店の閲覧権限削除に失敗しました" };
+        }
       }
     }
   }
@@ -256,10 +338,16 @@ export async function updateAgency(
   }
 
   // 3. 上位代理店リスト更新
-  await supabase
+  const { error: deleteHierarchyError } = await adminSupabase
     .from("agency_hierarchy")
     .delete()
     .eq("agency_id", agencyId);
+
+  if (deleteHierarchyError) {
+    console.error("[updateAgency] hierarchy delete:", deleteHierarchyError.message);
+    await restoreAgency();
+    return { error: "上位代理店の削除に失敗しました" };
+  }
 
   // 自身を親に設定する循環参照を防止
   const safeParentIds = values.parent_agency_ids.filter(
@@ -270,21 +358,37 @@ export async function updateAgency(
       agency_id: agencyId,
       parent_agency_id: parentId,
     }));
-    await supabase.from("agency_hierarchy").insert(hierarchyRows);
+    const { error: hierarchyError } = await adminSupabase
+      .from("agency_hierarchy")
+      .insert(hierarchyRows);
+
+    if (hierarchyError) {
+      console.error("[updateAgency] hierarchy insert:", hierarchyError.message);
+      await restoreAgency();
+      return { error: "上位代理店の設定に失敗しました" };
+    }
 
     // 新上位代理店のユーザーに閲覧権限を追加
     for (const parentId of safeParentIds) {
-      const { data: parentAgency } = await supabase
+      const { data: parentAgency } = await adminSupabase
         .from("agencies")
         .select("user_id")
         .eq("id", parentId)
         .single();
 
       if (parentAgency?.user_id) {
-        await adminSupabase.from("profile_viewable_agencies").upsert({
-          profile_id: parentAgency.user_id,
-          agency_id: agencyId,
-        });
+        const { error: parentViewError } = await adminSupabase
+          .from("profile_viewable_agencies")
+          .upsert({
+            profile_id: parentAgency.user_id,
+            agency_id: agencyId,
+          });
+
+        if (parentViewError) {
+          console.error("[updateAgency] parent viewable upsert:", parentViewError.message);
+          await restoreAgency();
+          return { error: "上位代理店の閲覧権限設定に失敗しました" };
+        }
       }
     }
   }

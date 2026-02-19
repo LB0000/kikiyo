@@ -111,7 +111,8 @@ export function AgencyFormDialog({
           onOpenChange(false);
         }
       }
-    } catch {
+    } catch (e) {
+      console.error("[AgencyFormDialog]", e);
       toast.error("処理中にエラーが発生しました");
     } finally {
       setLoading(false);

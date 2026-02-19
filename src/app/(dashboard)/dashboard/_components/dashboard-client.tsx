@@ -97,10 +97,14 @@ export function DashboardClient({
         } else {
           setDashboardData(result);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[DashboardClient] fetchData error:", err);
           setDashboardData(null);
-          toast.error("データの取得中にエラーが発生しました");
+          toast.error("データの取得中にエラーが発生しました", {
+            description: msg,
+          });
         }
       } finally {
         if (!cancelled) setLoading(false);

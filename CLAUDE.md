@@ -93,7 +93,7 @@ livers, liver_agencies, monthly_reports, csv_data, refunds, applications
 | 14 | Activeness task task | bonus_activeness | アクティブタスク | ボーナス内訳 |
 | 15 | Off-platform creator task task | bonus_off_platform | 新優良クリエイタータスク | ボーナス内訳 |
 | 16 | Revenue scale task task | bonus_revenue_scale | 収益スケール | ボーナス内訳 |
-| — | Creator ID | creator_id | (非表示) | ライバー紐付けキー |
+| — | Creator ID | creator_id | (非表示) | 参考値（紐付けには handle を使用） |
 | — | Creator Network manager | creator_network_manager | (非表示) | 代理店紐付けキー |
 | — | Group manager | group_manager | (非表示) | 未使用 |
 | — | Is violative creators | is_violative | (非表示) | 違反フラグ |
@@ -120,7 +120,7 @@ IMPORTANT: Bubbleは汎用名（task1〜task6+）、Next.jsは説明的な名前
 
 ### リンクロジック
 
-- **ライバー紐付け**: `csv_data.creator_id` = `livers.liver_id`（TEXT完全一致）
+- **ライバー紐付け**: `csv_data.handle` ↔ `livers.tiktok_username`（大文字小文字無視で一致）
 - **代理店紐付け**: `csv_data.creator_network_manager` = `agencies.name`（名前完全一致）
 - 紐付け失敗 → `NULL`（件数はトーストで通知）
 

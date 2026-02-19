@@ -76,10 +76,10 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "monitor",
   },
   {
-    title: "請求書",
-    href: "/invoices",
+    title: "TikTok Backstage",
+    href: "https://live-backstage.tiktok.com/",
     roles: ["system_admin", "agency_user"],
-    icon: "receipt",
+    icon: "external-link",
   },
   {
     title: "申請一覧",
@@ -94,9 +94,9 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "file-text",
   },
   {
-    title: "TikTok Backstage",
-    href: "https://live-backstage.tiktok.com/",
+    title: "請求書",
+    href: "/invoices",
     roles: ["system_admin", "agency_user"],
-    icon: "external-link",
+    icon: "receipt",
   },
 ];

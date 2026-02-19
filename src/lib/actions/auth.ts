@@ -21,15 +21,18 @@ export async function requestPasswordReset(email: string) {
     },
   });
 
-  if (error || !data.properties?.action_link) {
+  if (error || !data.properties?.hashed_token) {
     // ユーザーが存在しない場合もセキュリティ上同じメッセージを返す
     return { success: true };
   }
 
+  // アプリ直通のリセットリンクを構築（Supabaseリダイレクトに依存しない）
+  const tokenHash = data.properties.hashed_token;
+  const resetLink = `${appUrl}/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=recovery&next=/reset-password`;
+
   // Resend経由でリセットメールを送信
   try {
     const safeEmail = escapeHtml(trimmed);
-    const actionLink = data.properties.action_link;
 
     await sendEmail({
       to: trimmed,
@@ -39,15 +42,14 @@ export async function requestPasswordReset(email: string) {
         <p>${safeEmail} 様</p>
         <p>パスワードリセットのリクエストを受け付けました。</p>
         <p>以下のリンクをクリックして、新しいパスワードを設定してください。</p>
-        <p><a href="${actionLink}">パスワードをリセットする</a></p>
+        <p><a href="${resetLink}">パスワードをリセットする</a></p>
         <p>このリンクは24時間有効です。</p>
         <p>心当たりがない場合は、このメールを無視してください。</p>
       `,
     });
   } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
-    console.error("[requestPasswordReset]", detail);
-    return { error: `メール送信に失敗しました: ${detail}` };
+    console.error("[requestPasswordReset]", e instanceof Error ? e.message : e);
+    return { error: "メール送信に失敗しました。しばらくしてからお試しください。" };
   }
 
   return { success: true };

@@ -19,6 +19,7 @@ export type AgencyWithHierarchy = {
   commission_rate: number;
   rank: string | null;
   user_id: string | null;
+  email: string | null;
   created_at: string;
   parent_agencies: { parent_agency_id: string; parent_name: string }[];
   registration_email_sent_at: string | null;
@@ -45,8 +46,8 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
 
   if (error || !agencies) return [];
 
-  // 管理者のみ: Supabase Auth から最終ログイン日時を取得
-  const signInMap = new Map<string, string | null>();
+  // 管理者のみ: Supabase Auth からメール・最終ログイン日時を取得
+  const authUserMap = new Map<string, { email: string | null; last_sign_in_at: string | null }>();
   if (isAdmin) {
     const adminSupabase = createAdminClient();
     const userIds = agencies.map((a) => a.user_id).filter(Boolean) as string[];
@@ -63,7 +64,10 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
         if (data?.users) {
           for (const u of data.users) {
             if (userIds.includes(u.id)) {
-              signInMap.set(u.id, u.last_sign_in_at ?? null);
+              authUserMap.set(u.id, {
+                email: u.email ?? null,
+                last_sign_in_at: u.last_sign_in_at ?? null,
+              });
             }
           }
           hasMore = data.users.length === perPage;
@@ -77,24 +81,26 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
 
   const agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
 
-  return agencies.map((agency) => ({
-    id: agency.id,
-    name: agency.name,
-    commission_rate: agency.commission_rate,
-    rank: agency.rank,
-    user_id: agency.user_id,
-    created_at: agency.created_at,
-    parent_agencies: (hierarchy ?? [])
-      .filter((h) => h.agency_id === agency.id)
-      .map((h) => ({
-        parent_agency_id: h.parent_agency_id,
-        parent_name: agencyMap.get(h.parent_agency_id) ?? "",
-      })),
-    registration_email_sent_at: agency.registration_email_sent_at ?? null,
-    last_sign_in_at: agency.user_id
-      ? signInMap.get(agency.user_id) ?? null
-      : null,
-  }));
+  return agencies.map((agency) => {
+    const authUser = agency.user_id ? authUserMap.get(agency.user_id) : null;
+    return {
+      id: agency.id,
+      name: agency.name,
+      commission_rate: agency.commission_rate,
+      rank: agency.rank,
+      user_id: agency.user_id,
+      email: authUser?.email ?? null,
+      created_at: agency.created_at,
+      parent_agencies: (hierarchy ?? [])
+        .filter((h) => h.agency_id === agency.id)
+        .map((h) => ({
+          parent_agency_id: h.parent_agency_id,
+          parent_name: agencyMap.get(h.parent_agency_id) ?? "",
+        })),
+      registration_email_sent_at: agency.registration_email_sent_at ?? null,
+      last_sign_in_at: authUser?.last_sign_in_at ?? null,
+    };
+  });
 }
 
 export async function createAgency(values: AgencyFormValues) {
@@ -433,6 +439,68 @@ export async function updateAgency(
         }
       }
     }
+  }
+
+  revalidatePath("/agencies");
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// resendRegistrationEmail – 認証メール再送
+// ---------------------------------------------------------------------------
+
+export async function resendRegistrationEmail(agencyId: string) {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  const adminSupabase = createAdminClient();
+
+  // 代理店情報取得
+  const { data: agency, error: agencyError } = await adminSupabase
+    .from("agencies")
+    .select("id, name, user_id")
+    .eq("id", agencyId)
+    .single();
+
+  if (agencyError || !agency) {
+    return { error: "代理店が見つかりません" };
+  }
+  if (!agency.user_id) {
+    return { error: "この代理店にはユーザーアカウントが紐付いていません" };
+  }
+
+  // Auth ユーザーからメールアドレス取得
+  const { data: authUser, error: authError } =
+    await adminSupabase.auth.admin.getUserById(agency.user_id);
+
+  if (authError || !authUser?.user?.email) {
+    return { error: "ユーザー情報の取得に失敗しました" };
+  }
+
+  const email = authUser.user.email;
+
+  // 新しい仮パスワード生成 & Auth パスワード更新
+  const tempPassword = generateTempPassword();
+  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(
+    agency.user_id,
+    { password: tempPassword }
+  );
+
+  if (updateError) {
+    return { error: "パスワードのリセットに失敗しました" };
+  }
+
+  // メール送信
+  try {
+    await sendRegistrationEmail(email, tempPassword, agency.name);
+    await adminSupabase
+      .from("agencies")
+      .update({ registration_email_sent_at: new Date().toISOString() })
+      .eq("id", agencyId);
+  } catch (e) {
+    console.error("[resendRegistrationEmail]", e);
+    return { error: "メール送信に失敗しました", tempPassword };
   }
 
   revalidatePath("/agencies");

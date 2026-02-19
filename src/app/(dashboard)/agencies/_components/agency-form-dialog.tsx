@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { Send } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import {
   agencyFormSchema,
@@ -41,6 +42,7 @@ import {
 import {
   createAgency,
   updateAgency,
+  resendRegistrationEmail,
   getAgencyCompanyInfo,
   updateAgencyCompanyInfo,
   type AgencyWithHierarchy,
@@ -61,6 +63,7 @@ export function AgencyFormDialog({
   allAgencies,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const isEdit = !!agency;
 
   const form = useForm<AgencyFormValues>({
@@ -126,6 +129,29 @@ export function AgencyFormDialog({
     }
   }
 
+  async function handleResend() {
+    if (!agency) return;
+    setResending(true);
+    try {
+      const result = await resendRegistrationEmail(agency.id);
+      if ("error" in result) {
+        toast.error("メール再送に失敗しました", { description: result.error });
+        if ("tempPassword" in result && result.tempPassword) {
+          toast.info(`仮パスワード: ${result.tempPassword}`, {
+            description: "手動でお伝えください",
+            duration: 15000,
+          });
+        }
+      } else {
+        toast.success("認証メールを再送しました");
+      }
+    } catch {
+      toast.error("処理中にエラーが発生しました");
+    } finally {
+      setResending(false);
+    }
+  }
+
   const availableParents = allAgencies.filter((a) => a.id !== agency?.id);
 
   const basicForm = (
@@ -145,7 +171,29 @@ export function AgencyFormDialog({
           )}
         />
 
-        {!isEdit && (
+        {isEdit ? (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">メールアドレス</label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={agency.email ?? ""}
+                readOnly
+                className="bg-muted"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={resending}
+                onClick={handleResend}
+                className="shrink-0"
+              >
+                <Send className="size-4" />
+                {resending ? "送信中..." : "認証メール再送"}
+              </Button>
+            </div>
+          </div>
+        ) : (
           <FormField
             control={form.control}
             name="email"

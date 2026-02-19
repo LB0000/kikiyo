@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateInvoicePdf } from "@/lib/pdf/invoice-pdf";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
@@ -13,6 +13,8 @@ export async function GET(
   }
 
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const inline = searchParams.get("inline") === "true";
   const supabase = await createClient();
 
   const { data: invoice, error } = await supabase
@@ -55,7 +57,7 @@ export async function GET(
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${invoice.invoice_number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
+      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${invoice.invoice_number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
       "Cache-Control": "private, max-age=3600, immutable",
     },
   });

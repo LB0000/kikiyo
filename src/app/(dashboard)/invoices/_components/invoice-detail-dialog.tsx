@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { getInvoiceDetail, type InvoiceDetail } from "@/lib/actions/invoices";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/constants";
@@ -242,10 +242,24 @@ export function InvoiceDetailDialog({
             閉じる
           </Button>
           {invoice && (
-            <Button onClick={handleDownloadPdf} disabled={downloading}>
-              <Download className="size-4" />
-              {downloading ? "生成中..." : "PDFダウンロード"}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `/api/invoices/${invoiceId}/pdf?inline=true`,
+                    "_blank"
+                  )
+                }
+              >
+                <Eye className="size-4" />
+                プレビュー
+              </Button>
+              <Button onClick={handleDownloadPdf} disabled={downloading}>
+                <Download className="size-4" />
+                {downloading ? "生成中..." : "PDFダウンロード"}
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

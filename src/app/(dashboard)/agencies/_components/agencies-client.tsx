@@ -22,6 +22,8 @@ const AGENCY_COLUMNS: CsvColumn<AgencyWithHierarchy>[] = [
   { header: "上位代理店", accessor: (r) => r.parent_agencies.map((p) => p.parent_name).join(", ") },
   { header: "手数料率", accessor: (r) => `${(r.commission_rate * 100).toFixed(1)}%` },
   { header: "提携日", accessor: (r) => new Date(r.created_at).toLocaleDateString("ja-JP") },
+  { header: "メール送信日", accessor: (r) => r.registration_email_sent_at ? new Date(r.registration_email_sent_at).toLocaleDateString("ja-JP") : "未送信" },
+  { header: "最終ログイン日", accessor: (r) => r.last_sign_in_at ? new Date(r.last_sign_in_at).toLocaleDateString("ja-JP") : "未ログイン" },
 ];
 
 export function AgenciesClient({ agencies }: Props) {

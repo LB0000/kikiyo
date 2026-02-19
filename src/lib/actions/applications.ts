@@ -132,9 +132,18 @@ export async function updateApplicationStatus(
   const supabase = await createClient();
 
   // 紐付け申請の承認時はライバー作成も行うため、先に申請データを取得
-  const { data: app } = validStatus === "authorized"
-    ? await supabase.from("applications").select("*").eq("id", id).single()
-    : { data: null };
+  let app: { form_tab: string; agency_id: string | null; name: string | null; tiktok_username: string | null; address: string | null; birth_date: string | null; contact: string | null; email: string | null; tiktok_account_link: string | null } | null = null;
+  if (validStatus === "authorized") {
+    const { data, error: fetchError } = await supabase
+      .from("applications")
+      .select("form_tab, agency_id, name, tiktok_username, address, birth_date, contact, email, tiktok_account_link")
+      .eq("id", id)
+      .single();
+    if (fetchError) {
+      return { error: `申請データの取得に失敗: ${fetchError.message}` };
+    }
+    app = data;
+  }
 
   const { error } = await supabase
     .from("applications")
@@ -146,7 +155,12 @@ export async function updateApplicationStatus(
   }
 
   // 紐付け申請が承認された場合、ライバーレコードを作成
-  if (validStatus === "authorized" && app && app.form_tab === "affiliation_check" && app.agency_id) {
+  if (validStatus === "authorized" && app && app.form_tab === "affiliation_check") {
+    if (!app.agency_id) {
+      revalidatePath("/all-applications");
+      return { error: "ステータスは更新しましたが、代理店が未設定のためライバーを作成できませんでした" };
+    }
+
     const { data: newLiver, error: liverError } = await supabase.from("livers").insert({
       name: app.name || null,
       account_name: app.tiktok_username || null,
@@ -162,6 +176,7 @@ export async function updateApplicationStatus(
     }).select("id").single();
 
     if (liverError) {
+      revalidatePath("/all-applications");
       return { error: `ステータスは更新しましたが、ライバー作成に失敗: ${liverError.message}` };
     }
 
@@ -177,8 +192,10 @@ export async function updateApplicationStatus(
     }
 
     revalidatePath("/livers");
+    revalidatePath("/all-applications");
+    return { success: true, liverCreated: true };
   }
 
   revalidatePath("/all-applications");
-  return { success: true };
+  return { success: true, liverCreated: false };
 }

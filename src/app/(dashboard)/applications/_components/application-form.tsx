@@ -12,10 +12,12 @@ import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { FORM_TAB_LABELS } from "@/lib/constants";
 import { createApplication } from "@/lib/actions/applications";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import type { FormTab } from "@/lib/supabase/types";
 
 type Props = {
   agencyId: string | null;
+  agencies?: { id: string; name: string }[];
 };
 
 type Step = "input" | "confirm" | "complete";
@@ -24,10 +26,20 @@ const ALL_FORM_TABS = Object.keys(FORM_TAB_LABELS) as FormTab[];
 const PRIMARY_TABS: FormTab[] = ["affiliation_check", "million_special", "streaming_auth"];
 const SECONDARY_TABS = ALL_FORM_TABS.filter((t) => !PRIMARY_TABS.includes(t));
 
-export function ApplicationForm({ agencyId }: Props) {
+export function ApplicationForm({ agencyId, agencies = [] }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [selectedTab, setSelectedTab] = useState<FormTab>("affiliation_check");
+  const [selectedAgencyId, setSelectedAgencyId] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // system_admin は agencyId が null → 代理店セレクターを表示
+  const showAgencySelector = agencyId === null && agencies.length > 0;
+  const agencyOptions: ComboboxOption[] = agencies.map((a) => ({
+    value: a.id,
+    label: a.name,
+  }));
+  const effectiveAgencyId = agencyId ?? (selectedAgencyId || undefined);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -58,7 +70,7 @@ export function ApplicationForm({ agencyId }: Props) {
     const result = await createApplication({
       ...form,
       form_tab: selectedTab,
-      agency_id: agencyId ?? undefined,
+      agency_id: effectiveAgencyId,
     });
 
     if (result.error) {
@@ -73,6 +85,7 @@ export function ApplicationForm({ agencyId }: Props) {
 
   function handleReset() {
     setStep("input");
+    setSelectedAgencyId("");
     setForm({
       name: "",
       email: "",
@@ -175,6 +188,20 @@ export function ApplicationForm({ agencyId }: Props) {
               </details>
             </RadioGroup>
           </div>
+
+          {showAgencySelector && (
+            <div className="space-y-2">
+              <Label>代理店</Label>
+              <Combobox
+                options={agencyOptions}
+                value={selectedAgencyId}
+                onValueChange={setSelectedAgencyId}
+                placeholder="代理店を選択"
+                searchPlaceholder="代理店名で検索"
+                emptyText="代理店が見つかりません"
+              />
+            </div>
+          )}
 
           <Separator />
 
@@ -299,6 +326,12 @@ export function ApplicationForm({ agencyId }: Props) {
             <h2 className="text-lg font-medium">入力内容の確認</h2>
             <div className="grid grid-cols-2 gap-x-8 gap-y-3">
               <ConfirmRow label="申請種別" value={FORM_TAB_LABELS[selectedTab]} />
+              {showAgencySelector && (
+                <ConfirmRow
+                  label="代理店"
+                  value={agencies.find((a) => a.id === selectedAgencyId)?.name ?? "未選択"}
+                />
+              )}
               <ConfirmRow label="メールアドレス" value={form.email} />
               <ConfirmRow label="TikTokユーザー名" value={form.tiktok_username} />
               {selectedTab === "affiliation_check" && (

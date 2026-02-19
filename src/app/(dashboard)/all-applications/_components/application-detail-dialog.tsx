@@ -50,10 +50,13 @@ export function ApplicationDetailDialog({
     setLoading(true);
 
     const result = await updateApplicationStatus(application.id, status);
-    if (result.error) {
+    if ("error" in result) {
       toast.error("ステータス変更に失敗しました", {
         description: result.error,
       });
+    } else if (result.liverCreated) {
+      toast.success("ステータスを変更し、ライバーを作成しました");
+      onOpenChange(false);
     } else {
       toast.success("ステータスを変更しました");
       onOpenChange(false);

@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
+import { getAgencies } from "@/lib/actions/agencies";
 import { ApplicationForm } from "./_components/application-form";
 
 export default async function ApplicationsPage() {
   const user = await getAuthUser();
   if (!user) redirect("/login");
+
+  // system_admin は代理店に所属していないため、代理店選択用リストを取得
+  const agencies = user.role === "system_admin"
+    ? (await getAgencies()).map((a) => ({ id: a.id, name: a.name }))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -17,7 +23,7 @@ export default async function ApplicationsPage() {
           各種申請フォームの入力と送信
         </p>
       </div>
-      <ApplicationForm agencyId={user.agencyId} />
+      <ApplicationForm agencyId={user.agencyId} agencies={agencies} />
     </div>
   );
 }

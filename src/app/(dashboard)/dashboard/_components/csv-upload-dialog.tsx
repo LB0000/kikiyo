@@ -58,12 +58,15 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-  function handleImportSuccess(result: { success: true; totalRows: number; unlinkedLiverCount: number; unlinkedAgencyCount: number; linkedLiverCount: number; linkedAgencyCount: number }) {
+  function handleImportSuccess(result: { success: true; totalRows: number; unlinkedLiverCount: number; unlinkedAgencyCount: number; linkedLiverCount: number; linkedAgencyCount: number; newLiverCount: number }) {
     const hasUnlinked =
       result.unlinkedLiverCount > 0 || result.unlinkedAgencyCount > 0;
     const parts: string[] = [
       `${result.totalRows}件のデータを登録しました`,
     ];
+    if (result.newLiverCount > 0) {
+      parts.push(`新規ライバー自動登録: ${result.newLiverCount}件`);
+    }
     if (result.unlinkedLiverCount > 0) {
       parts.push(`ライバー未紐付け: ${result.unlinkedLiverCount}件`);
     }

@@ -256,6 +256,7 @@ export type ImportResult = {
   unlinkedLiverCount: number;
   linkedAgencyCount: number;
   unlinkedAgencyCount: number;
+  newLiverCount: number;
 };
 
 export type ImportConfirmation = {
@@ -519,8 +520,60 @@ export async function importCsvData(params: {
     (allAgencies ?? []).map((a) => [a.name, a])
   );
 
-  // 3. Build csv_data insert rows
-  const insertRows = rows.map((row) => {
+  // 3. Build csv_data insert rows (deduplicate by creator_id, last row wins)
+  const rowsByCreatorId = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    rowsByCreatorId.set(row.creator_id, row);
+  }
+  const deduplicatedRows = Array.from(rowsByCreatorId.values());
+
+  // --- 未登録ライバーの自動登録 ---
+  const unmatchedByHandle = new Map<string, (typeof deduplicatedRows)[number]>();
+  for (const row of deduplicatedRows) {
+    if (row.handle) {
+      const handleLower = row.handle.toLowerCase();
+      if (!liverMap.has(handleLower)) {
+        unmatchedByHandle.set(handleLower, row);
+      }
+    }
+  }
+
+  let newLiverCount = 0;
+
+  if (unmatchedByHandle.size > 0) {
+    const newLiverRows = Array.from(unmatchedByHandle.values()).map((row) => {
+      const agency = agencyByNameMap.get(row.creator_network_manager);
+      return {
+        tiktok_username: row.handle,
+        name: row.creator_nickname || null,
+        agency_id: agency?.id ?? null,
+        status: "pending" as const,
+      };
+    });
+
+    const { data: createdLivers, error: liverCreateError } = await adminSupabase
+      .from("livers")
+      .insert(newLiverRows)
+      .select("id, tiktok_username, agency_id");
+
+    if (liverCreateError) {
+      console.error("[importCsvData] ライバー自動登録エラー:", liverCreateError.message);
+    } else if (createdLivers) {
+      newLiverCount = createdLivers.length;
+      for (const liver of createdLivers) {
+        if (liver.tiktok_username) {
+          liverMap.set(liver.tiktok_username.toLowerCase(), {
+            id: liver.id,
+            liver_id: null,
+            tiktok_username: liver.tiktok_username,
+            agency_id: liver.agency_id,
+          });
+        }
+      }
+    }
+  }
+
+  const insertRows = deduplicatedRows.map((row) => {
     const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
     const agency = agencyByNameMap.get(row.creator_network_manager);
 
@@ -573,19 +626,21 @@ export async function importCsvData(params: {
       .insert(batch);
 
     if (insertError) {
-      // Cleanup: remove partial csv_data and orphaned monthly_report
+      // Cleanup: remove partial csv_data then orphaned monthly_report (FK順序を守る)
       // adminSupabase を使用してRLSをバイパス（確実にクリーンアップするため）
-      await Promise.all([
-        adminSupabase
-          .from("csv_data")
-          .delete()
-          .eq("monthly_report_id", report.id),
-        adminSupabase
-          .from("monthly_reports")
-          .delete()
-          .eq("id", report.id),
-      ]);
-      return { error: insertError.message };
+      await adminSupabase
+        .from("csv_data")
+        .delete()
+        .eq("monthly_report_id", report.id);
+      await adminSupabase
+        .from("monthly_reports")
+        .delete()
+        .eq("id", report.id);
+      return {
+        error: insertError.code === "23505"
+          ? "CSVに同一クリエイターIDの重複行が含まれています。データを確認してください"
+          : `CSVデータの登録に失敗しました: ${insertError.message}`,
+      };
     }
   }
 
@@ -598,6 +653,7 @@ export async function importCsvData(params: {
     unlinkedLiverCount,
     linkedAgencyCount,
     unlinkedAgencyCount,
+    newLiverCount,
   };
 }
 

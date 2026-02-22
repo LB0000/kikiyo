@@ -61,7 +61,7 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg min-h-[60dvh] max-h-[85dvh] overflow-y-auto">
+      <DialogContent className="max-w-lg min-h-[70dvh] max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>申請状況一括変更</DialogTitle>
         </DialogHeader>
@@ -91,7 +91,24 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>対象ライバー ({selectedIds.length}件選択中)</Label>
+            <div className="flex items-center justify-between">
+              <Label>対象ライバー ({selectedIds.length}件選択中)</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto px-2 py-1 text-xs"
+                onClick={() => {
+                  if (selectedIds.length === livers.length) {
+                    setSelectedIds([]);
+                  } else {
+                    setSelectedIds(livers.map((l) => l.id));
+                  }
+                }}
+              >
+                {selectedIds.length === livers.length ? "全解除" : "全選択"}
+              </Button>
+            </div>
             <MultiCombobox
               options={livers.map((liver) => ({
                 value: liver.id,

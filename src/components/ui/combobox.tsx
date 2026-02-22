@@ -36,6 +36,31 @@ type ComboboxProps = {
   id?: string;
 };
 
+const PAGE_SIZE = 8;
+
+export function handlePageJump(
+  e: React.KeyboardEvent,
+  highlighted: string,
+  setHighlighted: (v: string) => void,
+) {
+  if (e.key !== "PageDown" && e.key !== "PageUp") return;
+  e.preventDefault();
+  const items = Array.from(
+    e.currentTarget.querySelectorAll<HTMLElement>("[cmdk-item]"),
+  ).filter((el) => el.offsetHeight > 0);
+  if (items.length === 0) return;
+  const currentIdx = items.findIndex(
+    (el) => el.getAttribute("data-value") === highlighted,
+  );
+  const delta = e.key === "PageDown" ? PAGE_SIZE : -PAGE_SIZE;
+  const newIdx = Math.max(
+    0,
+    Math.min(items.length - 1, (currentIdx < 0 ? 0 : currentIdx) + delta),
+  );
+  const newValue = items[newIdx].getAttribute("data-value");
+  if (newValue) setHighlighted(newValue);
+}
+
 export function Combobox({
   options,
   value,
@@ -48,6 +73,7 @@ export function Combobox({
   id,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
+  const [highlighted, setHighlighted] = React.useState("");
 
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
@@ -73,7 +99,11 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
+        <Command
+          value={highlighted}
+          onValueChange={setHighlighted}
+          onKeyDown={(e) => handlePageJump(e, highlighted, setHighlighted)}
+        >
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>

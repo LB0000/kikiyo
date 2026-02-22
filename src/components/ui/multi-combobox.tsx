@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { handlePageJump } from "@/components/ui/combobox";
 
 export type MultiComboboxOption = {
   value: string;
@@ -49,6 +50,7 @@ export function MultiCombobox({
   id,
 }: MultiComboboxProps) {
   const [open, setOpen] = React.useState(false);
+  const [highlighted, setHighlighted] = React.useState("");
 
   function toggleValue(optionValue: string) {
     if (value.includes(optionValue)) {
@@ -118,7 +120,11 @@ export function MultiCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
+        <Command
+          value={highlighted}
+          onValueChange={setHighlighted}
+          onKeyDown={(e) => handlePageJump(e, highlighted, setHighlighted)}
+        >
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>

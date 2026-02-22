@@ -80,7 +80,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
       });
     } else {
       toast.success("CSVデータをインポートしました", {
-        description: parts[0],
+        description: parts.join(" / "),
       });
     }
     resetForm();

@@ -61,7 +61,7 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>申請状況一括変更</DialogTitle>
         </DialogHeader>

@@ -67,7 +67,7 @@ export function RefundFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-5">
+      <DialogContent className="max-w-md max-h-[85dvh] overflow-y-auto gap-5">
         <DialogHeader>
           <DialogTitle>返金登録</DialogTitle>
           <DialogDescription>ライバーの返金情報を登録します</DialogDescription>

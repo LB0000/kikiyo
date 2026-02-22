@@ -282,6 +282,7 @@ export function AgencyFormDialog({
                   placeholder="上位代理店を検索・選択"
                   searchPlaceholder="代理店名で検索..."
                   emptyText="該当する代理店がありません"
+                  disablePortal
                 />
               </FormControl>
               <FormMessage />

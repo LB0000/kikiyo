@@ -105,6 +105,7 @@ export function LiverEditDialog({ open, onOpenChange, liver, agencies, isAdmin }
                 placeholder="代理店を選択"
                 searchPlaceholder="代理店名で検索..."
                 emptyText="代理店が見つかりません"
+                disablePortal
               />
             </div>
           )}

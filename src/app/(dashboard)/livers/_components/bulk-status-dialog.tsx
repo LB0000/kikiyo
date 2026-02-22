@@ -106,6 +106,7 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
               placeholder="ライバーを検索・選択"
               searchPlaceholder="ライバー名で検索..."
               emptyText="該当するライバーがいません"
+              disablePortal
             />
           </div>
         </div>

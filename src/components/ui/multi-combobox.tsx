@@ -36,6 +36,8 @@ type MultiComboboxProps = {
   className?: string;
   disabled?: boolean;
   id?: string;
+  /** Dialog内で使用する場合にtrueにするとスクロールが正常に動作する */
+  disablePortal?: boolean;
 };
 
 export function MultiCombobox({
@@ -48,6 +50,7 @@ export function MultiCombobox({
   className,
   disabled,
   id,
+  disablePortal,
 }: MultiComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [highlighted, setHighlighted] = React.useState("");
@@ -119,7 +122,7 @@ export function MultiCombobox({
           <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" disablePortal={disablePortal}>
         <Command
           value={highlighted}
           onValueChange={setHighlighted}

@@ -85,6 +85,7 @@ export function RefundFormDialog({
               placeholder="ライバーを選択"
               searchPlaceholder="ライバー名で検索..."
               emptyText="該当するライバーがいません"
+              disablePortal
             />
           </div>
 

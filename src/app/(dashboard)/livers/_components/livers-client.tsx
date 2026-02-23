@@ -10,13 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Search } from "lucide-react";
+import { Download, Search, Upload } from "lucide-react";
 import { APPLICATION_STATUS_LABELS } from "@/lib/constants";
 import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 import { STATUS_DOT_COLORS } from "@/components/shared/status-badge";
 import { LiversTable } from "./livers-table";
 import { LiverEditDialog } from "./liver-edit-dialog";
 import { BulkStatusDialog } from "./bulk-status-dialog";
+import { LiverCsvImportDialog } from "./liver-csv-import-dialog";
 import type { LiverRow } from "@/lib/actions/livers";
 import type { ApplicationStatus } from "@/lib/supabase/types";
 
@@ -42,6 +43,7 @@ const LIVER_COLUMNS: CsvColumn<LiverRow>[] = [
 export function LiversClient({ livers, agencies, isAdmin }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedLiver, setSelectedLiver] = useState<LiverRow | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -116,6 +118,16 @@ export function LiversClient({ livers, agencies, isAdmin }: Props) {
             <Download className="size-4" />
             CSVエクスポート
           </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="size-4" />
+              CSVインポート
+            </Button>
+          )}
         </div>
         <Button className="rounded-full" onClick={() => setBulkOpen(true)}>
           申請状況一括変更
@@ -140,6 +152,12 @@ export function LiversClient({ livers, agencies, isAdmin }: Props) {
         onOpenChange={setBulkOpen}
         livers={livers}
       />
+      {isAdmin && (
+        <LiverCsvImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+        />
+      )}
     </>
   );
 }

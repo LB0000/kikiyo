@@ -510,7 +510,7 @@ export async function importCsvData(params: {
 
   // 2. ライバーと代理店を並列取得（RLSバイパスで全レコード参照）
   const [{ data: allLivers }, { data: allAgencies }] = await Promise.all([
-    adminSupabase.from("livers").select("id, liver_id, tiktok_username, agency_id"),
+    adminSupabase.from("livers").select("id, liver_id, account_name, tiktok_username, agency_id"),
     adminSupabase.from("agencies").select("id, name, commission_rate"),
   ]);
 
@@ -551,6 +551,7 @@ export async function importCsvData(params: {
       return {
         tiktok_username: row.handle,
         name: null,
+        account_name: row.creator_nickname || null,
         liver_id: row.creator_id || null,
         agency_id: agency?.id ?? null,
         status: "pending" as const,
@@ -560,7 +561,7 @@ export async function importCsvData(params: {
     const { data: createdLivers, error: liverCreateError } = await adminSupabase
       .from("livers")
       .insert(newLiverRows)
-      .select("id, liver_id, tiktok_username, agency_id");
+      .select("id, liver_id, account_name, tiktok_username, agency_id");
 
     if (liverCreateError) {
       console.error("[importCsvData] ライバー自動登録エラー:", liverCreateError.message);
@@ -571,6 +572,7 @@ export async function importCsvData(params: {
           liverMap.set(liver.tiktok_username.toLowerCase(), {
             id: liver.id,
             liver_id: liver.liver_id,
+            account_name: liver.account_name,
             tiktok_username: liver.tiktok_username,
             agency_id: liver.agency_id,
           });
@@ -617,24 +619,26 @@ export async function importCsvData(params: {
     };
   });
 
-  // 3b. 既存ライバーの liver_id バックフィル（NULL の場合のみ）
+  // 3b. 既存ライバーの liver_id・account_name バックフィル（NULL の場合のみ）
   const liverUpdates = deduplicatedRows
     .filter((row) => {
       const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
-      return liver && !liver.liver_id && row.creator_id;
+      return liver && (!liver.liver_id || !liver.account_name) && (row.creator_id || row.creator_nickname);
     })
-    .map((row) => ({
-      id: liverMap.get(row.handle.toLowerCase())!.id,
-      creator_id: row.creator_id,
-    }));
+    .map((row) => {
+      const liver = liverMap.get(row.handle.toLowerCase())!;
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (!liver.liver_id && row.creator_id) updates.liver_id = row.creator_id;
+      if (!liver.account_name && row.creator_nickname) updates.account_name = row.creator_nickname;
+      return { id: liver.id, updates };
+    });
 
   if (liverUpdates.length > 0) {
-    for (const { id, creator_id } of liverUpdates) {
+    for (const { id, updates } of liverUpdates) {
       await adminSupabase
         .from("livers")
-        .update({ liver_id: creator_id, updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .is("liver_id", null);
+        .update(updates)
+        .eq("id", id);
     }
   }
 

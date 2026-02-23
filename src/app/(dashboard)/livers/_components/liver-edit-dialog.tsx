@@ -75,8 +75,8 @@ export function LiverEditDialog({ open, onOpenChange, liver, agencies, isAdmin }
 
   const fields: { key: keyof typeof form; label: string; type: string }[] = [
     { key: "name", label: "氏名", type: "text" },
-    { key: "account_name", label: "アカウント名", type: "text" },
-    { key: "liver_id", label: "ライバーID", type: "text" },
+    { key: "account_name", label: "ニックネーム", type: "text" },
+    { key: "liver_id", label: "クリエイターID", type: "text" },
     { key: "tiktok_username", label: "TikTokユーザー名", type: "text" },
     { key: "email", label: "メールアドレス", type: "email" },
     { key: "link", label: "TikTokアカウントリンク", type: "url" },

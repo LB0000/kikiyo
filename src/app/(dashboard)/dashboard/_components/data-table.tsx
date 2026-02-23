@@ -71,7 +71,7 @@ export function DataTable({ rows, livers }: Props) {
       { header: "データ月", accessor: (r) => r.data_month },
       { header: "氏名", accessor: (r) => (r.liver_id ? liverMap.get(r.liver_id) ?? "-" : "-") },
       { header: "TikTokユーザー名", accessor: (r) => r.handle },
-      { header: "クリエイターのニックネーム", accessor: (r) => r.creator_nickname },
+      { header: "ニックネーム", accessor: (r) => r.creator_nickname },
       { header: "クリエイターID", accessor: (r) => r.creator_id },
       { header: "グループ", accessor: (r) => r.creator_network_manager },
       { header: "ダイヤモンド", accessor: (r) => r.diamonds },
@@ -123,7 +123,7 @@ export function DataTable({ rows, livers }: Props) {
               <TableHead>データ月</TableHead>
               <TableHead>氏名</TableHead>
               <TableHead>TikTokユーザー名</TableHead>
-              <TableHead>クリエイターのニックネーム</TableHead>
+              <TableHead>ニックネーム</TableHead>
               <TableHead>クリエイターID</TableHead>
               <TableHead>グループ</TableHead>
               <TableHead className="text-right">ダイヤモンド</TableHead>

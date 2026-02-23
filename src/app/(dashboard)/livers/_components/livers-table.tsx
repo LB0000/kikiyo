@@ -74,8 +74,8 @@ export function LiversTable({ livers, onSelect }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>氏名</TableHead>
-              <TableHead>ライバーID</TableHead>
-              <TableHead>アカウント名</TableHead>
+              <TableHead>クリエイターID</TableHead>
+              <TableHead>ニックネーム</TableHead>
               <TableHead>TikTokユーザー名</TableHead>
               <TableHead>メールアドレス</TableHead>
               <TableHead>連絡先</TableHead>

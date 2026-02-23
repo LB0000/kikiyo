@@ -221,7 +221,7 @@ export async function getDashboardData(
 
   const netAmountExTax = totalRewardJpy - totalRefundJpy;
   const netAmountIncTax = netAmountExTax * TAX_MULTIPLIER;
-  const agencyPaymentIncTax = totalAgencyRewardJpy * TAX_MULTIPLIER;
+  const agencyPaymentIncTax = netAmountExTax * commissionRate * TAX_MULTIPLIER;
 
   const summary: DashboardSummary = {
     totalDiamonds,

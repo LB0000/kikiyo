@@ -221,22 +221,41 @@ export async function getInvoicePreview(
   const agency = agencyRes.data;
   const report = reportRes.data;
 
-  // csv_data から agency_reward_jpy の合計を算出（adminSupabase でRLSバイパス）
-  const { data: csvRows, error: csvError } = await adminSupabase
-    .from("csv_data")
-    .select("agency_reward_jpy")
-    .eq("agency_id", agencyId)
-    .eq("monthly_report_id", monthlyReportId);
+  // csv_data と refunds を並列取得（adminSupabase でRLSバイパス）
+  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }] =
+    await Promise.all([
+      adminSupabase
+        .from("csv_data")
+        .select("agency_reward_jpy")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId),
+      adminSupabase
+        .from("refunds")
+        .select("amount_jpy")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false),
+    ]);
 
   if (csvError) {
     console.error("[getInvoicePreview] csv_data:", csvError.message);
     return { error: "CSVデータの取得に失敗しました" };
   }
 
-  const subtotalJpy = (csvRows ?? []).reduce(
+  if (refundError) {
+    console.error("[getInvoicePreview] refunds:", refundError.message);
+    return { error: "返金データの取得に失敗しました" };
+  }
+
+  const grossAgencyJpy = (csvRows ?? []).reduce(
     (sum, row) => sum + (row.agency_reward_jpy ?? 0),
     0
   );
+  const totalRefundJpy = (refundRows ?? []).reduce(
+    (sum, row) => sum + (row.amount_jpy ?? 0),
+    0
+  );
+  const subtotalJpy = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 
@@ -332,34 +351,51 @@ export async function createAndSendInvoice(params: {
   const agency = agencyRes.data;
   const report = reportRes.data;
 
-  // csv_data から agency_reward_jpy の合計を算出（adminSupabase でRLSバイパス）
-  const { data: csvRows, error: csvError } = await adminSupabase
-    .from("csv_data")
-    .select("agency_reward_jpy")
-    .eq("agency_id", agencyId)
-    .eq("monthly_report_id", monthlyReportId);
+  // csv_data, refunds, 重複チェックを並列取得（adminSupabase でRLSバイパス）
+  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: existingDuplicate }] =
+    await Promise.all([
+      adminSupabase
+        .from("csv_data")
+        .select("agency_reward_jpy")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId),
+      adminSupabase
+        .from("refunds")
+        .select("amount_jpy")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false),
+      adminSupabase
+        .from("invoices")
+        .select("id")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId)
+        .limit(1),
+    ]);
 
   if (csvError) {
     console.error("[createAndSendInvoice] csv_data:", csvError.message);
     return { error: "CSVデータの取得に失敗しました" };
   }
 
-  // 同一代理店+レポートの重複チェック
-  const { data: existingDuplicate } = await adminSupabase
-    .from("invoices")
-    .select("id")
-    .eq("agency_id", agencyId)
-    .eq("monthly_report_id", monthlyReportId)
-    .limit(1);
+  if (refundError) {
+    console.error("[createAndSendInvoice] refunds:", refundError.message);
+    return { error: "返金データの取得に失敗しました" };
+  }
 
   if (existingDuplicate && existingDuplicate.length > 0) {
     return { error: "この代理店・月次レポートの請求書は既に作成済みです" };
   }
 
-  const subtotalJpy = (csvRows ?? []).reduce(
+  const grossAgencyJpy = (csvRows ?? []).reduce(
     (sum, row) => sum + (row.agency_reward_jpy ?? 0),
     0
   );
+  const totalRefundJpy = (refundRows ?? []).reduce(
+    (sum, row) => sum + (row.amount_jpy ?? 0),
+    0
+  );
+  const subtotalJpy = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 

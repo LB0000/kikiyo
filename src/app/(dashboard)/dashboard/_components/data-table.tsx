@@ -69,7 +69,7 @@ export function DataTable({ rows, livers }: Props) {
   const exportColumns: CsvColumn<CsvDataRow>[] = useMemo(
     () => [
       { header: "データ月", accessor: (r) => r.data_month },
-      { header: "本名", accessor: (r) => (r.liver_id ? liverMap.get(r.liver_id) ?? "-" : "-") },
+      { header: "氏名", accessor: (r) => (r.liver_id ? liverMap.get(r.liver_id) ?? "-" : "-") },
       { header: "TikTokユーザー名", accessor: (r) => r.handle },
       { header: "クリエイターのニックネーム", accessor: (r) => r.creator_nickname },
       { header: "クリエイターID", accessor: (r) => r.creator_id },
@@ -121,7 +121,7 @@ export function DataTable({ rows, livers }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>データ月</TableHead>
-              <TableHead>本名</TableHead>
+              <TableHead>氏名</TableHead>
               <TableHead>TikTokユーザー名</TableHead>
               <TableHead>クリエイターのニックネーム</TableHead>
               <TableHead>クリエイターID</TableHead>

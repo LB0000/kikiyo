@@ -78,7 +78,7 @@ livers, liver_agencies, monthly_reports, csv_data, refunds, applications
 | # | TikTok CSVヘッダー | csv_data DB列 | UI表示名 | 用途 |
 |---|---|---|---|---|
 | 1 | Data Month | data_month | データ月 | 期間識別 |
-| 2 | — | liver_id → livers.name | 本名 | ライバー本名（DB結合） |
+| 2 | — | liver_id → livers.name | 氏名 | ライバー氏名（DB結合） |
 | 3 | Creator nickname | creator_nickname | クリエイターのニックネーム | TikTok表示名 |
 | 4 | Handle | handle | クリエイターID | TikTokユーザー名 |
 | 5 | Group | group | グループ | 分類 |

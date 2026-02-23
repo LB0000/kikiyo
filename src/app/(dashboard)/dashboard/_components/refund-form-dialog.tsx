@@ -22,6 +22,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   monthlyReportId: string;
   livers: { id: string; name: string | null }[];
+  onSuccess?: () => void;
 };
 
 export function RefundFormDialog({
@@ -29,6 +30,7 @@ export function RefundFormDialog({
   onOpenChange,
   monthlyReportId,
   livers,
+  onSuccess,
 }: Props) {
   const [liverId, setLiverId] = useState("");
   const [targetMonth, setTargetMonth] = useState("");
@@ -44,25 +46,33 @@ export function RefundFormDialog({
     }
 
     setLoading(true);
-    const result = await createRefund({
-      liverId,
-      targetMonth: targetMonth ? `${targetMonth}-01` : new Date().toISOString().slice(0, 10),
-      amountUsd: parseFloat(amountUsd) || 0,
-      reason,
-      monthlyReportId,
-    });
+    try {
+      const result = await createRefund({
+        liverId,
+        targetMonth: targetMonth ? `${targetMonth}-01` : new Date().toISOString().slice(0, 10),
+        amountUsd: parseFloat(amountUsd) || 0,
+        reason,
+        monthlyReportId,
+      });
 
-    if ("error" in result) {
-      toast.error("返金登録に失敗しました", { description: result.error });
-    } else {
-      toast.success("返金を登録しました");
-      setLiverId("");
-      setTargetMonth("");
-      setAmountUsd("");
-      setReason("");
-      onOpenChange(false);
+      if ("error" in result) {
+        toast.error("返金登録に失敗しました", { description: result.error });
+      } else {
+        toast.success("返金を登録しました");
+        setLiverId("");
+        setTargetMonth("");
+        setAmountUsd("");
+        setReason("");
+        onOpenChange(false);
+        onSuccess?.();
+      }
+    } catch (err) {
+      toast.error("エラーが発生しました", {
+        description: err instanceof Error ? err.message : "不明なエラー",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (

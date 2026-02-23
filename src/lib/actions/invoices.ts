@@ -229,7 +229,8 @@ export async function getInvoicePreview(
     .eq("monthly_report_id", monthlyReportId);
 
   if (csvError) {
-    return { error: csvError.message };
+    console.error("[getInvoicePreview] csv_data:", csvError.message);
+    return { error: "CSVデータの取得に失敗しました" };
   }
 
   const subtotalJpy = (csvRows ?? []).reduce(
@@ -339,7 +340,8 @@ export async function createAndSendInvoice(params: {
     .eq("monthly_report_id", monthlyReportId);
 
   if (csvError) {
-    return { error: csvError.message };
+    console.error("[createAndSendInvoice] csv_data:", csvError.message);
+    return { error: "CSVデータの取得に失敗しました" };
   }
 
   // 同一代理店+レポートの重複チェック
@@ -444,7 +446,8 @@ export async function createAndSendInvoice(params: {
   }
 
   if (!invoice) {
-    return { error: lastInsertError ?? "請求書の作成に失敗しました" };
+    console.error("[createAndSendInvoice] insert:", lastInsertError);
+    return { error: "請求書の作成に失敗しました" };
   }
 
   // メール通知送信（失敗しても請求書作成は成功）

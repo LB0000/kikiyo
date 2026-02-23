@@ -38,6 +38,7 @@ type RefundRow = {
 
 type Props = {
   rows: RefundRow[];
+  onRefundDeleted?: () => void;
 };
 
 const REFUND_COLUMNS: CsvColumn<RefundRow>[] = [
@@ -52,7 +53,7 @@ function fmt(n: number): string {
   return n.toLocaleString("ja-JP");
 }
 
-export function RefundTable({ rows }: Props) {
+export function RefundTable({ rows, onRefundDeleted }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(refundId: string) {
@@ -63,6 +64,7 @@ export function RefundTable({ rows }: Props) {
         toast.error("削除に失敗しました", { description: result.error });
       } else {
         toast.success("返金を削除しました");
+        onRefundDeleted?.();
       }
     } catch {
       toast.error("エラーが発生しました");

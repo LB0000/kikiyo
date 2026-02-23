@@ -129,7 +129,8 @@ export async function createAgency(values: AgencyFormValues) {
     .single();
 
   if (agencyError || !agency) {
-    return { error: agencyError?.message ?? "代理店の作成に失敗しました" };
+    if (agencyError) console.error("[createAgency] agencies insert:", agencyError.message);
+    return { error: "代理店の作成に失敗しました" };
   }
 
   // 2. 仮パスワード生成
@@ -148,11 +149,12 @@ export async function createAgency(values: AgencyFormValues) {
 
   if (authError || !authData.user) {
     await adminSupabase.from("agencies").delete().eq("id", agency.id);
-    const msg = authError?.message ?? "ユーザー作成に失敗しました";
+    const msg = authError?.message ?? "";
     if (msg.includes("already been registered")) {
       return { error: "このメールアドレスは既に使用されています" };
     }
-    return { error: msg };
+    console.error("[createAgency] auth.admin.createUser:", msg);
+    return { error: "ユーザー作成に失敗しました" };
   }
 
   // ロールバック用ヘルパー（adminSupabaseでRLSバイパス）
@@ -382,7 +384,8 @@ export async function updateAgency(
     .eq("id", agencyId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[updateAgency] agencies update:", error.message);
+    return { error: "代理店情報の更新に失敗しました" };
   }
 
   // 3. 上位代理店リスト更新
@@ -723,7 +726,8 @@ export async function updateAgencyCompanyInfo(
     .eq("id", agencyId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[updateAgencyCompanyInfo] agencies update:", error.message);
+    return { error: "会社情報の更新に失敗しました" };
   }
 
   revalidatePath("/agencies");

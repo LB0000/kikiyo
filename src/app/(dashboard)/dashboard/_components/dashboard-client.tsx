@@ -333,6 +333,7 @@ export function DashboardClient({
                 amount_jpy: r.amount_jpy,
                 reason: r.reason,
               }))}
+              onRefundDeleted={() => setRefreshKey((k) => k + 1)}
             />
           </TabsContent>
         </Tabs>
@@ -361,6 +362,7 @@ export function DashboardClient({
         open={csvOpen}
         onOpenChange={setCsvOpen}
         uploadAgencyId={userAgencyId}
+        onSuccess={() => setRefreshKey((k) => k + 1)}
       />
 
       {selectedReportId && dashboardData && (
@@ -371,6 +373,7 @@ export function DashboardClient({
             onOpenChange={setRefundOpen}
             monthlyReportId={selectedReportId}
             livers={livers}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
           />
           <ExchangeRateDialog
             key={rateKey}

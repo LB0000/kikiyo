@@ -72,8 +72,9 @@ export function ChangePasswordForm({ userEmail }: Props) {
     });
 
     if (updateError) {
+      console.error("[changePassword] updateUser:", updateError.message);
       toast.error("パスワードの更新に失敗しました", {
-        description: updateError.message,
+        description: "しばらく経ってから再度お試しください",
       });
     } else {
       toast.success("パスワードを変更しました");

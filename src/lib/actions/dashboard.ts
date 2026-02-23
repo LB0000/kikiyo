@@ -280,7 +280,8 @@ function parseCsvText(csvText: string): CsvRow[] | { error: string } {
   // 致命的エラーのみチェック（FieldMismatch は無視 — 末尾空カラム等で発生しうる）
   const fatalErrors = parsed.errors.filter((e) => e.type !== "FieldMismatch");
   if (fatalErrors.length > 0) {
-    return { error: `CSVの解析に失敗しました: ${fatalErrors[0]?.message}` };
+    console.error("[importCsvData] CSV parse:", fatalErrors[0]?.message);
+    return { error: "CSVの解析に失敗しました" };
   }
 
   if (parsed.data.length === 0) {
@@ -462,8 +463,9 @@ export async function importCsvData(params: {
     .single();
 
   if (reportError || !report) {
+    console.error("[importCsvData] monthly_reports insert:", reportError?.message);
     return {
-      error: reportError?.message ?? "月次レポートの作成に失敗しました",
+      error: "月次レポートの作成に失敗しました",
     };
   }
 
@@ -476,9 +478,10 @@ export async function importCsvData(params: {
       .in("monthly_report_id", replaceReportIds);
 
     if (refundMigrateError) {
+      console.error("[importCsvData] refund migrate:", refundMigrateError.message);
       // 新レポートをロールバック
       await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
-      return { error: `返金データの移行に失敗しました: ${refundMigrateError.message}` };
+      return { error: "返金データの移行に失敗しました" };
     }
 
     // 旧csv_dataを削除
@@ -488,8 +491,9 @@ export async function importCsvData(params: {
       .in("monthly_report_id", replaceReportIds);
 
     if (csvDeleteError) {
+      console.error("[importCsvData] csv_data delete:", csvDeleteError.message);
       await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
-      return { error: `旧CSVデータの削除に失敗しました: ${csvDeleteError.message}` };
+      return { error: "旧CSVデータの削除に失敗しました" };
     }
 
     // 旧monthly_reportsを削除
@@ -499,7 +503,8 @@ export async function importCsvData(params: {
       .in("id", replaceReportIds);
 
     if (reportDeleteError) {
-      return { error: `旧レポートの削除に失敗しました: ${reportDeleteError.message}` };
+      console.error("[importCsvData] old reports delete:", reportDeleteError.message);
+      return { error: "旧レポートの削除に失敗しました" };
     }
   }
 
@@ -545,7 +550,8 @@ export async function importCsvData(params: {
       const agency = agencyByNameMap.get(row.creator_network_manager);
       return {
         tiktok_username: row.handle,
-        name: row.creator_nickname || null,
+        name: null,
+        liver_id: row.creator_id || null,
         agency_id: agency?.id ?? null,
         status: "pending" as const,
       };
@@ -554,7 +560,7 @@ export async function importCsvData(params: {
     const { data: createdLivers, error: liverCreateError } = await adminSupabase
       .from("livers")
       .insert(newLiverRows)
-      .select("id, tiktok_username, agency_id");
+      .select("id, liver_id, tiktok_username, agency_id");
 
     if (liverCreateError) {
       console.error("[importCsvData] ライバー自動登録エラー:", liverCreateError.message);
@@ -564,7 +570,7 @@ export async function importCsvData(params: {
         if (liver.tiktok_username) {
           liverMap.set(liver.tiktok_username.toLowerCase(), {
             id: liver.id,
-            liver_id: null,
+            liver_id: liver.liver_id,
             tiktok_username: liver.tiktok_username,
             agency_id: liver.agency_id,
           });
@@ -610,6 +616,27 @@ export async function importCsvData(params: {
       upload_agency_id: uploadAgencyId || null,
     };
   });
+
+  // 3b. 既存ライバーの liver_id バックフィル（NULL の場合のみ）
+  const liverUpdates = deduplicatedRows
+    .filter((row) => {
+      const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
+      return liver && !liver.liver_id && row.creator_id;
+    })
+    .map((row) => ({
+      id: liverMap.get(row.handle.toLowerCase())!.id,
+      creator_id: row.creator_id,
+    }));
+
+  if (liverUpdates.length > 0) {
+    for (const { id, creator_id } of liverUpdates) {
+      await adminSupabase
+        .from("livers")
+        .update({ liver_id: creator_id, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .is("liver_id", null);
+    }
+  }
 
   // 4. Count link statistics
   const linkedLiverCount = insertRows.filter((r) => r.liver_id !== null).length;
@@ -698,18 +725,16 @@ export async function createRefund(params: {
   ]);
 
   if (reportError || !report) {
-    return {
-      error: reportError?.message ?? "月次レポートが見つかりません",
-    };
+    if (reportError) console.error("[createRefund] monthly_reports:", reportError.message);
+    return { error: "月次レポートが見つかりません" };
   }
 
   if (liverError || !liver) {
-    return {
-      error: liverError?.message ?? "ライバーが見つかりません",
-    };
+    if (liverError) console.error("[createRefund] livers:", liverError.message);
+    return { error: "ライバーが見つかりません" };
   }
 
-  const amountJpy = amountUsd * report.rate;
+  const amountJpy = Math.round(amountUsd * report.rate * 100) / 100;
 
   // Insert refund record
   const { error: insertError } = await supabase.from("refunds").insert({
@@ -723,7 +748,8 @@ export async function createRefund(params: {
   });
 
   if (insertError) {
-    return { error: insertError.message };
+    console.error("[createRefund]", insertError.message);
+    return { error: "返金の登録に失敗しました" };
   }
 
   revalidatePath("/dashboard");
@@ -959,14 +985,36 @@ export async function deleteMonthlyReport(
     return { error: "レポートが見つかりません" };
   }
 
-  // 返金 → CSVデータ → レポートの順で削除（FK依存順）
+  // 請求書が存在する場合は削除を拒否（重要な会計データ）
+  const { data: invoices } = await adminSupabase
+    .from("invoices")
+    .select("id")
+    .eq("monthly_report_id", monthlyReportId)
+    .limit(1);
+
+  if (invoices && invoices.length > 0) {
+    return { error: "このレポートに関連する請求書が存在するため削除できません" };
+  }
+
+  // rate_change_logs → 返金 → CSVデータ → レポートの順で削除（FK依存順）
+  const { error: rateLogError } = await adminSupabase
+    .from("rate_change_logs")
+    .delete()
+    .eq("monthly_report_id", monthlyReportId);
+
+  if (rateLogError) {
+    console.error("[deleteMonthlyReport] rate_change_logs:", rateLogError.message);
+    return { error: "レート変更履歴の削除に失敗しました" };
+  }
+
   const { error: refundError } = await adminSupabase
     .from("refunds")
     .delete()
     .eq("monthly_report_id", monthlyReportId);
 
   if (refundError) {
-    return { error: `返金データの削除に失敗しました: ${refundError.message}` };
+    console.error("[deleteMonthlyReport] refunds:", refundError.message);
+    return { error: "返金データの削除に失敗しました" };
   }
 
   const { error: csvError } = await adminSupabase
@@ -975,7 +1023,8 @@ export async function deleteMonthlyReport(
     .eq("monthly_report_id", monthlyReportId);
 
   if (csvError) {
-    return { error: `CSVデータの削除に失敗しました: ${csvError.message}` };
+    console.error("[deleteMonthlyReport] csv_data:", csvError.message);
+    return { error: "CSVデータの削除に失敗しました" };
   }
 
   const { error: deleteError } = await adminSupabase
@@ -984,7 +1033,8 @@ export async function deleteMonthlyReport(
     .eq("id", monthlyReportId);
 
   if (deleteError) {
-    return { error: `レポートの削除に失敗しました: ${deleteError.message}` };
+    console.error("[deleteMonthlyReport] monthly_reports:", deleteError.message);
+    return { error: "レポートの削除に失敗しました" };
   }
 
   revalidatePath("/dashboard");

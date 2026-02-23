@@ -30,6 +30,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   uploadAgencyId: string | null;
+  onSuccess?: () => void;
 };
 
 type ConfirmState = {
@@ -37,7 +38,7 @@ type ConfirmState = {
   csvText: string;
 };
 
-export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
+export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId, onSuccess }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(150);
   const [revenueTask, setRevenueTask] = useState<RevenueTask>("task_1");
@@ -85,6 +86,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId }: Props) {
     }
     resetForm();
     onOpenChange(false);
+    onSuccess?.();
   }
 
   async function handleUpload() {

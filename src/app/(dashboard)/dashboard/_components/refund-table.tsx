@@ -29,7 +29,6 @@ import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 
 type RefundRow = {
   id: string;
-  liver_name: string | null;
   tiktok_username: string | null;
   account_name: string | null;
   creator_id: string | null;
@@ -47,7 +46,6 @@ type Props = {
 
 const REFUND_COLUMNS: CsvColumn<RefundRow>[] = [
   { header: "データ月", accessor: (r) => r.data_month },
-  { header: "ライバー名", accessor: (r) => r.liver_name },
   { header: "TikTokユーザー名", accessor: (r) => r.tiktok_username },
   { header: "ニックネーム", accessor: (r) => r.account_name },
   { header: "クリエイターID", accessor: (r) => r.creator_id },
@@ -113,7 +111,6 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>データ月</TableHead>
-              <TableHead>ライバー名</TableHead>
               <TableHead>TikTokユーザー名</TableHead>
               <TableHead>ニックネーム</TableHead>
               <TableHead>クリエイターID</TableHead>
@@ -128,7 +125,6 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.data_month ?? "-"}</TableCell>
-                <TableCell>{row.liver_name ?? "-"}</TableCell>
                 <TableCell>{row.tiktok_username ?? "-"}</TableCell>
                 <TableCell>{row.account_name ?? "-"}</TableCell>
                 <TableCell>{row.creator_id ?? "-"}</TableCell>

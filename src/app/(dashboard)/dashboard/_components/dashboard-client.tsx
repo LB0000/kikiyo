@@ -328,7 +328,6 @@ export function DashboardClient({
                 const l = livers.find((l) => l.id === r.liver_id);
                 return {
                   id: r.id,
-                  liver_name: l?.name ?? null,
                   tiktok_username: l?.tiktok_username ?? null,
                   account_name: l?.account_name ?? null,
                   creator_id: l?.liver_id ?? null,

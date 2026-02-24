@@ -21,7 +21,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthlyReportId: string;
-  livers: { id: string; name: string | null; tiktok_username: string | null }[];
+  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null }[];
   onSuccess?: () => void;
 };
 
@@ -86,13 +86,14 @@ export function RefundFormDialog({
           <div className="space-y-2">
             <Label>ライバー <span className="text-destructive/70">*</span></Label>
             <Combobox
-              options={livers.map((liver) => ({
-                value: liver.id,
-                label:
-                  liver.name && liver.tiktok_username
-                    ? `${liver.name}（@${liver.tiktok_username}）`
-                    : liver.name ?? (liver.tiktok_username ? `@${liver.tiktok_username}` : liver.id),
-              }))}
+              options={livers.map((liver) => {
+                const display = liver.account_name || liver.name;
+                const sub = liver.tiktok_username ? `@${liver.tiktok_username}` : null;
+                const label = display && sub
+                  ? `${display}（${sub}）`
+                  : display ?? sub ?? liver.id;
+                return { value: liver.id, label };
+              })}
               value={liverId}
               onValueChange={setLiverId}
               placeholder="ライバーを選択"

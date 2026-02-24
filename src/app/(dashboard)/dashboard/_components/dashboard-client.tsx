@@ -327,7 +327,10 @@ export function DashboardClient({
               rows={dashboardData.refunds.map((r) => ({
                 id: r.id,
                 liver_name:
-                  livers.find((l) => l.id === r.liver_id)?.name ?? null,
+                  (() => {
+                    const l = livers.find((l) => l.id === r.liver_id);
+                    return l?.account_name || l?.name || null;
+                  })(),
                 target_month: r.target_month,
                 amount_usd: r.amount_usd,
                 amount_jpy: r.amount_jpy,

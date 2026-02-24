@@ -42,7 +42,7 @@ import type { RevenueTask } from "@/lib/supabase/types";
 type Props = {
   reports: MonthlyReportItem[];
   agencies: { id: string; name: string }[];
-  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null; liver_id: string | null }[];
+  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null; liver_id: string | null; agency_id: string | null }[];
   userAgencyId: string | null;
   isAdmin: boolean;
 };
@@ -331,6 +331,9 @@ export function DashboardClient({
                   tiktok_username: l?.tiktok_username ?? null,
                   account_name: l?.account_name ?? null,
                   creator_id: l?.liver_id ?? null,
+                  agency_name: l?.agency_id
+                    ? agencies.find((a) => a.id === l.agency_id)?.name ?? null
+                    : null,
                   data_month: selectedReport
                     ? formatDataMonth(selectedReport.data_month, selectedReport.created_at)
                     : null,
@@ -340,6 +343,7 @@ export function DashboardClient({
                   reason: r.reason,
                 };
               })}
+              isAdmin={isAdmin}
               onRefundDeleted={() => setRefreshKey((k) => k + 1)}
             />
           </TabsContent>

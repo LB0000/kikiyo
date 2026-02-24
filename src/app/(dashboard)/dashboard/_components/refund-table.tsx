@@ -32,6 +32,7 @@ type RefundRow = {
   tiktok_username: string | null;
   account_name: string | null;
   creator_id: string | null;
+  agency_name: string | null;
   data_month: string | null;
   target_month: string;
   amount_usd: number;
@@ -41,14 +42,20 @@ type RefundRow = {
 
 type Props = {
   rows: RefundRow[];
+  isAdmin?: boolean;
   onRefundDeleted?: () => void;
 };
 
-const REFUND_COLUMNS: CsvColumn<RefundRow>[] = [
+const BASE_COLUMNS: CsvColumn<RefundRow>[] = [
   { header: "データ月", accessor: (r) => r.data_month },
   { header: "TikTokユーザー名", accessor: (r) => r.tiktok_username },
   { header: "ニックネーム", accessor: (r) => r.account_name },
   { header: "クリエイターID", accessor: (r) => r.creator_id },
+];
+
+const AGENCY_COLUMN: CsvColumn<RefundRow> = { header: "代理店名", accessor: (r) => r.agency_name };
+
+const AMOUNT_COLUMNS: CsvColumn<RefundRow>[] = [
   { header: "対象月", accessor: (r) => r.target_month },
   { header: "返金額(USD)", accessor: (r) => r.amount_usd },
   { header: "返金額(JPY)", accessor: (r) => r.amount_jpy },
@@ -59,7 +66,10 @@ function fmt(n: number): string {
   return n.toLocaleString("ja-JP");
 }
 
-export function RefundTable({ rows, onRefundDeleted }: Props) {
+export function RefundTable({ rows, isAdmin, onRefundDeleted }: Props) {
+  const csvColumns = isAdmin
+    ? [...BASE_COLUMNS, AGENCY_COLUMN, ...AMOUNT_COLUMNS]
+    : [...BASE_COLUMNS, ...AMOUNT_COLUMNS];
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(refundId: string) {
@@ -99,7 +109,7 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
           size="sm"
           className="text-muted-foreground hover:text-foreground"
           onClick={() =>
-            exportCsv(rows, REFUND_COLUMNS, `refund_${new Date().toISOString().slice(0, 10)}.csv`)
+            exportCsv(rows, csvColumns, `refund_${new Date().toISOString().slice(0, 10)}.csv`)
           }
         >
           <Download className="size-3.5" />
@@ -114,6 +124,7 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
               <TableHead>TikTokユーザー名</TableHead>
               <TableHead>ニックネーム</TableHead>
               <TableHead>クリエイターID</TableHead>
+              {isAdmin && <TableHead>代理店名</TableHead>}
               <TableHead>対象月</TableHead>
               <TableHead className="text-right">返金額 (USD)</TableHead>
               <TableHead className="text-right">返金額 (JPY)</TableHead>
@@ -128,6 +139,7 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
                 <TableCell>{row.tiktok_username ?? "-"}</TableCell>
                 <TableCell>{row.account_name ?? "-"}</TableCell>
                 <TableCell>{row.creator_id ?? "-"}</TableCell>
+                {isAdmin && <TableCell>{row.agency_name ?? "-"}</TableCell>}
                 <TableCell>{row.target_month}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {fmt(row.amount_usd)}

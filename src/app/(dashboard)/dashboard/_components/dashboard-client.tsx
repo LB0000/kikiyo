@@ -42,7 +42,7 @@ import type { RevenueTask } from "@/lib/supabase/types";
 type Props = {
   reports: MonthlyReportItem[];
   agencies: { id: string; name: string }[];
-  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null }[];
+  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null; liver_id: string | null }[];
   userAgencyId: string | null;
   isAdmin: boolean;
 };
@@ -324,18 +324,23 @@ export function DashboardClient({
           <TabsContent value="refund" className="mt-4">
             <RefundTable
               key={`${selectedReportId}-${agencyFilter ?? "all"}`}
-              rows={dashboardData.refunds.map((r) => ({
-                id: r.id,
-                liver_name:
-                  (() => {
-                    const l = livers.find((l) => l.id === r.liver_id);
-                    return l?.account_name || l?.name || null;
-                  })(),
-                target_month: r.target_month,
-                amount_usd: r.amount_usd,
-                amount_jpy: r.amount_jpy,
-                reason: r.reason,
-              }))}
+              rows={dashboardData.refunds.map((r) => {
+                const l = livers.find((l) => l.id === r.liver_id);
+                return {
+                  id: r.id,
+                  liver_name: l?.account_name || l?.name || null,
+                  tiktok_username: l?.tiktok_username ?? null,
+                  account_name: l?.account_name ?? null,
+                  creator_id: l?.liver_id ?? null,
+                  data_month: selectedReport
+                    ? formatDataMonth(selectedReport.data_month, selectedReport.created_at)
+                    : null,
+                  target_month: r.target_month,
+                  amount_usd: r.amount_usd,
+                  amount_jpy: r.amount_jpy,
+                  reason: r.reason,
+                };
+              })}
               onRefundDeleted={() => setRefreshKey((k) => k + 1)}
             />
           </TabsContent>

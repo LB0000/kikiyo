@@ -30,6 +30,10 @@ import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 type RefundRow = {
   id: string;
   liver_name: string | null;
+  tiktok_username: string | null;
+  account_name: string | null;
+  creator_id: string | null;
+  data_month: string | null;
   target_month: string;
   amount_usd: number;
   amount_jpy: number;
@@ -42,7 +46,11 @@ type Props = {
 };
 
 const REFUND_COLUMNS: CsvColumn<RefundRow>[] = [
+  { header: "データ月", accessor: (r) => r.data_month },
   { header: "ライバー名", accessor: (r) => r.liver_name },
+  { header: "TikTokユーザー名", accessor: (r) => r.tiktok_username },
+  { header: "ニックネーム", accessor: (r) => r.account_name },
+  { header: "クリエイターID", accessor: (r) => r.creator_id },
   { header: "対象月", accessor: (r) => r.target_month },
   { header: "返金額(USD)", accessor: (r) => r.amount_usd },
   { header: "返金額(JPY)", accessor: (r) => r.amount_jpy },
@@ -104,7 +112,11 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>データ月</TableHead>
               <TableHead>ライバー名</TableHead>
+              <TableHead>TikTokユーザー名</TableHead>
+              <TableHead>ニックネーム</TableHead>
+              <TableHead>クリエイターID</TableHead>
               <TableHead>対象月</TableHead>
               <TableHead className="text-right">返金額 (USD)</TableHead>
               <TableHead className="text-right">返金額 (JPY)</TableHead>
@@ -115,7 +127,11 @@ export function RefundTable({ rows, onRefundDeleted }: Props) {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
+                <TableCell>{row.data_month ?? "-"}</TableCell>
                 <TableCell>{row.liver_name ?? "-"}</TableCell>
+                <TableCell>{row.tiktok_username ?? "-"}</TableCell>
+                <TableCell>{row.account_name ?? "-"}</TableCell>
+                <TableCell>{row.creator_id ?? "-"}</TableCell>
                 <TableCell>{row.target_month}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {fmt(row.amount_usd)}

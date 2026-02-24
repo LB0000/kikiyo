@@ -21,7 +21,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthlyReportId: string;
-  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null }[];
+  livers: { id: string; name: string | null; account_name: string | null; tiktok_username: string | null; liver_id: string | null }[];
   onSuccess?: () => void;
 };
 

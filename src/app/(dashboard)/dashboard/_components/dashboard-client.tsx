@@ -42,7 +42,7 @@ import type { RevenueTask } from "@/lib/supabase/types";
 type Props = {
   reports: MonthlyReportItem[];
   agencies: { id: string; name: string }[];
-  livers: { id: string; name: string | null }[];
+  livers: { id: string; name: string | null; tiktok_username: string | null }[];
   userAgencyId: string | null;
   isAdmin: boolean;
 };

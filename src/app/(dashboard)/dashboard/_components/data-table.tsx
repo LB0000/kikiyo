@@ -41,7 +41,7 @@ type CsvDataRow = {
 
 type Props = {
   rows: CsvDataRow[];
-  livers: { id: string; name: string | null }[];
+  livers: { id: string; name: string | null; tiktok_username: string | null }[];
 };
 
 const PAGE_SIZE = 10;

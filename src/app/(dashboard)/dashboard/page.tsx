@@ -13,7 +13,7 @@ export default async function DashboardPage() {
       getAuthUser(),
       getMonthlyReports(),
       supabase.from("agencies").select("id, name").order("name"),
-      supabase.from("livers").select("id, name").order("name"),
+      supabase.from("livers").select("id, name, tiktok_username").order("name"),
     ]);
   if (!user) redirect("/login");
 

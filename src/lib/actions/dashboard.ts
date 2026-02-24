@@ -6,7 +6,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import type { RevenueTask } from "@/lib/supabase/types";
-import { TAX_MULTIPLIER } from "@/lib/constants";
+import { CONSUMPTION_TAX_RATE, TAX_MULTIPLIER } from "@/lib/constants";
 import { createRefundSchema } from "@/lib/validations/refund";
 
 const revenueTaskSchema = z.enum([
@@ -62,6 +62,7 @@ export type DashboardSummary = {
   totalRewardJpy: number;
   totalAgencyRewardJpy: number;
   totalRefundJpy: number;
+  /** 消費税率（0.1 = 10%） */
   taxRate: number;
   netAmountExTax: number;
   netAmountIncTax: number;
@@ -219,9 +220,10 @@ export async function getDashboardData(
   const commissionRate =
     totalRewardJpy > 0 ? totalAgencyRewardJpy / totalRewardJpy : 0;
 
-  const netAmountExTax = totalRewardJpy - totalRefundJpy;
-  const netAmountIncTax = netAmountExTax * TAX_MULTIPLIER;
-  const agencyPaymentIncTax = netAmountExTax * commissionRate * TAX_MULTIPLIER;
+  // CSV金額は既に税込のため、税込→税抜の順で算出
+  const netAmountIncTax = totalRewardJpy - totalRefundJpy;
+  const netAmountExTax = Math.round(netAmountIncTax / TAX_MULTIPLIER);
+  const agencyPaymentIncTax = Math.round(netAmountIncTax * commissionRate);
 
   const summary: DashboardSummary = {
     totalDiamonds,
@@ -229,7 +231,7 @@ export async function getDashboardData(
     totalRewardJpy,
     totalAgencyRewardJpy,
     totalRefundJpy,
-    taxRate: TAX_MULTIPLIER,
+    taxRate: CONSUMPTION_TAX_RATE,
     netAmountExTax,
     netAmountIncTax,
     agencyPaymentIncTax,

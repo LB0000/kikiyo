@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
-import { CONSUMPTION_TAX_RATE } from "@/lib/constants";
+import { CONSUMPTION_TAX_RATE, TAX_MULTIPLIER } from "@/lib/constants";
 import { sendEmail, escapeHtml, getValidAppUrl } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
@@ -255,7 +255,9 @@ export async function getInvoicePreview(
     (sum, row) => sum + (row.amount_jpy ?? 0),
     0
   );
-  const subtotalJpy = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
+  // agency_reward_jpy は既に税込のため、税込→税抜の順で算出
+  const grossIncTax = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
+  const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 
@@ -395,7 +397,9 @@ export async function createAndSendInvoice(params: {
     (sum, row) => sum + (row.amount_jpy ?? 0),
     0
   );
-  const subtotalJpy = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
+  // agency_reward_jpy は既に税込のため、税込→税抜の順で算出
+  const grossIncTax = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
+  const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 

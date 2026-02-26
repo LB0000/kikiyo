@@ -11,6 +11,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -42,6 +52,7 @@ import {
 import {
   createAgency,
   updateAgency,
+  updateAgencyEmail,
   resendRegistrationEmail,
   getAgencyCompanyInfo,
   updateAgencyCompanyInfo,
@@ -64,6 +75,8 @@ export function AgencyFormDialog({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<AgencyFormValues | null>(null);
   const isEdit = !!agency;
 
   const form = useForm<AgencyFormValues>({
@@ -77,7 +90,7 @@ export function AgencyFormDialog({
           )
             ? (agency.rank as AgencyFormValues["rank"])
             : "rank_2",
-          email: "",
+          email: agency.email ?? "",
           parent_agency_ids: agency.parent_agencies.map(
             (p) => p.parent_agency_id
           ),
@@ -92,6 +105,16 @@ export function AgencyFormDialog({
   });
 
   async function onSubmitBasic(values: AgencyFormValues) {
+    // 編集モードでメール変更がある場合は確認ダイアログを表示
+    if (isEdit && values.email !== (agency.email ?? "")) {
+      setPendingValues(values);
+      setConfirmOpen(true);
+      return;
+    }
+    await executeSubmit(values);
+  }
+
+  async function executeSubmit(values: AgencyFormValues) {
     setLoading(true);
     try {
       if (isEdit) {
@@ -103,10 +126,31 @@ export function AgencyFormDialog({
         });
         if (result.error) {
           toast.error("更新に失敗しました", { description: result.error });
+          return;
+        }
+
+        // メールアドレスが変更された場合
+        const emailChanged = values.email !== (agency.email ?? "");
+        if (emailChanged) {
+          const emailResult = await updateAgencyEmail(agency.id, values.email);
+          if ("error" in emailResult) {
+            toast.error("メールアドレスの変更に失敗しました", {
+              description: emailResult.error,
+            });
+            toast.success("代理店の基本情報は更新しました");
+            onOpenChange(false);
+            return;
+          }
+          if (emailResult.emailError) {
+            toast.warning("メールアドレスを変更しましたが、通知メール送信に失敗しました", {
+              description: "新しいログイン情報を直接お伝えください。",
+            });
+          }
+          toast.success("代理店情報を更新しました（メールアドレス変更済み）");
         } else {
           toast.success("代理店情報を更新しました");
-          onOpenChange(false);
         }
+        onOpenChange(false);
       } else {
         const result = await createAgency(values);
         if (result.error) {
@@ -126,6 +170,14 @@ export function AgencyFormDialog({
       toast.error("処理中にエラーが発生しました");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleConfirmEmailChange() {
+    setConfirmOpen(false);
+    if (pendingValues) {
+      await executeSubmit(pendingValues);
+      setPendingValues(null);
     }
   }
 
@@ -171,35 +223,34 @@ export function AgencyFormDialog({
           )}
         />
 
-        {isEdit ? (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">メールアドレス</label>
-            <div className="flex items-center gap-2">
-              <Input
-                value={agency.email ?? ""}
-                readOnly
-                className="bg-muted"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={resending}
-                onClick={handleResend}
-                className="shrink-0"
-              >
-                <Send className="size-4" />
-                {resending ? "送信中..." : "認証メール再送"}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>メールアドレス</FormLabel>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>メールアドレス</FormLabel>
+              {isEdit ? (
+                <div className="flex items-center gap-2">
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      {...field}
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={resending}
+                    onClick={handleResend}
+                    className="shrink-0"
+                  >
+                    <Send className="size-4" />
+                    {resending ? "送信中..." : "認証メール再送"}
+                  </Button>
+                </div>
+              ) : (
                 <FormControl>
                   <Input
                     type="email"
@@ -207,11 +258,11 @@ export function AgencyFormDialog({
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -307,7 +358,8 @@ export function AgencyFormDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
@@ -336,6 +388,24 @@ export function AgencyFormDialog({
         )}
       </DialogContent>
     </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>メールアドレスを変更しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              メールアドレスはログイン認証情報として使用されます。変更すると新しいメールアドレスに仮パスワードが送信され、現在のパスワードはリセットされます。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmEmailChange}>
+              変更する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

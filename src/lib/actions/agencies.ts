@@ -449,6 +449,88 @@ export async function updateAgency(
 }
 
 // ---------------------------------------------------------------------------
+// updateAgencyEmail – メールアドレス変更
+// ---------------------------------------------------------------------------
+
+export async function updateAgencyEmail(
+  agencyId: string,
+  newEmail: string
+): Promise<{ success: true; emailError?: string | null } | { error: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  // バリデーション
+  const emailParsed = agencyFormSchema.shape.email.safeParse(newEmail);
+  if (!emailParsed.success) {
+    return { error: emailParsed.error.issues[0]?.message ?? "有効なメールアドレスを入力してください" };
+  }
+
+  const adminSupabase = createAdminClient();
+
+  // 代理店情報取得
+  const { data: agency, error: agencyError } = await adminSupabase
+    .from("agencies")
+    .select("id, name, user_id")
+    .eq("id", agencyId)
+    .single();
+
+  if (agencyError || !agency) {
+    return { error: "代理店が見つかりません" };
+  }
+  if (!agency.user_id) {
+    return { error: "この代理店にはユーザーアカウントが紐付いていません" };
+  }
+
+  // 現在のメールアドレス取得
+  const { data: authUser, error: authError } =
+    await adminSupabase.auth.admin.getUserById(agency.user_id);
+
+  if (authError || !authUser?.user) {
+    return { error: "ユーザー情報の取得に失敗しました" };
+  }
+
+  // 変更なしなら早期リターン
+  if (authUser.user.email === newEmail) {
+    return { success: true };
+  }
+
+  // 仮パスワード生成
+  const tempPassword = generateTempPassword();
+
+  // Auth ユーザー更新（メール + パスワード）
+  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(
+    agency.user_id,
+    { email: newEmail, password: tempPassword }
+  );
+
+  if (updateError) {
+    const msg = updateError.message ?? "";
+    if (msg.includes("already been registered")) {
+      return { error: "このメールアドレスは既に使用されています" };
+    }
+    console.error("[updateAgencyEmail] updateUserById:", msg);
+    return { error: "メールアドレスの変更に失敗しました" };
+  }
+
+  // 新しいメールアドレスに登録案内メール送信
+  let emailError: string | null = null;
+  try {
+    await sendRegistrationEmail(newEmail, tempPassword, agency.name);
+    await adminSupabase
+      .from("agencies")
+      .update({ registration_email_sent_at: new Date().toISOString() })
+      .eq("id", agencyId);
+  } catch (e) {
+    emailError = e instanceof Error ? e.message : "メール送信に失敗しました";
+    console.error("[updateAgencyEmail] sendEmail:", emailError);
+  }
+
+  revalidatePath("/agencies");
+  return { success: true, emailError };
+}
+
+// ---------------------------------------------------------------------------
 // resendRegistrationEmail – 認証メール再送
 // ---------------------------------------------------------------------------
 

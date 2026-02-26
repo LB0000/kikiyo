@@ -388,6 +388,19 @@ export async function updateAgency(
     return { error: "代理店情報の更新に失敗しました" };
   }
 
+  // 2.5. 手数料率が変更された場合、csv_data.agency_reward_jpy を再計算
+  const commissionChanged = values.commission_rate !== Number(savedAgency.commission_rate);
+  if (commissionChanged) {
+    const { error: rpcError } = await supabase.rpc("update_commission_rate", {
+      p_agency_id: agencyId,
+      p_new_commission_rate: values.commission_rate,
+    });
+    if (rpcError) {
+      console.error("[updateAgency] update_commission_rate:", rpcError.message);
+      return { error: "手数料率は更新されましたが、CSVデータの再計算に失敗しました" };
+    }
+  }
+
   // 3. 上位代理店リスト更新
   const { error: deleteHierarchyError } = await adminSupabase
     .from("agency_hierarchy")
@@ -445,7 +458,10 @@ export async function updateAgency(
   }
 
   revalidatePath("/agencies");
-  return { success: true };
+  if (commissionChanged) {
+    revalidatePath("/dashboard");
+  }
+  return { success: true, commissionRecalculated: commissionChanged };
 }
 
 // ---------------------------------------------------------------------------

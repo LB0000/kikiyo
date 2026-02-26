@@ -124,7 +124,7 @@ export function AgencyFormDialog({
           rank: values.rank,
           parent_agency_ids: values.parent_agency_ids,
         });
-        if (result.error) {
+        if ("error" in result) {
           toast.error("更新に失敗しました", { description: result.error });
           return;
         }
@@ -147,6 +147,10 @@ export function AgencyFormDialog({
             });
           }
           toast.success("代理店情報を更新しました（メールアドレス変更済み）");
+        } else if (result.commissionRecalculated) {
+          toast.success("代理店情報を更新しました", {
+            description: "手数料率の変更に伴い、CSVデータの報酬額を再計算しました",
+          });
         } else {
           toast.success("代理店情報を更新しました");
         }

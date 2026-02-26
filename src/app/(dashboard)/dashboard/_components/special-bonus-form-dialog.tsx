@@ -20,6 +20,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthlyReportId: string;
+  agencyId: string;
   onSuccess?: () => void;
 };
 
@@ -27,6 +28,7 @@ export function SpecialBonusFormDialog({
   open,
   onOpenChange,
   monthlyReportId,
+  agencyId,
   onSuccess,
 }: Props) {
   const [targetMonth, setTargetMonth] = useState("");
@@ -40,10 +42,11 @@ export function SpecialBonusFormDialog({
     setLoading(true);
     try {
       const result = await createSpecialBonus({
-        targetMonth: targetMonth ? `${targetMonth}-01` : new Date().toISOString().slice(0, 10),
+        targetMonth: `${targetMonth}-01`,
         amountUsd: parseFloat(amountUsd) || 0,
         reason,
         monthlyReportId,
+        agencyId,
       });
 
       if ("error" in result) {
@@ -74,11 +77,12 @@ export function SpecialBonusFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label>対象月</Label>
+            <Label>対象月 <span className="text-destructive/70">*</span></Label>
             <Input
               type="month"
               value={targetMonth}
               onChange={(e) => setTargetMonth(e.target.value)}
+              required
             />
           </div>
 

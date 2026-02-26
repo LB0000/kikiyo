@@ -863,6 +863,7 @@ export async function createSpecialBonus(params: {
   amountUsd: number;
   reason: string;
   monthlyReportId: string;
+  agencyId: string;
 }): Promise<{ success: true } | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
@@ -873,7 +874,7 @@ export async function createSpecialBonus(params: {
     return { error: parsed.error.issues[0]?.message ?? "入力値が不正です" };
   }
 
-  const { targetMonth, amountUsd, reason, monthlyReportId } = parsed.data;
+  const { targetMonth, amountUsd, reason, monthlyReportId, agencyId } = parsed.data;
   const supabase = await createClient();
 
   const { data: report, error: reportError } = await supabase
@@ -895,6 +896,7 @@ export async function createSpecialBonus(params: {
     amount_jpy: amountJpy,
     reason,
     monthly_report_id: monthlyReportId,
+    agency_id: agencyId,
   });
 
   if (insertError) {

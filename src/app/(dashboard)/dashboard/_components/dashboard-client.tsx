@@ -398,7 +398,10 @@ export function DashboardClient({
         open={csvOpen}
         onOpenChange={setCsvOpen}
         uploadAgencyId={userAgencyId}
-        onSuccess={() => setRefreshKey((k) => k + 1)}
+        onSuccess={(newReportId) => {
+          setSelectedReportId(newReportId);
+          setRefreshKey((k) => k + 1);
+        }}
       />
 
       {selectedReportId && dashboardData && (
@@ -416,6 +419,7 @@ export function DashboardClient({
             open={specialBonusOpen}
             onOpenChange={setSpecialBonusOpen}
             monthlyReportId={selectedReportId}
+            agencyId={agencyFilter ?? userAgencyId ?? ""}
             onSuccess={() => setRefreshKey((k) => k + 1)}
           />
           <ExchangeRateDialog

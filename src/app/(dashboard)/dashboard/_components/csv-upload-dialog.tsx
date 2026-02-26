@@ -23,14 +23,14 @@ import {
 import { toast } from "sonner";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
 import { importCsvData } from "@/lib/actions/dashboard";
-import type { ImportConfirmation } from "@/lib/actions/dashboard";
+import type { ImportConfirmation, ImportResult } from "@/lib/actions/dashboard";
 import type { RevenueTask } from "@/lib/supabase/types";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   uploadAgencyId: string | null;
-  onSuccess?: () => void;
+  onSuccess?: (monthlyReportId: string) => void;
 };
 
 type ConfirmState = {
@@ -59,7 +59,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId, onSuccess 
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-  function handleImportSuccess(result: { success: true; totalRows: number; unlinkedLiverCount: number; unlinkedAgencyCount: number; linkedLiverCount: number; linkedAgencyCount: number; newLiverCount: number }) {
+  function handleImportSuccess(result: ImportResult) {
     const hasUnlinked =
       result.unlinkedLiverCount > 0 || result.unlinkedAgencyCount > 0;
     const parts: string[] = [
@@ -86,7 +86,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId, onSuccess 
     }
     resetForm();
     onOpenChange(false);
-    onSuccess?.();
+    onSuccess?.(result.monthlyReportId);
   }
 
   async function handleUpload() {

@@ -459,6 +459,44 @@ export type Database = {
           updated_at?: string;
         };
       };
+      special_bonuses: {
+        Row: {
+          id: string;
+          target_month: string;
+          reason: string | null;
+          amount_usd: number;
+          amount_jpy: number;
+          is_deleted: boolean;
+          agency_id: string | null;
+          liver_id: string | null;
+          monthly_report_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          target_month: string;
+          reason?: string | null;
+          amount_usd: number;
+          amount_jpy: number;
+          is_deleted?: boolean;
+          agency_id?: string | null;
+          liver_id?: string | null;
+          monthly_report_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          target_month?: string;
+          reason?: string | null;
+          amount_usd?: number;
+          amount_jpy?: number;
+          is_deleted?: boolean;
+          agency_id?: string | null;
+          liver_id?: string | null;
+          monthly_report_id?: string | null;
+          created_at?: string;
+        };
+      };
       applications: {
         Row: {
           id: string;

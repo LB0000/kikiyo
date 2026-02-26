@@ -161,6 +161,10 @@ export function ExchangeRateDialog({
                   <p className="text-muted-foreground">返金データ</p>
                   <p className="font-semibold">{preview.refundRowCount.toLocaleString()}件</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">特別ボーナス</p>
+                  <p className="font-semibold">{preview.specialBonusRowCount.toLocaleString()}件</p>
+                </div>
               </div>
             </div>
 
@@ -199,6 +203,19 @@ export function ExchangeRateDialog({
                       <span className="font-semibold">{fmtJpy(preview.newTotalRefundJpy)}</span>
                       <span className="ml-2 text-xs">
                         (<DiffValue oldVal={preview.oldTotalRefundJpy} newVal={preview.newTotalRefundJpy} />)
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {preview.specialBonusRowCount > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">特別ボーナス合計(JPY)</span>
+                    <div className="text-right">
+                      <span>{fmtJpy(preview.oldTotalSpecialBonusJpy)}</span>
+                      <span className="mx-1.5 text-muted-foreground">{"\u2192"}</span>
+                      <span className="font-semibold">{fmtJpy(preview.newTotalSpecialBonusJpy)}</span>
+                      <span className="ml-2 text-xs">
+                        (<DiffValue oldVal={preview.oldTotalSpecialBonusJpy} newVal={preview.newTotalSpecialBonusJpy} />)
                       </span>
                     </div>
                   </div>
@@ -265,7 +282,7 @@ export function ExchangeRateDialog({
               required
             />
             <p className="text-xs text-muted-foreground/70 leading-relaxed">
-              変更すると、関連する全CSVデータと返金データの円額が再計算されます。(50〜500)
+              変更すると、関連する全CSVデータ、返金データ、特別ボーナスデータの円額が再計算されます。(50〜500)
             </p>
           </div>
 

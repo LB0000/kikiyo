@@ -14,6 +14,8 @@ import { CsvUploadDialog } from "./csv-upload-dialog";
 import { DataTable } from "./data-table";
 import { RefundTable } from "./refund-table";
 import { RefundFormDialog } from "./refund-form-dialog";
+import { SpecialBonusFormDialog } from "./special-bonus-form-dialog";
+import { SpecialBonusTable } from "./special-bonus-table";
 import { ExchangeRateDialog } from "./exchange-rate-dialog";
 import {
   getDashboardData,
@@ -67,11 +69,13 @@ export function DashboardClient({
   // ダイアログ制御
   const [csvOpen, setCsvOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [specialBonusOpen, setSpecialBonusOpen] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [csvKey, setCsvKey] = useState(0);
   const [refundKey, setRefundKey] = useState(0);
+  const [specialBonusKey, setSpecialBonusKey] = useState(0);
   const [rateKey, setRateKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -257,6 +261,9 @@ export function DashboardClient({
                 <Button variant="outline" className={outlineActionClass} onClick={() => { setRefundKey((k) => k + 1); setRefundOpen(true); }}>
                   返金登録
                 </Button>
+                <Button variant="outline" className={outlineActionClass} onClick={() => { setSpecialBonusKey((k) => k + 1); setSpecialBonusOpen(true); }}>
+                  特別ボーナス登録
+                </Button>
               </>
             )}
             <Button className="rounded-full shadow-sm" onClick={() => { setCsvKey((k) => k + 1); setCsvOpen(true); }}>
@@ -269,7 +276,7 @@ export function DashboardClient({
       {/* サマリーカード */}
       {loading ? (
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="rounded-xl border bg-card p-5 shadow-[var(--card-shadow)]">
               <div className="flex items-center gap-3">
                 <div className="size-9 animate-shimmer rounded-lg" />
@@ -295,6 +302,7 @@ export function DashboardClient({
           netAmountIncTax={dashboardData.summary.netAmountIncTax}
           commissionRate={dashboardData.summary.commissionRate}
           agencyPaymentIncTax={dashboardData.summary.agencyPaymentIncTax}
+          totalSpecialBonusJpy={dashboardData.summary.totalSpecialBonusJpy}
         />
       ) : null}
 
@@ -317,6 +325,7 @@ export function DashboardClient({
           <TabsList variant="line">
             <TabsTrigger value="data">データ一覧</TabsTrigger>
             <TabsTrigger value="refund">返金一覧</TabsTrigger>
+            <TabsTrigger value="special-bonus">特別ボーナス一覧</TabsTrigger>
           </TabsList>
           <TabsContent value="data" className="mt-4">
             <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} livers={livers} />
@@ -345,6 +354,22 @@ export function DashboardClient({
               })}
               isAdmin={isAdmin}
               onRefundDeleted={() => setRefreshKey((k) => k + 1)}
+            />
+          </TabsContent>
+          <TabsContent value="special-bonus" className="mt-4">
+            <SpecialBonusTable
+              key={`sb-${selectedReportId}-${agencyFilter ?? "all"}`}
+              rows={dashboardData.specialBonuses.map((sb) => ({
+                id: sb.id,
+                data_month: selectedReport
+                  ? formatDataMonth(selectedReport.data_month, selectedReport.created_at)
+                  : null,
+                target_month: sb.target_month,
+                amount_usd: sb.amount_usd,
+                amount_jpy: sb.amount_jpy,
+                reason: sb.reason,
+              }))}
+              onDeleted={() => setRefreshKey((k) => k + 1)}
             />
           </TabsContent>
         </Tabs>
@@ -386,6 +411,13 @@ export function DashboardClient({
             livers={livers}
             onSuccess={() => setRefreshKey((k) => k + 1)}
           />
+          <SpecialBonusFormDialog
+            key={specialBonusKey}
+            open={specialBonusOpen}
+            onOpenChange={setSpecialBonusOpen}
+            monthlyReportId={selectedReportId}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
+          />
           <ExchangeRateDialog
             key={rateKey}
             open={rateOpen}
@@ -403,7 +435,7 @@ export function DashboardClient({
           <AlertDialogHeader>
             <AlertDialogTitle>このレポートを削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              関連するCSVデータと返金データも全て削除されます。この操作は取り消せません。
+              関連するCSVデータ、返金データ、特別ボーナスデータも全て削除されます。この操作は取り消せません。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

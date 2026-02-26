@@ -194,7 +194,7 @@ export function CsvUploadDialog({ open, onOpenChange, uploadAgencyId, onSuccess 
                   {confirmState.confirmation.dataMonth} のデータが既に登録されています
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  既存のCSVデータを削除し、新しいデータで上書きします。返金データは引き継がれます。
+                  既存のCSVデータ・請求書・レート変更履歴を削除し、新しいデータで上書きします。返金データと特別ボーナスは引き継がれます。
                 </p>
               </div>
             </div>

@@ -71,6 +71,7 @@ export type InvoicePreview = {
   taxAmountJpy: number;
   totalJpy: number;
   deductibleRate: number;
+  existingInvoiceNumber: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -221,8 +222,8 @@ export async function getInvoicePreview(
   const agency = agencyRes.data;
   const report = reportRes.data;
 
-  // csv_data と refunds を並列取得（adminSupabase でRLSバイパス）
-  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }] =
+  // csv_data, refunds, 既存請求書を並列取得（adminSupabase でRLSバイパス）
+  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: existingInvoices }] =
     await Promise.all([
       adminSupabase
         .from("csv_data")
@@ -235,6 +236,12 @@ export async function getInvoicePreview(
         .eq("agency_id", agencyId)
         .eq("monthly_report_id", monthlyReportId)
         .eq("is_deleted", false),
+      adminSupabase
+        .from("invoices")
+        .select("invoice_number")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId)
+        .limit(1),
     ]);
 
   if (csvError) {
@@ -264,6 +271,11 @@ export async function getInvoicePreview(
   const isInvoiceRegistered = !!agency.invoice_registration_number;
   const deductibleRate = getDeductibleRate(isInvoiceRegistered);
 
+  const existingInvoiceNumber =
+    existingInvoices && existingInvoices.length > 0
+      ? existingInvoices[0].invoice_number
+      : null;
+
   return {
     agencyName: agency.name,
     agencyAddress: agency.company_address,
@@ -282,6 +294,7 @@ export async function getInvoicePreview(
     taxAmountJpy,
     totalJpy,
     deductibleRate,
+    existingInvoiceNumber,
   };
 }
 
@@ -353,8 +366,8 @@ export async function createAndSendInvoice(params: {
   const agency = agencyRes.data;
   const report = reportRes.data;
 
-  // csv_data, refunds, 重複チェックを並列取得（adminSupabase でRLSバイパス）
-  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: existingDuplicate }] =
+  // csv_data, refunds, 既存請求書を並列取得（adminSupabase でRLSバイパス）
+  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: existingInvoices }] =
     await Promise.all([
       adminSupabase
         .from("csv_data")
@@ -371,8 +384,7 @@ export async function createAndSendInvoice(params: {
         .from("invoices")
         .select("id")
         .eq("agency_id", agencyId)
-        .eq("monthly_report_id", monthlyReportId)
-        .limit(1),
+        .eq("monthly_report_id", monthlyReportId),
     ]);
 
   if (csvError) {
@@ -385,8 +397,19 @@ export async function createAndSendInvoice(params: {
     return { error: "返金データの取得に失敗しました" };
   }
 
-  if (existingDuplicate && existingDuplicate.length > 0) {
-    return { error: "この代理店・月次レポートの請求書は既に作成済みです" };
+  const isRecreation = (existingInvoices ?? []).length > 0;
+
+  // 既存の請求書がある場合は先に削除（UNIQUE制約 uq_invoices_agency_report 対応）
+  if (isRecreation) {
+    const deleteIds = existingInvoices!.map((d) => d.id);
+    const { error: deleteError } = await adminSupabase
+      .from("invoices")
+      .delete()
+      .in("id", deleteIds);
+    if (deleteError) {
+      console.error("[createAndSendInvoice] delete existing:", deleteError.message);
+      return { error: "既存の請求書の削除に失敗しました" };
+    }
   }
 
   const grossAgencyJpy = (csvRows ?? []).reduce(
@@ -424,7 +447,7 @@ export async function createAndSendInvoice(params: {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     // 既存の請求書から最大連番を取得
-    const { data: existingInvoices } = await adminSupabase
+    const { data: existingNumbered } = await adminSupabase
       .from("invoices")
       .select("invoice_number")
       .like("invoice_number", `${invoicePrefix}%`)
@@ -432,8 +455,8 @@ export async function createAndSendInvoice(params: {
       .limit(1);
 
     let seq = 1;
-    if (existingInvoices && existingInvoices.length > 0) {
-      const lastNumber = existingInvoices[0].invoice_number;
+    if (existingNumbered && existingNumbered.length > 0) {
+      const lastNumber = existingNumbered[0].invoice_number;
       const lastSeq = parseInt(lastNumber.replace(invoicePrefix, ""), 10);
       if (!isNaN(lastSeq)) {
         seq = lastSeq + 1;
@@ -498,6 +521,7 @@ export async function createAndSendInvoice(params: {
       invoiceNumber: invoice.invoice_number,
       totalJpy,
       dataMonth,
+      isRecreation,
     });
   } catch (e) {
     emailError =
@@ -518,8 +542,9 @@ async function sendInvoiceNotificationEmail(params: {
   invoiceNumber: string;
   totalJpy: number;
   dataMonth: string | null;
+  isRecreation: boolean;
 }) {
-  const { agencyName, invoiceNumber, totalJpy, dataMonth } = params;
+  const { agencyName, invoiceNumber, totalJpy, dataMonth, isRecreation } = params;
   const appUrl = getValidAppUrl();
 
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -532,12 +557,18 @@ async function sendInvoiceNotificationEmail(params: {
   const formattedTotal = totalJpy.toLocaleString("ja-JP");
   const safeDataMonth = dataMonth ? escapeHtml(dataMonth) : "未指定";
 
+  const subjectPrefix = isRecreation ? "請求書再作成通知" : "請求書送付通知";
+  const bodyHeading = isRecreation ? "請求書再作成通知" : "請求書送付通知";
+  const bodyDescription = isRecreation
+    ? "以下の請求書が再作成されました（旧請求書は削除済み）。"
+    : "以下の請求書が作成・送付されました。";
+
   await sendEmail({
     to: adminEmail,
-    subject: `請求書送付通知: ${agencyName} (${dataMonth ?? "未指定"})`,
+    subject: `${subjectPrefix}: ${agencyName} (${dataMonth ?? "未指定"})`,
     html: `
-      <h2>請求書送付通知</h2>
-      <p>以下の請求書が作成・送付されました。</p>
+      <h2>${bodyHeading}</h2>
+      <p>${bodyDescription}</p>
       <ul>
         <li><strong>代理店名:</strong> ${safeAgencyName}</li>
         <li><strong>請求書番号:</strong> ${safeInvoiceNumber}</li>

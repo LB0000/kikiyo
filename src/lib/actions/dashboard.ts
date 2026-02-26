@@ -8,6 +8,7 @@ import { getAuthUser } from "@/lib/auth";
 import type { RevenueTask } from "@/lib/supabase/types";
 import { CONSUMPTION_TAX_RATE, TAX_MULTIPLIER } from "@/lib/constants";
 import { createRefundSchema } from "@/lib/validations/refund";
+import { createSpecialBonusSchema } from "@/lib/validations/special-bonus";
 
 const revenueTaskSchema = z.enum([
   "task_1", "task_2", "task_3", "task_4", "task_5", "task_6_plus",
@@ -68,6 +69,7 @@ export type DashboardSummary = {
   netAmountIncTax: number;
   agencyPaymentIncTax: number;
   commissionRate: number;
+  totalSpecialBonusJpy: number;
 };
 
 export type DashboardData = {
@@ -102,6 +104,13 @@ export type DashboardData = {
     amount_usd: number;
     amount_jpy: number;
     liver_id: string | null;
+  }>;
+  specialBonuses: Array<{
+    id: string;
+    target_month: string;
+    reason: string | null;
+    amount_usd: number;
+    amount_jpy: number;
   }>;
   summary: DashboardSummary;
 };
@@ -178,11 +187,22 @@ export async function getDashboardData(
     refundQuery = refundQuery.eq("agency_id", agencyId);
   }
 
+  let specialBonusQuery = supabase
+    .from("special_bonuses")
+    .select("id, target_month, reason, amount_usd, amount_jpy")
+    .eq("monthly_report_id", monthlyReportId)
+    .eq("is_deleted", false);
+
+  if (agencyId) {
+    specialBonusQuery = specialBonusQuery.eq("agency_id", agencyId);
+  }
+
   const [
     { data: report, error: reportError },
     { data: csvRows, error: csvError },
     { data: refunds, error: refundError },
-  ] = await Promise.all([reportQuery, csvQuery, refundQuery]);
+    { data: specialBonuses, error: specialBonusError },
+  ] = await Promise.all([reportQuery, csvQuery, refundQuery, specialBonusQuery]);
 
   if (reportError || !report) {
     if (reportError) console.error("[getDashboardData] report:", reportError.message);
@@ -199,8 +219,14 @@ export async function getDashboardData(
     return { error: "返金データの取得に失敗しました" };
   }
 
+  if (specialBonusError) {
+    console.error("[getDashboardData] specialBonus:", specialBonusError.message);
+    return { error: "特別ボーナスデータの取得に失敗しました" };
+  }
+
   const rows = csvRows ?? [];
   const refundRows = refunds ?? [];
+  const specialBonusRows = specialBonuses ?? [];
 
   // Compute summary
   const totalDiamonds = rows.reduce((sum, r) => sum + r.diamonds, 0);
@@ -211,6 +237,10 @@ export async function getDashboardData(
     0
   );
   const totalRefundJpy = refundRows.reduce(
+    (sum, r) => sum + r.amount_jpy,
+    0
+  );
+  const totalSpecialBonusJpy = specialBonusRows.reduce(
     (sum, r) => sum + r.amount_jpy,
     0
   );
@@ -236,12 +266,14 @@ export async function getDashboardData(
     netAmountIncTax,
     agencyPaymentIncTax,
     commissionRate,
+    totalSpecialBonusJpy,
   };
 
   return {
     report,
     csvRows: rows,
     refunds: refundRows,
+    specialBonuses: specialBonusRows,
     summary,
   };
 }
@@ -481,9 +513,20 @@ export async function importCsvData(params: {
 
     if (refundMigrateError) {
       console.error("[importCsvData] refund migrate:", refundMigrateError.message);
-      // 新レポートをロールバック
       await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
       return { error: "返金データの移行に失敗しました" };
+    }
+
+    // 特別ボーナスデータを新レポートに移行
+    const { error: specialBonusMigrateError } = await adminSupabase
+      .from("special_bonuses")
+      .update({ monthly_report_id: report.id })
+      .in("monthly_report_id", replaceReportIds);
+
+    if (specialBonusMigrateError) {
+      console.error("[importCsvData] special_bonus migrate:", specialBonusMigrateError.message);
+      await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
+      return { error: "特別ボーナスデータの移行に失敗しました" };
     }
 
     // 旧csv_dataを削除
@@ -496,6 +539,28 @@ export async function importCsvData(params: {
       console.error("[importCsvData] csv_data delete:", csvDeleteError.message);
       await adminSupabase.from("monthly_reports").delete().eq("id", report.id);
       return { error: "旧CSVデータの削除に失敗しました" };
+    }
+
+    // 旧請求書を削除（CSVデータが変わるため旧請求書は無効）
+    const { error: invoiceDeleteError } = await adminSupabase
+      .from("invoices")
+      .delete()
+      .in("monthly_report_id", replaceReportIds);
+
+    if (invoiceDeleteError) {
+      console.error("[importCsvData] invoices delete:", invoiceDeleteError.message);
+      return { error: "旧請求書の削除に失敗しました" };
+    }
+
+    // 旧レート変更履歴を削除
+    const { error: rateLogDeleteError } = await adminSupabase
+      .from("rate_change_logs")
+      .delete()
+      .in("monthly_report_id", replaceReportIds);
+
+    if (rateLogDeleteError) {
+      console.error("[importCsvData] rate_change_logs delete:", rateLogDeleteError.message);
+      return { error: "旧レート変更履歴の削除に失敗しました" };
     }
 
     // 旧monthly_reportsを削除
@@ -790,6 +855,85 @@ export async function deleteRefund(
 }
 
 // ---------------------------------------------------------------------------
+// 5b. createSpecialBonus
+// ---------------------------------------------------------------------------
+
+export async function createSpecialBonus(params: {
+  targetMonth: string;
+  amountUsd: number;
+  reason: string;
+  monthlyReportId: string;
+}): Promise<{ success: true } | { error: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  const parsed = createSpecialBonusSchema.safeParse(params);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "入力値が不正です" };
+  }
+
+  const { targetMonth, amountUsd, reason, monthlyReportId } = parsed.data;
+  const supabase = await createClient();
+
+  const { data: report, error: reportError } = await supabase
+    .from("monthly_reports")
+    .select("rate")
+    .eq("id", monthlyReportId)
+    .single();
+
+  if (reportError || !report) {
+    if (reportError) console.error("[createSpecialBonus] monthly_reports:", reportError.message);
+    return { error: "月次レポートが見つかりません" };
+  }
+
+  const amountJpy = Math.round(amountUsd * report.rate * 100) / 100;
+
+  const { error: insertError } = await supabase.from("special_bonuses").insert({
+    target_month: targetMonth,
+    amount_usd: amountUsd,
+    amount_jpy: amountJpy,
+    reason,
+    monthly_report_id: monthlyReportId,
+  });
+
+  if (insertError) {
+    console.error("[createSpecialBonus]", insertError.message);
+    return { error: "特別ボーナスの登録に失敗しました" };
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// 5c. deleteSpecialBonus
+// ---------------------------------------------------------------------------
+
+export async function deleteSpecialBonus(
+  specialBonusId: string
+): Promise<{ success: true } | { error: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("special_bonuses")
+    .update({ is_deleted: true })
+    .eq("id", specialBonusId);
+
+  if (error) {
+    console.error("[deleteSpecialBonus]", error.message);
+    return { error: "特別ボーナスの削除に失敗しました" };
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
 // 6. previewRateChange
 // ---------------------------------------------------------------------------
 
@@ -798,12 +942,15 @@ export type RateChangePreview = {
   newRate: number;
   csvRowCount: number;
   refundRowCount: number;
+  specialBonusRowCount: number;
   oldTotalRewardJpy: number;
   newTotalRewardJpy: number;
   oldTotalRefundJpy: number;
   newTotalRefundJpy: number;
   oldTotalAgencyRewardJpy: number;
   newTotalAgencyRewardJpy: number;
+  oldTotalSpecialBonusJpy: number;
+  newTotalSpecialBonusJpy: number;
   invoiceCount: number;
 };
 
@@ -821,7 +968,7 @@ export async function previewRateChange(
 
   const supabase = await createClient();
 
-  const [reportRes, csvRes, refundRes, agencyRes, invoiceRes] =
+  const [reportRes, csvRes, refundRes, specialBonusRes, agencyRes, invoiceRes] =
     await Promise.all([
       supabase
         .from("monthly_reports")
@@ -834,6 +981,11 @@ export async function previewRateChange(
         .eq("monthly_report_id", monthlyReportId),
       supabase
         .from("refunds")
+        .select("amount_usd, amount_jpy")
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false),
+      supabase
+        .from("special_bonuses")
         .select("amount_usd, amount_jpy")
         .eq("monthly_report_id", monthlyReportId)
         .eq("is_deleted", false),
@@ -851,6 +1003,7 @@ export async function previewRateChange(
   const oldRate = reportRes.data.rate;
   const csvRows = csvRes.data ?? [];
   const refundRows = refundRes.data ?? [];
+  const specialBonusRows = specialBonusRes.data ?? [];
   const agencyMap = new Map(
     (agencyRes.data ?? []).map((a) => [a.id, a.commission_rate])
   );
@@ -876,17 +1029,26 @@ export async function previewRateChange(
     0
   );
 
+  const oldTotalSpecialBonusJpy = specialBonusRows.reduce((s, r) => s + r.amount_jpy, 0);
+  const newTotalSpecialBonusJpy = specialBonusRows.reduce(
+    (s, r) => s + Math.round(r.amount_usd * newRate * 100) / 100,
+    0
+  );
+
   return {
     oldRate,
     newRate,
     csvRowCount: csvRows.length,
     refundRowCount: refundRows.length,
+    specialBonusRowCount: specialBonusRows.length,
     oldTotalRewardJpy,
     newTotalRewardJpy,
     oldTotalRefundJpy,
     newTotalRefundJpy,
     oldTotalAgencyRewardJpy,
     newTotalAgencyRewardJpy,
+    oldTotalSpecialBonusJpy,
+    newTotalSpecialBonusJpy,
     invoiceCount: invoiceRes.count ?? 0,
   };
 }
@@ -1021,6 +1183,16 @@ export async function deleteMonthlyReport(
   if (refundError) {
     console.error("[deleteMonthlyReport] refunds:", refundError.message);
     return { error: "返金データの削除に失敗しました" };
+  }
+
+  const { error: specialBonusError } = await adminSupabase
+    .from("special_bonuses")
+    .delete()
+    .eq("monthly_report_id", monthlyReportId);
+
+  if (specialBonusError) {
+    console.error("[deleteMonthlyReport] special_bonuses:", specialBonusError.message);
+    return { error: "特別ボーナスデータの削除に失敗しました" };
   }
 
   const { error: csvError } = await adminSupabase

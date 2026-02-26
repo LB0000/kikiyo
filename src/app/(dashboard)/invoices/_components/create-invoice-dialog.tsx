@@ -92,7 +92,11 @@ export function CreateInvoiceDialog({
         description: result.error,
       });
     } else {
-      toast.success("請求書を作成しました");
+      toast.success(
+        preview?.existingInvoiceNumber
+          ? "請求書を再作成しました"
+          : "請求書を作成しました"
+      );
       if ("emailError" in result && result.emailError) {
         toast.warning("通知メールの送信に失敗しました", {
           description: String(result.emailError),
@@ -138,6 +142,14 @@ export function CreateInvoiceDialog({
             <div className="rounded-lg border p-4">
               <p className="text-sm text-muted-foreground text-center">
                 金額計算中...
+              </p>
+            </div>
+          )}
+
+          {preview && !loadingPreview && preview.existingInvoiceNumber && (
+            <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-3 dark:bg-yellow-950/30">
+              <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                既存の請求書（{preview.existingInvoiceNumber}）を削除して再作成します。
               </p>
             </div>
           )}
@@ -225,7 +237,11 @@ export function CreateInvoiceDialog({
             onClick={handleSubmit}
             disabled={!preview || submitting}
           >
-            {submitting ? "送信中..." : "作成して送信"}
+            {submitting
+              ? "送信中..."
+              : preview?.existingInvoiceNumber
+                ? "再作成して送信"
+                : "作成して送信"}
           </Button>
         </DialogFooter>
       </DialogContent>

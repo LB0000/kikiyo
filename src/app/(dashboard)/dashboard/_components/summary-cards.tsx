@@ -9,6 +9,7 @@ import {
   ReceiptText,
   Percent,
   Banknote,
+  Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -21,6 +22,7 @@ type Props = {
   netAmountIncTax: number;
   commissionRate: number;
   agencyPaymentIncTax: number;
+  totalSpecialBonusJpy: number;
 };
 
 type CardItem = {
@@ -52,6 +54,7 @@ export function SummaryCards({
   netAmountIncTax,
   commissionRate,
   agencyPaymentIncTax,
+  totalSpecialBonusJpy,
 }: Props) {
   const cards: CardItem[] = [
     {
@@ -95,6 +98,12 @@ export function SummaryCards({
       value: commissionRate > 0 ? fmtPercent(commissionRate) : "-",
       icon: Percent,
       iconColor: "text-orange-500",
+    },
+    {
+      label: "特別ボーナス",
+      value: fmtJpy(totalSpecialBonusJpy),
+      icon: Star,
+      iconColor: "text-pink-500",
     },
     {
       label: "お支払い金額(税込)",

@@ -228,7 +228,7 @@ export async function getInvoicePreview(
     await Promise.all([
       adminSupabase
         .from("csv_data")
-        .select("agency_reward_jpy")
+        .select("total_reward_jpy")
         .eq("agency_id", agencyId)
         .eq("monthly_report_id", monthlyReportId),
       adminSupabase
@@ -266,8 +266,10 @@ export async function getInvoicePreview(
     return { error: "特別ボーナスデータの取得に失敗しました" };
   }
 
+  // total_reward_jpy × 実commission_rateで算出（csv_data.agency_reward_jpyは古い可能性がある）
+  // インポート時と同様に行単位で丸めてから合計（金額一貫性のため）
   const grossAgencyJpy = (csvRows ?? []).reduce(
-    (sum, row) => sum + (row.agency_reward_jpy ?? 0),
+    (sum, row) => sum + Math.round((row.total_reward_jpy ?? 0) * agency.commission_rate * 100) / 100,
     0
   );
   const totalRefundJpy = (refundRows ?? []).reduce(
@@ -278,7 +280,7 @@ export async function getInvoicePreview(
     (sum, row) => sum + (row.amount_jpy ?? 0),
     0
   );
-  // agency_reward_jpy は既に税込のため、税込→税抜の順で算出
+  // grossAgencyJpy は既に税込のため、税込→税抜の順で算出
   // 特別ボーナスを加算、返金は代理店分（返金額×手数料率）を差し引く
   const grossIncTax = grossAgencyJpy + totalSpecialBonusJpy - totalRefundJpy * agency.commission_rate;
   const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
@@ -389,7 +391,7 @@ export async function createAndSendInvoice(params: {
     await Promise.all([
       adminSupabase
         .from("csv_data")
-        .select("agency_reward_jpy")
+        .select("total_reward_jpy")
         .eq("agency_id", agencyId)
         .eq("monthly_report_id", monthlyReportId),
       adminSupabase
@@ -441,8 +443,10 @@ export async function createAndSendInvoice(params: {
     }
   }
 
+  // total_reward_jpy × 実commission_rateで算出（csv_data.agency_reward_jpyは古い可能性がある）
+  // インポート時と同様に行単位で丸めてから合計（金額一貫性のため）
   const grossAgencyJpy = (csvRows ?? []).reduce(
-    (sum, row) => sum + (row.agency_reward_jpy ?? 0),
+    (sum, row) => sum + Math.round((row.total_reward_jpy ?? 0) * agency.commission_rate * 100) / 100,
     0
   );
   const totalRefundJpy = (refundRows ?? []).reduce(
@@ -453,7 +457,7 @@ export async function createAndSendInvoice(params: {
     (sum, row) => sum + (row.amount_jpy ?? 0),
     0
   );
-  // agency_reward_jpy は既に税込のため、税込→税抜の順で算出
+  // grossAgencyJpy は既に税込のため、税込→税抜の順で算出
   // 特別ボーナスを加算、返金は代理店分（返金額×手数料率）を差し引く
   const grossIncTax = grossAgencyJpy + totalSpecialBonusJpy - totalRefundJpy * agency.commission_rate;
   const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);

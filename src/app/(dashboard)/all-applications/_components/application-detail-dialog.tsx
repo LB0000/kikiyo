@@ -82,10 +82,16 @@ export function ApplicationDetailDialog({
   onOpenChange,
   application,
 }: Props) {
-  const [status, setStatus] = useState<ApplicationStatus>(
-    application?.status ?? "pending"
-  );
+  const currentStatus = application?.status ?? "pending";
+  const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [loading, setLoading] = useState(false);
+
+  // application が変更されたら status を同期
+  const [prevStatus, setPrevStatus] = useState(currentStatus);
+  if (currentStatus !== prevStatus) {
+    setPrevStatus(currentStatus);
+    setStatus(currentStatus);
+  }
 
   if (!application) return null;
 

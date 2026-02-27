@@ -23,6 +23,7 @@ type Props = {
   commissionRate: number;
   agencyPaymentIncTax: number;
   totalSpecialBonusJpy: number;
+  isAdmin?: boolean;
 };
 
 type CardItem = {
@@ -55,6 +56,7 @@ export function SummaryCards({
   commissionRate,
   agencyPaymentIncTax,
   totalSpecialBonusJpy,
+  isAdmin,
 }: Props) {
   const cards: CardItem[] = [
     {
@@ -99,12 +101,16 @@ export function SummaryCards({
       icon: Percent,
       iconColor: "text-orange-500",
     },
-    {
-      label: "特別ボーナス",
-      value: fmtJpy(totalSpecialBonusJpy),
-      icon: Star,
-      iconColor: "text-pink-500",
-    },
+    ...(isAdmin
+      ? [
+          {
+            label: "特別ボーナス",
+            value: fmtJpy(totalSpecialBonusJpy),
+            icon: Star,
+            iconColor: "text-pink-500",
+          },
+        ]
+      : []),
     {
       label: "お支払い金額(税込)",
       value: fmtJpy(agencyPaymentIncTax),

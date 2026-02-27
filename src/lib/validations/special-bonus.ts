@@ -9,7 +9,6 @@ export const createSpecialBonusSchema = z.object({
     .positive("金額は正の数で入力してください"),
   reason: z.string().optional(),
   monthlyReportId: z.string().min(1, "月次レポートが必要です"),
-  agencyId: z.string().uuid("代理店フィルターを選択してください"),
 });
 
 export type CreateSpecialBonusValues = z.infer<typeof createSpecialBonusSchema>;

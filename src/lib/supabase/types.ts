@@ -64,6 +64,7 @@ export type Database = {
           bank_account_type: AccountType | null;
           bank_account_number: string | null;
           bank_account_holder: string | null;
+          registration_email_sent_at: string | null;
         };
         Insert: {
           id?: string;
@@ -81,6 +82,7 @@ export type Database = {
           bank_account_type?: AccountType | null;
           bank_account_number?: string | null;
           bank_account_holder?: string | null;
+          registration_email_sent_at?: string | null;
         };
         Update: {
           id?: string;
@@ -98,6 +100,7 @@ export type Database = {
           bank_account_type?: AccountType | null;
           bank_account_number?: string | null;
           bank_account_holder?: string | null;
+          registration_email_sent_at?: string | null;
         };
       };
       agency_hierarchy: {

@@ -30,6 +30,21 @@ export async function GET(
     );
   }
 
+  // 認可チェック: 代理店ユーザーは閲覧可能な代理店の請求書のみ
+  if (user.role !== "system_admin") {
+    const { data: viewable } = await supabase
+      .from("profile_viewable_agencies")
+      .select("agency_id")
+      .eq("profile_id", user.id);
+    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    if (!viewableIds.includes(invoice.agency_id)) {
+      return NextResponse.json(
+        { error: "権限がありません" },
+        { status: 403 }
+      );
+    }
+  }
+
   const pdfBuffer = generateInvoicePdf({
     invoice_number: invoice.invoice_number,
     agency_name: invoice.agency_name,

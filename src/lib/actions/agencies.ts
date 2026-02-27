@@ -389,7 +389,7 @@ export async function updateAgency(
   }
 
   // 2.5. 手数料率が変更された場合、csv_data.agency_reward_jpy を再計算
-  const commissionChanged = values.commission_rate !== savedAgency.commission_rate;
+  const commissionChanged = values.commission_rate !== Number(savedAgency.commission_rate);
   if (commissionChanged) {
     const { error: rpcError } = await supabase.rpc("update_commission_rate", {
       p_agency_id: agencyId,
@@ -397,7 +397,8 @@ export async function updateAgency(
     });
     if (rpcError) {
       console.error("[updateAgency] update_commission_rate:", rpcError.message);
-      return { error: "手数料率は更新されましたが、CSVデータの再計算に失敗しました" };
+      await restoreAgency();
+      return { error: "手数料率の更新に失敗しました。再度お試しください。" };
     }
   }
 

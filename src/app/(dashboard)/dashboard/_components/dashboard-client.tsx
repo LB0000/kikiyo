@@ -276,7 +276,7 @@ export function DashboardClient({
       {/* サマリーカード */}
       {loading ? (
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-          {Array.from({ length: 9 }).map((_, i) => (
+          {Array.from({ length: isAdmin ? 9 : 8 }).map((_, i) => (
             <div key={i} className="rounded-xl border bg-card p-5 shadow-[var(--card-shadow)]">
               <div className="flex items-center gap-3">
                 <div className="size-9 animate-shimmer rounded-lg" />
@@ -303,6 +303,7 @@ export function DashboardClient({
           commissionRate={dashboardData.summary.commissionRate}
           agencyPaymentIncTax={dashboardData.summary.agencyPaymentIncTax}
           totalSpecialBonusJpy={dashboardData.summary.totalSpecialBonusJpy}
+          isAdmin={isAdmin}
         />
       ) : null}
 
@@ -325,7 +326,7 @@ export function DashboardClient({
           <TabsList variant="line">
             <TabsTrigger value="data">データ一覧</TabsTrigger>
             <TabsTrigger value="refund">返金一覧</TabsTrigger>
-            <TabsTrigger value="special-bonus">特別ボーナス一覧</TabsTrigger>
+            {isAdmin && <TabsTrigger value="special-bonus">特別ボーナス一覧</TabsTrigger>}
           </TabsList>
           <TabsContent value="data" className="mt-4">
             <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} livers={livers} />
@@ -356,22 +357,24 @@ export function DashboardClient({
               onRefundDeleted={() => setRefreshKey((k) => k + 1)}
             />
           </TabsContent>
-          <TabsContent value="special-bonus" className="mt-4">
-            <SpecialBonusTable
-              key={`sb-${selectedReportId}-${agencyFilter ?? "all"}`}
-              rows={dashboardData.specialBonuses.map((sb) => ({
-                id: sb.id,
-                data_month: selectedReport
-                  ? formatDataMonth(selectedReport.data_month, selectedReport.created_at)
-                  : null,
-                target_month: sb.target_month,
-                amount_usd: sb.amount_usd,
-                amount_jpy: sb.amount_jpy,
-                reason: sb.reason,
-              }))}
-              onDeleted={() => setRefreshKey((k) => k + 1)}
-            />
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="special-bonus" className="mt-4">
+              <SpecialBonusTable
+                key={`sb-${selectedReportId}-${agencyFilter ?? "all"}`}
+                rows={dashboardData.specialBonuses.map((sb) => ({
+                  id: sb.id,
+                  data_month: selectedReport
+                    ? formatDataMonth(selectedReport.data_month, selectedReport.created_at)
+                    : null,
+                  target_month: sb.target_month,
+                  amount_usd: sb.amount_usd,
+                  amount_jpy: sb.amount_jpy,
+                  reason: sb.reason,
+                }))}
+                onDeleted={() => setRefreshKey((k) => k + 1)}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : reports.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-5">
@@ -419,7 +422,6 @@ export function DashboardClient({
             open={specialBonusOpen}
             onOpenChange={setSpecialBonusOpen}
             monthlyReportId={selectedReportId}
-            agencyId={agencyFilter ?? userAgencyId ?? ""}
             onSuccess={() => setRefreshKey((k) => k + 1)}
           />
           <ExchangeRateDialog

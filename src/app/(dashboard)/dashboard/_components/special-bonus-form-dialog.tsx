@@ -20,7 +20,6 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthlyReportId: string;
-  agencyId: string;
   onSuccess?: () => void;
 };
 
@@ -28,7 +27,6 @@ export function SpecialBonusFormDialog({
   open,
   onOpenChange,
   monthlyReportId,
-  agencyId,
   onSuccess,
 }: Props) {
   const [targetMonth, setTargetMonth] = useState("");
@@ -46,7 +44,6 @@ export function SpecialBonusFormDialog({
         amountUsd: parseFloat(amountUsd) || 0,
         reason,
         monthlyReportId,
-        agencyId,
       });
 
       if ("error" in result) {
@@ -115,7 +112,7 @@ export function SpecialBonusFormDialog({
             >
               キャンセル
             </Button>
-            <Button type="submit" disabled={loading || !agencyId}>
+            <Button type="submit" disabled={loading}>
               {loading ? "登録中..." : "登録"}
             </Button>
           </DialogFooter>

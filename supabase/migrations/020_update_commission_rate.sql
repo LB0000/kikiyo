@@ -12,6 +12,7 @@ BEGIN
 
   -- csv_data.agency_reward_jpy を再計算
   -- 各行のmonthly_report_idに対応するrateを使用（月ごとに為替レートが異なる）
+  -- monthly_report_idが存在する行を再計算
   UPDATE public.csv_data cd
   SET agency_reward_jpy = ROUND(
     cd.estimated_bonus * COALESCE(mr.rate, 0) * p_new_commission_rate,
@@ -20,6 +21,12 @@ BEGIN
   FROM public.monthly_reports mr
   WHERE cd.agency_id = p_agency_id
     AND cd.monthly_report_id = mr.id;
+
+  -- monthly_report_idがNULLの行はレート不明のため0にセット
+  UPDATE public.csv_data
+  SET agency_reward_jpy = 0
+  WHERE agency_id = p_agency_id
+    AND monthly_report_id IS NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
@@ -41,6 +48,7 @@ BEGIN
   SELECT COALESCE(commission_rate, 0) INTO v_commission_rate
   FROM public.agencies WHERE id = p_new_agency_id;
 
+  -- monthly_report_idが存在する行を更新
   UPDATE public.csv_data cd
   SET
     agency_id = p_new_agency_id,
@@ -51,6 +59,12 @@ BEGIN
   FROM public.monthly_reports mr
   WHERE cd.liver_id = p_liver_id
     AND cd.monthly_report_id = mr.id;
+
+  -- monthly_report_idがNULLの行もagency_idは更新
+  UPDATE public.csv_data
+  SET agency_id = p_new_agency_id, agency_reward_jpy = 0
+  WHERE liver_id = p_liver_id
+    AND monthly_report_id IS NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 

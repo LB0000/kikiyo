@@ -187,22 +187,26 @@ export async function getDashboardData(
     refundQuery = refundQuery.eq("agency_id", agencyId);
   }
 
-  let specialBonusQuery = supabase
+  const specialBonusQuery = supabase
     .from("special_bonuses")
     .select("id, target_month, reason, amount_usd, amount_jpy")
     .eq("monthly_report_id", monthlyReportId)
     .eq("is_deleted", false);
 
-  if (agencyId) {
-    specialBonusQuery = specialBonusQuery.eq("agency_id", agencyId);
-  }
+  const agencyQuery = agencyId
+    ? supabase.from("agencies").select("commission_rate").eq("id", agencyId).single()
+    : null;
 
   const [
     { data: report, error: reportError },
     { data: csvRows, error: csvError },
     { data: refunds, error: refundError },
     { data: specialBonuses, error: specialBonusError },
-  ] = await Promise.all([reportQuery, csvQuery, refundQuery, specialBonusQuery]);
+    agencyResult,
+  ] = await Promise.all([
+    reportQuery, csvQuery, refundQuery, specialBonusQuery,
+    agencyQuery ?? Promise.resolve(null),
+  ]);
 
   if (reportError || !report) {
     if (reportError) console.error("[getDashboardData] report:", reportError.message);
@@ -222,6 +226,11 @@ export async function getDashboardData(
   if (specialBonusError) {
     console.error("[getDashboardData] specialBonus:", specialBonusError.message);
     return { error: "特別ボーナスデータの取得に失敗しました" };
+  }
+
+  if (agencyId && agencyResult && "error" in agencyResult && agencyResult.error) {
+    console.error("[getDashboardData] agency:", agencyResult.error.message);
+    return { error: "代理店情報の取得に失敗しました" };
   }
 
   const rows = csvRows ?? [];
@@ -245,10 +254,10 @@ export async function getDashboardData(
     0
   );
 
-  // Derive a representative commission rate from the rows
-  // If there are agency reward rows, calculate the effective commission rate
-  const commissionRate =
-    totalRewardJpy > 0 ? totalAgencyRewardJpy / totalRewardJpy : 0;
+  // 代理店フィルタ時: 代理店の実commission_rateを使用
+  // 全体表示時: csv_dataから逆算（加重平均）
+  const commissionRate = agencyResult?.data?.commission_rate
+    ?? (totalRewardJpy > 0 ? totalAgencyRewardJpy / totalRewardJpy : 0);
 
   // CSV金額は既に税込のため、税込→税抜の順で算出
   const netAmountIncTax = totalRewardJpy - totalRefundJpy;
@@ -863,7 +872,6 @@ export async function createSpecialBonus(params: {
   amountUsd: number;
   reason: string;
   monthlyReportId: string;
-  agencyId: string;
 }): Promise<{ success: true } | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
@@ -874,7 +882,7 @@ export async function createSpecialBonus(params: {
     return { error: parsed.error.issues[0]?.message ?? "入力値が不正です" };
   }
 
-  const { targetMonth, amountUsd, reason, monthlyReportId, agencyId } = parsed.data;
+  const { targetMonth, amountUsd, reason, monthlyReportId } = parsed.data;
   const supabase = await createClient();
 
   const { data: report, error: reportError } = await supabase
@@ -896,7 +904,6 @@ export async function createSpecialBonus(params: {
     amount_jpy: amountJpy,
     reason,
     monthly_report_id: monthlyReportId,
-    agency_id: agencyId,
   });
 
   if (insertError) {

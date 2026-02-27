@@ -123,7 +123,15 @@ export async function updateLiver(
   const updateData = { ...parsed.data };
   if (user.role !== "system_admin") {
     delete updateData.agency_id;
+    delete updateData.tiktok_username;
   }
+
+  // 変更前のデータを取得（csv_data再計算の判定用）
+  const { data: oldLiver } = await supabase
+    .from("livers")
+    .select("agency_id, tiktok_username")
+    .eq("id", id)
+    .single();
 
   const { error } = await supabase
     .from("livers")
@@ -133,6 +141,36 @@ export async function updateLiver(
   if (error) {
     console.error("[updateLiver]", error.message);
     return { error: "ライバー情報の更新に失敗しました" };
+  }
+
+  // csv_data の再計算・再紐付け（system_admin のみ）
+  if (user.role === "system_admin" && oldLiver) {
+    // agency_id が変更された場合: csv_data.agency_id と agency_reward_jpy を更新
+    const newAgencyId = updateData.agency_id;
+    if (newAgencyId !== undefined && newAgencyId !== oldLiver.agency_id && (newAgencyId !== null || oldLiver.agency_id !== null)) {
+      const { error: rpcError } = await supabase.rpc("update_liver_agency", {
+        p_liver_id: id,
+        p_new_agency_id: newAgencyId,
+      });
+      if (rpcError) {
+        console.error("[updateLiver] update_liver_agency:", rpcError.message);
+      }
+    }
+
+    // tiktok_username が変更された場合: csv_data.liver_id を再紐付け
+    const newTiktokUsername = updateData.tiktok_username;
+    if (newTiktokUsername !== undefined && newTiktokUsername !== oldLiver.tiktok_username && (newTiktokUsername !== null || oldLiver.tiktok_username !== null)) {
+      const { error: rpcError } = await supabase.rpc("relink_liver_csv_data", {
+        p_liver_id: id,
+        p_old_tiktok_username: oldLiver.tiktok_username ?? "",
+        p_new_tiktok_username: newTiktokUsername ?? "",
+      });
+      if (rpcError) {
+        console.error("[updateLiver] relink_liver_csv_data:", rpcError.message);
+      }
+    }
+
+    revalidatePath("/dashboard");
   }
 
   revalidatePath("/livers");

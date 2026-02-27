@@ -70,6 +70,7 @@ export type InvoicePreview = {
   subtotalJpy: number;
   taxAmountJpy: number;
   totalJpy: number;
+  totalSpecialBonusJpy: number;
   deductibleRate: number;
   existingInvoiceNumber: string | null;
 };
@@ -222,8 +223,8 @@ export async function getInvoicePreview(
   const agency = agencyRes.data;
   const report = reportRes.data;
 
-  // csv_data, refunds, 既存請求書を並列取得（adminSupabase でRLSバイパス）
-  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: existingInvoices }] =
+  // csv_data, refunds, special_bonuses, 既存請求書を並列取得（adminSupabase でRLSバイパス）
+  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: specialBonusRows, error: specialBonusError }, { data: existingInvoices }] =
     await Promise.all([
       adminSupabase
         .from("csv_data")
@@ -232,6 +233,12 @@ export async function getInvoicePreview(
         .eq("monthly_report_id", monthlyReportId),
       adminSupabase
         .from("refunds")
+        .select("amount_jpy")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false),
+      adminSupabase
+        .from("special_bonuses")
         .select("amount_jpy")
         .eq("agency_id", agencyId)
         .eq("monthly_report_id", monthlyReportId)
@@ -254,6 +261,11 @@ export async function getInvoicePreview(
     return { error: "返金データの取得に失敗しました" };
   }
 
+  if (specialBonusError) {
+    console.error("[getInvoicePreview] special_bonuses:", specialBonusError.message);
+    return { error: "特別ボーナスデータの取得に失敗しました" };
+  }
+
   const grossAgencyJpy = (csvRows ?? []).reduce(
     (sum, row) => sum + (row.agency_reward_jpy ?? 0),
     0
@@ -262,8 +274,13 @@ export async function getInvoicePreview(
     (sum, row) => sum + (row.amount_jpy ?? 0),
     0
   );
+  const totalSpecialBonusJpy = (specialBonusRows ?? []).reduce(
+    (sum, row) => sum + (row.amount_jpy ?? 0),
+    0
+  );
   // agency_reward_jpy は既に税込のため、税込→税抜の順で算出
-  const grossIncTax = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
+  // 特別ボーナスを加算、返金は代理店分（返金額×手数料率）を差し引く
+  const grossIncTax = grossAgencyJpy + totalSpecialBonusJpy - totalRefundJpy * agency.commission_rate;
   const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
@@ -293,6 +310,7 @@ export async function getInvoicePreview(
     subtotalJpy,
     taxAmountJpy,
     totalJpy,
+    totalSpecialBonusJpy,
     deductibleRate,
     existingInvoiceNumber,
   };
@@ -366,8 +384,8 @@ export async function createAndSendInvoice(params: {
   const agency = agencyRes.data;
   const report = reportRes.data;
 
-  // csv_data, refunds, 既存請求書を並列取得（adminSupabase でRLSバイパス）
-  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: existingInvoices }] =
+  // csv_data, refunds, special_bonuses, 既存請求書を並列取得（adminSupabase でRLSバイパス）
+  const [{ data: csvRows, error: csvError }, { data: refundRows, error: refundError }, { data: specialBonusRows, error: specialBonusError }, { data: existingInvoices }] =
     await Promise.all([
       adminSupabase
         .from("csv_data")
@@ -376,6 +394,12 @@ export async function createAndSendInvoice(params: {
         .eq("monthly_report_id", monthlyReportId),
       adminSupabase
         .from("refunds")
+        .select("amount_jpy")
+        .eq("agency_id", agencyId)
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false),
+      adminSupabase
+        .from("special_bonuses")
         .select("amount_jpy")
         .eq("agency_id", agencyId)
         .eq("monthly_report_id", monthlyReportId)
@@ -395,6 +419,11 @@ export async function createAndSendInvoice(params: {
   if (refundError) {
     console.error("[createAndSendInvoice] refunds:", refundError.message);
     return { error: "返金データの取得に失敗しました" };
+  }
+
+  if (specialBonusError) {
+    console.error("[createAndSendInvoice] special_bonuses:", specialBonusError.message);
+    return { error: "特別ボーナスデータの取得に失敗しました" };
   }
 
   const isRecreation = (existingInvoices ?? []).length > 0;
@@ -420,8 +449,13 @@ export async function createAndSendInvoice(params: {
     (sum, row) => sum + (row.amount_jpy ?? 0),
     0
   );
+  const totalSpecialBonusJpy = (specialBonusRows ?? []).reduce(
+    (sum, row) => sum + (row.amount_jpy ?? 0),
+    0
+  );
   // agency_reward_jpy は既に税込のため、税込→税抜の順で算出
-  const grossIncTax = grossAgencyJpy - totalRefundJpy * agency.commission_rate;
+  // 特別ボーナスを加算、返金は代理店分（返金額×手数料率）を差し引く
+  const grossIncTax = grossAgencyJpy + totalSpecialBonusJpy - totalRefundJpy * agency.commission_rate;
   const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
@@ -510,6 +544,9 @@ export async function createAndSendInvoice(params: {
 
   if (!invoice) {
     console.error("[createAndSendInvoice] insert:", lastInsertError);
+    if (isRecreation) {
+      return { error: "既存の請求書を削除しましたが、新しい請求書の作成に失敗しました。再度「作成して送信」をお試しください。" };
+    }
     return { error: "請求書の作成に失敗しました" };
   }
 

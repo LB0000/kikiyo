@@ -389,7 +389,7 @@ export async function updateAgency(
   }
 
   // 2.5. 手数料率が変更された場合、csv_data.agency_reward_jpy を再計算
-  const commissionChanged = values.commission_rate !== Number(savedAgency.commission_rate);
+  const commissionChanged = values.commission_rate !== savedAgency.commission_rate;
   if (commissionChanged) {
     const { error: rpcError } = await supabase.rpc("update_commission_rate", {
       p_agency_id: agencyId,

@@ -176,6 +176,14 @@ export function CreateInvoiceDialog({
                     {(preview.commissionRate * 100).toFixed(1)}%
                   </span>
                 </div>
+                {preview.totalSpecialBonusJpy > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">特別ボーナス</span>
+                    <span>
+                      {preview.totalSpecialBonusJpy.toLocaleString("ja-JP")}円
+                    </span>
+                  </div>
+                )}
                 <div className="my-2 h-px bg-border" />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">税抜金額</span>

@@ -115,7 +115,7 @@ export function SpecialBonusFormDialog({
             >
               キャンセル
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !agencyId}>
               {loading ? "登録中..." : "登録"}
             </Button>
           </DialogFooter>

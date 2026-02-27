@@ -275,16 +275,64 @@ export function DashboardClient({
 
       {/* サマリーカード */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-5 shadow-[var(--card-shadow)]">
-              <div className="flex items-center gap-3">
-                <div className="size-9 animate-shimmer rounded-lg" />
-                <div className="h-3 w-20 animate-shimmer rounded" />
-              </div>
-              <div className="mt-5 ml-auto h-7 w-28 animate-shimmer rounded" />
+        <div className="space-y-5">
+          {/* 設定バースケルトン */}
+          <div className="flex items-center gap-6 rounded-xl border border-border/40 bg-muted/20 px-5 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="size-7 animate-shimmer rounded-md" />
+              <div className="h-3 w-16 animate-shimmer rounded" />
+              <div className="h-3.5 w-14 animate-shimmer rounded" />
             </div>
-          ))}
+            <div className="h-5 w-px bg-border/50" />
+            <div className="flex items-center gap-2.5">
+              <div className="size-7 animate-shimmer rounded-md" />
+              <div className="h-3 w-20 animate-shimmer rounded" />
+              <div className="h-3.5 w-16 animate-shimmer rounded" />
+            </div>
+          </div>
+          {/* TikTok実績スケルトン */}
+          <div className="space-y-3">
+            <div className="h-3 w-24 animate-shimmer rounded mx-auto" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="rounded-xl border bg-card p-5 shadow-[var(--card-shadow)]">
+                  <div className="flex items-center gap-3">
+                    <div className="size-9 animate-shimmer rounded-lg" />
+                    <div className="h-3 w-24 animate-shimmer rounded" />
+                  </div>
+                  <div className="mt-3 ml-auto h-7 w-28 animate-shimmer rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* 金額スケルトン */}
+          <div className="space-y-3">
+            <div className="h-3 w-12 animate-shimmer rounded mx-auto" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl border bg-card p-5 shadow-[var(--card-shadow)]">
+                  <div className="flex items-center gap-3">
+                    <div className="size-9 animate-shimmer rounded-lg" />
+                    <div className="h-3 w-24 animate-shimmer rounded" />
+                  </div>
+                  <div className="mt-3 ml-auto h-7 w-28 animate-shimmer rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* お支払いスケルトン */}
+          <div className="space-y-3">
+            <div className="h-3 w-16 animate-shimmer rounded mx-auto" />
+            <div className="rounded-xl border border-primary/25 bg-gradient-to-br from-primary/[0.04] to-primary/[0.08] p-6 shadow-[var(--card-highlight-shadow)]">
+              <div className="flex items-center gap-4">
+                <div className="size-12 animate-shimmer rounded-xl" />
+                <div className="space-y-2">
+                  <div className="h-3 w-32 animate-shimmer rounded" />
+                  <div className="h-8 w-40 animate-shimmer rounded" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : dashboardData ? (
         <SummaryCards

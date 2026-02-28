@@ -438,7 +438,7 @@ export async function importCsvData(params: {
   const { csvText, rate, revenueTask, uploadAgencyId, replaceReportIds } = params;
 
   // H3: csvText サイズ制限（5MB）
-  if (csvText.length > 5_000_000) return { error: "CSVファイルが大きすぎます（上限5MB）" };
+  if (new TextEncoder().encode(csvText).length > 5_000_000) return { error: "CSVファイルが大きすぎます（上限5MB）" };
 
   if (rate < 50 || rate > 500) return { error: "為替レートは50〜500の範囲で入力してください" };
 

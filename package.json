@@ -9,7 +9,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:admin": "playwright test --project=admin",
+    "test:e2e:agency": "playwright test --project=agency",
+    "test:e2e:auth": "playwright test --project=auth"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -36,11 +42,13 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "shadcn": "^3.8.5",

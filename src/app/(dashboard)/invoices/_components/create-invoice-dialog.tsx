@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export function CreateInvoiceDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>請求書作成</DialogTitle>
+          <DialogDescription>対象月次レポートを選択して請求書を作成します。</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

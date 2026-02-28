@@ -179,7 +179,7 @@ export async function updateApplicationStatus(
       let query = supabase
         .from("livers")
         .select("id")
-        .ilike("tiktok_username", appData.tiktok_username);
+        .ilike("tiktok_username", appData.tiktok_username.replace(/\\/g, "\\\\").replace(/[%_]/g, "\\$&"));
       if (appData.agency_id) {
         query = query.eq("agency_id", appData.agency_id);
       }

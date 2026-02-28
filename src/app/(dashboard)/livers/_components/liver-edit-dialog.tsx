@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,7 @@ export function LiverEditDialog({ open, onOpenChange, liver, agencies, isAdmin }
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>ライバー情報更新</DialogTitle>
+          <DialogDescription>ライバーの基本情報を編集します。</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           {isAdmin && (

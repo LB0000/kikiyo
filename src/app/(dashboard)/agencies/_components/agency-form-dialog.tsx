@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -369,6 +370,9 @@ export function AgencyFormDialog({
           <DialogTitle>
             {isEdit ? `${agency.name} - 代理店情報` : "代理店新規登録"}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit ? "代理店の基本情報・会社情報を編集します。" : "新しい代理店を登録します。"}
+          </DialogDescription>
         </DialogHeader>
         {isEdit ? (
           <Tabs defaultValue="basic">

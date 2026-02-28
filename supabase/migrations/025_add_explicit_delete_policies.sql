@@ -1,0 +1,17 @@
+-- DELETE ポリシーの明示化
+--
+-- 以下のテーブルは既に FOR ALL ポリシー（system_admin 限定）があるため
+-- DELETE も admin のみ実行可能。非 admin は一切の DELETE ポリシーがないため
+-- RLS のデフォルト拒否により DELETE 不可。
+--
+-- 確認済みテーブルと既存ポリシー:
+--   agencies      → "管理者は全代理店にフルアクセス" (FOR ALL, system_admin)
+--   livers        → "管理者は全ライバーにフルアクセス" (FOR ALL, system_admin)
+--   csv_data      → "管理者は全CSVにフルアクセス" (FOR ALL, system_admin)
+--   refunds       → "管理者は全返金にフルアクセス" (FOR ALL, system_admin)
+--   applications  → "管理者は全申請にフルアクセス" (FOR ALL, system_admin)
+--   monthly_reports → 011 で明示的 FOR DELETE ポリシー追加済み
+--   invoices      → 012 で明示的 FOR DELETE ポリシー追加済み
+--
+-- 結論: 追加のDELETEポリシーは不要。FOR ALL が全操作をカバーしている。
+-- 本マイグレーションはドキュメント目的のみ。

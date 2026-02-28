@@ -478,73 +478,47 @@ export async function createAndSendInvoice(params: {
 
   const invoicePrefix = `INV-${monthPrefix}-`;
 
-  // 請求書番号生成＋挿入（競合時リトライ）
-  const MAX_RETRIES = 3;
-  let invoice: { id: string; invoice_number: string } | null = null;
-  let lastInsertError: string | null = null;
+  // DB関数で原子的に請求書番号を採番
+  const { data: invoiceNumber, error: seqError } = await adminSupabase
+    .rpc("next_invoice_number", { p_prefix: invoicePrefix });
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    // 既存の請求書から最大連番を取得
-    const { data: existingNumbered } = await adminSupabase
-      .from("invoices")
-      .select("invoice_number")
-      .like("invoice_number", `${invoicePrefix}%`)
-      .order("invoice_number", { ascending: false })
-      .limit(1);
-
-    let seq = 1;
-    if (existingNumbered && existingNumbered.length > 0) {
-      const lastNumber = existingNumbered[0].invoice_number;
-      const lastSeq = parseInt(lastNumber.replace(invoicePrefix, ""), 10);
-      if (!isNaN(lastSeq)) {
-        seq = lastSeq + 1;
-      }
-    }
-
-    const invoiceNumber = `${invoicePrefix}${String(seq).padStart(4, "0")}`;
-
-    // 請求書レコード作成
-    const { data, error: insertError } = await adminSupabase
-      .from("invoices")
-      .insert({
-        invoice_number: invoiceNumber,
-        agency_id: agencyId,
-        monthly_report_id: monthlyReportId,
-        subtotal_jpy: subtotalJpy,
-        tax_rate: CONSUMPTION_TAX_RATE,
-        tax_amount_jpy: taxAmountJpy,
-        total_jpy: totalJpy,
-        is_invoice_registered: isInvoiceRegistered,
-        invoice_registration_number: agency.invoice_registration_number,
-        deductible_rate: deductibleRate,
-        agency_name: agency.name,
-        agency_address: agency.company_address,
-        agency_representative: agency.representative_name,
-        bank_name: agency.bank_name,
-        bank_branch: agency.bank_branch,
-        bank_account_type: agency.bank_account_type,
-        bank_account_number: agency.bank_account_number,
-        bank_account_holder: agency.bank_account_holder,
-        data_month: dataMonth,
-        exchange_rate: report.rate,
-        commission_rate: agency.commission_rate,
-        sent_at: new Date().toISOString(),
-        created_by: user.id,
-      })
-      .select("id, invoice_number")
-      .single();
-
-    if (!insertError && data) {
-      invoice = data;
-      break;
-    }
-
-    // UNIQUE制約違反の場合はリトライ
-    lastInsertError = insertError?.message ?? "請求書の作成に失敗しました";
-    if (!insertError?.message?.includes("unique") && !insertError?.message?.includes("duplicate")) {
-      break;
-    }
+  if (seqError || !invoiceNumber) {
+    console.error("[createAndSendInvoice] next_invoice_number:", seqError?.message);
+    return { error: "請求書番号の生成に失敗しました" };
   }
+
+  // 請求書レコード作成
+  const { data: invoice, error: insertError } = await adminSupabase
+    .from("invoices")
+    .insert({
+      invoice_number: invoiceNumber,
+      agency_id: agencyId,
+      monthly_report_id: monthlyReportId,
+      subtotal_jpy: subtotalJpy,
+      tax_rate: CONSUMPTION_TAX_RATE,
+      tax_amount_jpy: taxAmountJpy,
+      total_jpy: totalJpy,
+      is_invoice_registered: isInvoiceRegistered,
+      invoice_registration_number: agency.invoice_registration_number,
+      deductible_rate: deductibleRate,
+      agency_name: agency.name,
+      agency_address: agency.company_address,
+      agency_representative: agency.representative_name,
+      bank_name: agency.bank_name,
+      bank_branch: agency.bank_branch,
+      bank_account_type: agency.bank_account_type,
+      bank_account_number: agency.bank_account_number,
+      bank_account_holder: agency.bank_account_holder,
+      data_month: dataMonth,
+      exchange_rate: report.rate,
+      commission_rate: agency.commission_rate,
+      sent_at: new Date().toISOString(),
+      created_by: user.id,
+    })
+    .select("id, invoice_number")
+    .single();
+
+  const lastInsertError = insertError?.message ?? null;
 
   if (!invoice) {
     console.error("[createAndSendInvoice] insert:", lastInsertError);

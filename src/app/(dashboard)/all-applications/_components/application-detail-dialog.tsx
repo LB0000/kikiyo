@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -163,6 +164,7 @@ export function ApplicationDetailDialog({
             <span className="inline-block h-6 w-1 rounded bg-primary" />
             申請詳細
           </DialogTitle>
+          <DialogDescription>申請の詳細情報とステータス変更を行います。</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 py-4">

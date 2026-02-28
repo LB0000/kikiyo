@@ -224,27 +224,25 @@ export async function createAgency(values: AgencyFormValues) {
       return { error: "上位代理店の設定に失敗しました" };
     }
 
-    // 上位代理店のユーザーに閲覧権限を追加
-    for (const parentId of safeParentIds) {
-      const { data: parentAgency } = await adminSupabase
-        .from("agencies")
-        .select("user_id")
-        .eq("id", parentId)
-        .single();
+    // 上位代理店のユーザーに閲覧権限を一括追加
+    const { data: parentAgencies } = await adminSupabase
+      .from("agencies")
+      .select("user_id")
+      .in("id", safeParentIds);
 
-      if (parentAgency?.user_id) {
-        const { error: parentViewError } = await adminSupabase
-          .from("profile_viewable_agencies")
-          .upsert({
-            profile_id: parentAgency.user_id,
-            agency_id: agency.id,
-          });
+    const viewableRows = (parentAgencies ?? [])
+      .filter((p) => p.user_id)
+      .map((p) => ({ profile_id: p.user_id!, agency_id: agency.id }));
 
-        if (parentViewError) {
-          console.error("[createAgency] parent viewable upsert:", parentViewError.message);
-          await rollback();
-          return { error: "上位代理店の閲覧権限設定に失敗しました" };
-        }
+    if (viewableRows.length > 0) {
+      const { error: parentViewError } = await adminSupabase
+        .from("profile_viewable_agencies")
+        .upsert(viewableRows);
+
+      if (parentViewError) {
+        console.error("[createAgency] parent viewable upsert:", parentViewError.message);
+        await rollback();
+        return { error: "上位代理店の閲覧権限設定に失敗しました" };
       }
     }
   }
@@ -349,26 +347,28 @@ export async function updateAgency(
     }
   }
 
-  // 1. 旧上位代理店リストのユーザーから閲覧権限を削除
-  if (oldHierarchy) {
-    for (const h of oldHierarchy) {
-      const { data: parentAgency } = await adminSupabase
-        .from("agencies")
-        .select("user_id")
-        .eq("id", h.parent_agency_id)
-        .single();
+  // 1. 旧上位代理店リストのユーザーから閲覧権限を一括削除
+  if (oldHierarchy && oldHierarchy.length > 0) {
+    const oldParentIds = oldHierarchy.map((h) => h.parent_agency_id);
+    const { data: oldParentAgencies } = await adminSupabase
+      .from("agencies")
+      .select("user_id")
+      .in("id", oldParentIds);
 
-      if (parentAgency?.user_id) {
-        const { error: delViewError } = await adminSupabase
-          .from("profile_viewable_agencies")
-          .delete()
-          .eq("profile_id", parentAgency.user_id)
-          .eq("agency_id", agencyId);
+    const userIdsToRemove = (oldParentAgencies ?? [])
+      .filter((p) => p.user_id)
+      .map((p) => p.user_id!);
 
-        if (delViewError) {
-          console.error("[updateAgency] old viewable delete:", delViewError.message);
-          return { error: "旧上位代理店の閲覧権限削除に失敗しました" };
-        }
+    if (userIdsToRemove.length > 0) {
+      const { error: delViewError } = await adminSupabase
+        .from("profile_viewable_agencies")
+        .delete()
+        .in("profile_id", userIdsToRemove)
+        .eq("agency_id", agencyId);
+
+      if (delViewError) {
+        console.error("[updateAgency] old viewable delete:", delViewError.message);
+        return { error: "旧上位代理店の閲覧権限削除に失敗しました" };
       }
     }
   }
@@ -433,27 +433,25 @@ export async function updateAgency(
       return { error: "上位代理店の設定に失敗しました" };
     }
 
-    // 新上位代理店のユーザーに閲覧権限を追加
-    for (const parentId of safeParentIds) {
-      const { data: parentAgency } = await adminSupabase
-        .from("agencies")
-        .select("user_id")
-        .eq("id", parentId)
-        .single();
+    // 新上位代理店のユーザーに閲覧権限を一括追加
+    const { data: parentAgencies } = await adminSupabase
+      .from("agencies")
+      .select("user_id")
+      .in("id", safeParentIds);
 
-      if (parentAgency?.user_id) {
-        const { error: parentViewError } = await adminSupabase
-          .from("profile_viewable_agencies")
-          .upsert({
-            profile_id: parentAgency.user_id,
-            agency_id: agencyId,
-          });
+    const viewableRows = (parentAgencies ?? [])
+      .filter((p) => p.user_id)
+      .map((p) => ({ profile_id: p.user_id!, agency_id: agencyId }));
 
-        if (parentViewError) {
-          console.error("[updateAgency] parent viewable upsert:", parentViewError.message);
-          await restoreAgency();
-          return { error: "上位代理店の閲覧権限設定に失敗しました" };
-        }
+    if (viewableRows.length > 0) {
+      const { error: parentViewError } = await adminSupabase
+        .from("profile_viewable_agencies")
+        .upsert(viewableRows);
+
+      if (parentViewError) {
+        console.error("[updateAgency] parent viewable upsert:", parentViewError.message);
+        await restoreAgency();
+        return { error: "上位代理店の閲覧権限設定に失敗しました" };
       }
     }
   }
@@ -613,7 +611,7 @@ function generateTempPassword(): string {
   const chars =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let password = "";
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 14; i++) {
     // rejection sampling でモジュロバイアスを回避
     const limit = 256 - (256 % chars.length);
     let byte: number;

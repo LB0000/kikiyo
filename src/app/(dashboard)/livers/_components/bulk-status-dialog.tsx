@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ export function BulkStatusDialog({ open, onOpenChange, livers }: Props) {
       <DialogContent className="max-w-lg min-h-[70dvh] max-h-[85dvh] overflow-y-auto content-start">
         <DialogHeader>
           <DialogTitle>申請状況一括変更</DialogTitle>
+          <DialogDescription>選択したライバーの申請状況を一括で変更します。</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

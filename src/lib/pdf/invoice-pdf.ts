@@ -71,6 +71,11 @@ export type InvoicePdfData = {
   created_at: string;
 };
 
+/** PDFに描画する文字列から制御文字を除去（TAB/CR/LF含む） */
+function sanitizeText(text: string): string {
+  return text.replace(/[\x00-\x1F\x7F]/g, "");
+}
+
 // ── ヘルパー関数 ──
 
 function formatCurrency(amount: number): string {
@@ -190,7 +195,7 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
   doc.setFontSize(8.5);
   doc.setFont(font, "normal");
   doc.setTextColor(80, 80, 80);
-  doc.text(`No. ${data.invoice_number}`, rightEdge, y, { align: "right" });
+  doc.text(`No. ${sanitizeText(data.invoice_number)}`, rightEdge, y, { align: "right" });
   y += 5;
   const issueDate = data.sent_at ? formatDate(data.sent_at) : formatDate(data.created_at);
   doc.text(`発行日: ${issueDate}`, rightEdge, y, { align: "right" });
@@ -244,23 +249,23 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
   let ry = addressStartY;
   doc.setFont(font, "bold");
   doc.setFontSize(10);
-  doc.text(data.agency_name, rightEdge, ry, { align: "right" });
+  doc.text(sanitizeText(data.agency_name), rightEdge, ry, { align: "right" });
   ry += 5;
 
   doc.setFont(font, "normal");
   doc.setFontSize(8.5);
   if (data.agency_address) {
-    doc.text(data.agency_address, rightEdge, ry, { align: "right" });
+    doc.text(sanitizeText(data.agency_address), rightEdge, ry, { align: "right" });
     ry += 4.5;
   }
   if (data.agency_representative) {
-    doc.text(`代表者: ${data.agency_representative}`, rightEdge, ry, { align: "right" });
+    doc.text(`代表者: ${sanitizeText(data.agency_representative)}`, rightEdge, ry, { align: "right" });
     ry += 4.5;
   }
   if (data.is_invoice_registered && data.invoice_registration_number) {
     doc.setFontSize(8.5);
     doc.text(
-      `登録番号: ${data.invoice_registration_number}`,
+      `登録番号: ${sanitizeText(data.invoice_registration_number!)}`,
       rightEdge,
       ry,
       { align: "right" }
@@ -464,10 +469,10 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
 
   const bankRows: TableRow[] = [];
   if (data.bank_name) {
-    bankRows.push({ label: "銀行名", value: data.bank_name });
+    bankRows.push({ label: "銀行名", value: sanitizeText(data.bank_name) });
   }
   if (data.bank_branch) {
-    bankRows.push({ label: "支店名", value: data.bank_branch });
+    bankRows.push({ label: "支店名", value: sanitizeText(data.bank_branch) });
   }
   if (data.bank_account_type) {
     bankRows.push({
@@ -476,10 +481,10 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
     });
   }
   if (data.bank_account_number) {
-    bankRows.push({ label: "口座番号", value: data.bank_account_number });
+    bankRows.push({ label: "口座番号", value: sanitizeText(data.bank_account_number) });
   }
   if (data.bank_account_holder) {
-    bankRows.push({ label: "口座名義", value: data.bank_account_holder });
+    bankRows.push({ label: "口座名義", value: sanitizeText(data.bank_account_holder) });
   }
 
   if (bankRows.length > 0) {

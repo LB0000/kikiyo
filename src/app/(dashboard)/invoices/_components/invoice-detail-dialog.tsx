@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export function InvoiceDetailDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>請求書詳細</DialogTitle>
+          <DialogDescription>請求書の詳細情報を表示しています。</DialogDescription>
         </DialogHeader>
 
         {loading ? (

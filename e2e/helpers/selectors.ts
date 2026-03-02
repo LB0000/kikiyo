@@ -62,6 +62,7 @@ export const JP = {
   EXCHANGE_RATE: "為替レート変更",
   REFUND_REGISTER: "返金登録",
   SPECIAL_BONUS_REGISTER: "特別ボーナス登録",
+  SPECIAL_BONUS_CARD: "特別ボーナス",
   DATA_TAB: "データ一覧",
   REFUND_TAB: "返金一覧",
   SPECIAL_BONUS_TAB: "特別ボーナス一覧",

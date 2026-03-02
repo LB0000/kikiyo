@@ -48,12 +48,27 @@ test.describe("Dashboard Page (/dashboard)", () => {
     await expect(page.getByRole("radio", { name: JP.FILTER_AGENCY })).toBeVisible();
   });
 
-  test("should show special bonus tab if admin", async ({ page }) => {
-    const tab = page.getByRole("tab", { name: JP.SPECIAL_BONUS_TAB });
-    const count = await tab.count();
-    if (count > 0) {
-      await expect(tab).toBeVisible();
+  test("admin should see special bonus tab and card", async ({ page }, testInfo) => {
+    if (testInfo.project.name !== "admin") {
+      test.skip();
+      return;
     }
+    // ダッシュボードデータのロード完了を待つ
+    await expect(page.getByText("為替レート", { exact: true })).toBeVisible({ timeout: 15_000 });
+    // カードラベルは exact match で検索（ボタン・タブと区別）
+    await expect(page.getByText(JP.SPECIAL_BONUS_CARD, { exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: JP.SPECIAL_BONUS_TAB })).toBeVisible();
+  });
+
+  test("agency user should NOT see special bonus card or tab", async ({ page }, testInfo) => {
+    if (testInfo.project.name !== "agency") {
+      test.skip();
+      return;
+    }
+    // ダッシュボードデータのロード完了を待つ（為替レートカードは全ロール共通）
+    await expect(page.getByText("為替レート", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(JP.SPECIAL_BONUS_CARD, { exact: true })).not.toBeVisible();
+    await expect(page.getByRole("tab", { name: JP.SPECIAL_BONUS_TAB })).not.toBeVisible();
   });
 
   test("should show CSV upload button if available", async ({ page }) => {

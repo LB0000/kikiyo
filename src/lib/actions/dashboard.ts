@@ -187,11 +187,24 @@ export async function getDashboardData(
     refundQuery = refundQuery.eq("agency_id", agencyId);
   }
 
-  const specialBonusQuery = supabase
-    .from("special_bonuses")
-    .select("id, target_month, reason, amount_usd, amount_jpy")
-    .eq("monthly_report_id", monthlyReportId)
-    .eq("is_deleted", false);
+  const isAdmin = user.role === "system_admin";
+
+  const specialBonusQuery = isAdmin
+    ? supabase
+        .from("special_bonuses")
+        .select("id, target_month, reason, amount_usd, amount_jpy")
+        .eq("monthly_report_id", monthlyReportId)
+        .eq("is_deleted", false)
+    : Promise.resolve({
+        data: [] as {
+          id: string;
+          target_month: string;
+          reason: string | null;
+          amount_usd: number;
+          amount_jpy: number;
+        }[],
+        error: null,
+      });
 
   const agencyQuery = agencyId
     ? supabase.from("agencies").select("commission_rate").eq("id", agencyId).single()

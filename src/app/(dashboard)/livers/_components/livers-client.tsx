@@ -29,6 +29,7 @@ type Props = {
 
 const LIVER_COLUMNS: CsvColumn<LiverRow>[] = [
   { header: "氏名", accessor: (r) => r.name },
+  { header: "代理店名", accessor: (r) => r.agency_name },
   { header: "クリエイターID", accessor: (r) => r.liver_id },
   { header: "ニックネーム", accessor: (r) => r.account_name },
   { header: "TikTokユーザー名", accessor: (r) => r.tiktok_username },
@@ -59,7 +60,8 @@ export function LiversClient({ livers, agencies, isAdmin }: Props) {
       const matchesSearch =
         liver.name?.toLowerCase().includes(q) ||
         liver.liver_id?.toLowerCase().includes(q) ||
-        liver.account_name?.toLowerCase().includes(q);
+        liver.account_name?.toLowerCase().includes(q) ||
+        liver.agency_name?.toLowerCase().includes(q);
       if (!matchesSearch) return false;
     }
     if (statusFilter !== "all" && liver.status !== statusFilter) return false;
@@ -83,7 +85,7 @@ export function LiversClient({ livers, agencies, isAdmin }: Props) {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="氏名・ID・ニックネームで検索"
+              placeholder="氏名・ID・ニックネーム・代理店名で検索"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-72 pl-9"

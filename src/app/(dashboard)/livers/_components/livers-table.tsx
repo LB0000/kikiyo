@@ -74,6 +74,7 @@ export function LiversTable({ livers, onSelect }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>氏名</TableHead>
+              <TableHead>代理店名</TableHead>
               <TableHead>クリエイターID</TableHead>
               <TableHead>ニックネーム</TableHead>
               <TableHead>TikTokユーザー名</TableHead>
@@ -89,7 +90,7 @@ export function LiversTable({ livers, onSelect }: Props) {
           <TableBody>
             {livers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="p-0">
+                <TableCell colSpan={12} className="p-0">
                   <EmptyState
                     icon={Users}
                     title="ライバーがありません"
@@ -107,6 +108,7 @@ export function LiversTable({ livers, onSelect }: Props) {
                   <TableCell className="font-medium">
                     {liver.name ?? "-"}
                   </TableCell>
+                  <TableCell>{liver.agency_name ?? "-"}</TableCell>
                   <TableCell className="font-mono text-xs">
                     {liver.liver_id ?? "-"}
                   </TableCell>

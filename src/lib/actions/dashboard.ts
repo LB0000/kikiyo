@@ -658,7 +658,16 @@ export async function importCsvData(params: {
       if (data && data.length > 0) {
         createdLivers.push(data[0]);
       } else if (error) {
-        console.warn("[importCsvData] ライバー自動登録スキップ:", row.tiktok_username, error.message);
+        console.warn("[importCsvData] ライバー自動登録リトライ (liver_id除外):", row.tiktok_username, error.message);
+        const { data: retryData, error: retryError } = await adminSupabase
+          .from("livers")
+          .insert({ ...row, liver_id: null })
+          .select("id, liver_id, account_name, tiktok_username, agency_id");
+        if (retryData && retryData.length > 0) {
+          createdLivers.push(retryData[0]);
+        } else if (retryError) {
+          console.warn("[importCsvData] ライバー自動登録スキップ:", row.tiktok_username, retryError.message);
+        }
       }
     }
     newLiverCount = createdLivers.length;

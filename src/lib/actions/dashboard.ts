@@ -649,25 +649,28 @@ export async function importCsvData(params: {
       };
     });
 
-    const { data: createdLivers, error: liverCreateError } = await adminSupabase
-      .from("livers")
-      .insert(newLiverRows)
-      .select("id, liver_id, account_name, tiktok_username, agency_id");
-
-    if (liverCreateError) {
-      console.error("[importCsvData] ライバー自動登録エラー:", liverCreateError.message);
-    } else if (createdLivers) {
-      newLiverCount = createdLivers.length;
-      for (const liver of createdLivers) {
-        if (liver.tiktok_username) {
-          liverMap.set(liver.tiktok_username.toLowerCase(), {
-            id: liver.id,
-            liver_id: liver.liver_id,
-            account_name: liver.account_name,
-            tiktok_username: liver.tiktok_username,
-            agency_id: liver.agency_id,
-          });
-        }
+    const createdLivers: { id: string; liver_id: string | null; account_name: string | null; tiktok_username: string | null; agency_id: string | null }[] = [];
+    for (const row of newLiverRows) {
+      const { data, error } = await adminSupabase
+        .from("livers")
+        .insert(row)
+        .select("id, liver_id, account_name, tiktok_username, agency_id");
+      if (data && data.length > 0) {
+        createdLivers.push(data[0]);
+      } else if (error) {
+        console.warn("[importCsvData] ライバー自動登録スキップ:", row.tiktok_username, error.message);
+      }
+    }
+    newLiverCount = createdLivers.length;
+    for (const liver of createdLivers) {
+      if (liver.tiktok_username) {
+        liverMap.set(liver.tiktok_username.toLowerCase(), {
+          id: liver.id,
+          liver_id: liver.liver_id,
+          account_name: liver.account_name,
+          tiktok_username: liver.tiktok_username,
+          agency_id: liver.agency_id,
+        });
       }
     }
   }

@@ -121,7 +121,7 @@ export async function getInvoices(
   let query = supabase
     .from("invoices")
     .select(
-      "id, invoice_number, agency_name, agency_id, data_month, total_jpy, subtotal_jpy, tax_amount_jpy, is_invoice_registered, sent_at, created_at"
+      "id, invoice_number, agency_id, data_month, total_jpy, subtotal_jpy, tax_amount_jpy, is_invoice_registered, sent_at, created_at, agencies(name)"
     )
     .order("created_at", { ascending: false });
 
@@ -133,7 +133,19 @@ export async function getInvoices(
 
   if (error || !data) return [];
 
-  return data;
+  return data.map((row) => ({
+    id: row.id,
+    invoice_number: row.invoice_number,
+    agency_id: row.agency_id,
+    agency_name: (row.agencies as unknown as { name: string } | null)?.name ?? "",
+    data_month: row.data_month,
+    total_jpy: row.total_jpy,
+    subtotal_jpy: row.subtotal_jpy,
+    tax_amount_jpy: row.tax_amount_jpy,
+    is_invoice_registered: row.is_invoice_registered,
+    sent_at: row.sent_at,
+    created_at: row.created_at,
+  }));
 }
 
 // ---------------------------------------------------------------------------

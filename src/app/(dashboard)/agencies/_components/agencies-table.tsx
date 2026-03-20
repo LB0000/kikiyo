@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/shared/pagination";
@@ -33,6 +34,7 @@ import type { AgencyRank } from "@/lib/supabase/types";
 type Props = {
   agencies: AgencyWithHierarchy[];
   onSelect: (agency: AgencyWithHierarchy) => void;
+  onDelete: (agency: AgencyWithHierarchy) => void;
 };
 
 const PAGE_SIZE = 10;
@@ -113,7 +115,7 @@ function SortableHead({
   );
 }
 
-export function AgenciesTable({ agencies, onSelect }: Props) {
+export function AgenciesTable({ agencies, onSelect, onDelete }: Props) {
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -245,19 +247,34 @@ export function AgenciesTable({ agencies, onSelect }: Props) {
                       })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
-                            onClick={() => onSelect(agency)}
-                            aria-label="編集"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>編集</TooltipContent>
-                      </Tooltip>
+                      <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="cursor-pointer p-2.5 -m-1.5 text-primary hover:text-primary/70 transition-colors"
+                              onClick={() => onSelect(agency)}
+                              aria-label="編集"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>編集</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="cursor-pointer p-2.5 -m-1.5 text-destructive hover:text-destructive/70 transition-colors"
+                              onClick={() => onDelete(agency)}
+                              aria-label="削除"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>削除</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

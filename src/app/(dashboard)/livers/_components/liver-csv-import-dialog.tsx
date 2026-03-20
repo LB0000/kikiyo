@@ -51,7 +51,11 @@ export function LiverCsvImportDialog({ open, onOpenChange }: Props) {
 
     try {
       setUploadStage("CSVファイルを読み込み中...");
-      const csvText = await file.text();
+      const arrayBuffer = await file.arrayBuffer();
+      const utf8Text = new TextDecoder("utf-8").decode(arrayBuffer);
+      const csvText = utf8Text.includes("\uFFFD")
+        ? new TextDecoder("shift-jis").decode(arrayBuffer)
+        : utf8Text;
 
       setUploadStage("データを検証・登録中...");
       const result = await importLiversCsv(csvText);

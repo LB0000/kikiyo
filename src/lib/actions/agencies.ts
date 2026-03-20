@@ -38,6 +38,7 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
     supabase
       .from("agencies")
       .select("id, name, commission_rate, rank, user_id, created_at, registration_email_sent_at")
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false }),
     supabase
       .from("agency_hierarchy")
@@ -81,6 +82,17 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
 
   const agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
 
+  // hierarchy を agency_id でインデックス化（O(n) 化）
+  const hierarchyByAgency = new Map<string, { parent_agency_id: string }[]>();
+  for (const h of hierarchy ?? []) {
+    const list = hierarchyByAgency.get(h.agency_id);
+    if (list) {
+      list.push(h);
+    } else {
+      hierarchyByAgency.set(h.agency_id, [h]);
+    }
+  }
+
   return agencies.map((agency) => {
     const authUser = agency.user_id ? authUserMap.get(agency.user_id) : null;
     return {
@@ -91,12 +103,10 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
       user_id: agency.user_id,
       email: authUser?.email ?? null,
       created_at: agency.created_at,
-      parent_agencies: (hierarchy ?? [])
-        .filter((h) => h.agency_id === agency.id)
-        .map((h) => ({
-          parent_agency_id: h.parent_agency_id,
-          parent_name: agencyMap.get(h.parent_agency_id) ?? "",
-        })),
+      parent_agencies: (hierarchyByAgency.get(agency.id) ?? []).map((h) => ({
+        parent_agency_id: h.parent_agency_id,
+        parent_name: agencyMap.get(h.parent_agency_id) ?? "",
+      })),
       registration_email_sent_at: agency.registration_email_sent_at ?? null,
       last_sign_in_at: authUser?.last_sign_in_at ?? null,
     };
@@ -751,6 +761,71 @@ async function sendResendEmail(
       note: "以前のパスワードは無効になっています。必ず以下の新しい仮パスワードをご使用ください。",
     }),
   });
+}
+
+// ---------------------------------------------------------------------------
+// deleteAgency (論理削除)
+// ---------------------------------------------------------------------------
+
+export async function deleteAgency(
+  agencyId: string
+): Promise<{ success: true } | { error: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "認証が必要です" };
+  if (user.role !== "system_admin") return { error: "権限がありません" };
+
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(agencyId)) return { error: "無効な代理店IDです" };
+
+  const adminSupabase = createAdminClient();
+
+  // 代理店の存在確認
+  const { data: agency, error: agencyError } = await adminSupabase
+    .from("agencies")
+    .select("id, name, user_id, is_deleted")
+    .eq("id", agencyId)
+    .single();
+
+  if (agencyError || !agency) {
+    return { error: "代理店が見つかりません" };
+  }
+
+  if (agency.is_deleted) {
+    return { error: "この代理店は既に削除されています" };
+  }
+
+  // 論理削除
+  const { error } = await adminSupabase
+    .from("agencies")
+    .update({ is_deleted: true })
+    .eq("id", agencyId);
+
+  if (error) {
+    console.error("[deleteAgency]", error.message);
+    return { error: "代理店の削除に失敗しました" };
+  }
+
+  // Authユーザー無効化 + 閲覧権限クリア（失敗してもis_deleted済みなので続行）
+  if (agency.user_id) {
+    const [banResult, viewResult] = await Promise.allSettled([
+      adminSupabase.auth.admin.updateUserById(agency.user_id, {
+        ban_duration: "876600h",
+      }),
+      adminSupabase
+        .from("profile_viewable_agencies")
+        .delete()
+        .eq("profile_id", agency.user_id),
+    ]);
+    if (banResult.status === "rejected") {
+      console.warn("[deleteAgency] auth ban failed:", banResult.reason);
+    }
+    if (viewResult.status === "rejected") {
+      console.warn("[deleteAgency] viewable cleanup failed:", viewResult.reason);
+    }
+  }
+
+  revalidatePath("/agencies");
+  return { success: true };
 }
 
 // ---------------------------------------------------------------------------

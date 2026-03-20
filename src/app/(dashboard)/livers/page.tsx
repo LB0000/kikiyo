@@ -15,6 +15,7 @@ export default async function LiversPage() {
     const { data } = await supabase
       .from("agencies")
       .select("id, name")
+      .eq("is_deleted", false)
       .order("name");
     agencies = data ?? [];
   }

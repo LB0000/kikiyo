@@ -12,7 +12,7 @@ export default async function DashboardPage() {
     await Promise.all([
       getAuthUser(),
       getMonthlyReports(),
-      supabase.from("agencies").select("id, name").order("name"),
+      supabase.from("agencies").select("id, name").eq("is_deleted", false).order("name"),
       supabase.from("livers").select("id, name, account_name, tiktok_username, liver_id, agency_id").order("name"),
     ]);
   if (!user) redirect("/login");

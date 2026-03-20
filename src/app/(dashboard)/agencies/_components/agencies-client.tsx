@@ -10,7 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Search } from "lucide-react";
+import { Download, Search, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { deleteAgency } from "@/lib/actions/agencies";
+import { toast } from "sonner";
 import { AGENCY_RANK_LABELS } from "@/lib/constants";
 import { exportCsv, type CsvColumn } from "@/lib/csv-export";
 import { AgenciesTable } from "./agencies-table";
@@ -71,7 +83,21 @@ export function AgenciesClient({ agencies }: Props) {
     setDialogOpen(true);
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<AgencyWithHierarchy | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const result = await deleteAgency(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
+    if ("error" in result) {
+      toast.error("削除に失敗しました", { description: result.error });
+    } else {
+      toast.success(`${deleteTarget.name} を削除しました`);
+    }
+  }
 
   const filtered = agencies.filter((agency) => {
     if (search) {
@@ -154,6 +180,7 @@ export function AgenciesClient({ agencies }: Props) {
         key={search + rankFilter + statusFilter}
         agencies={filtered}
         onSelect={handleSelect}
+        onDelete={setDeleteTarget}
       />
       <AgencyFormDialog
         key={dialogKey}
@@ -162,6 +189,32 @@ export function AgenciesClient({ agencies }: Props) {
         agency={selectedAgency}
         allAgencies={agencies}
       />
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-destructive" />
+              代理店を削除しますか？
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              「{deleteTarget?.name}」を削除します。関連するデータ（ライバー、CSV等）は保持されますが、代理店一覧には表示されなくなります。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "削除中..." : "削除する"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

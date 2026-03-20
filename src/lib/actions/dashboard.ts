@@ -600,7 +600,7 @@ export async function importCsvData(params: {
   // 2. ライバーと代理店を並列取得（RLSバイパスで全レコード参照）
   const [{ data: allLivers }, { data: allAgencies }] = await Promise.all([
     adminSupabase.from("livers").select("id, liver_id, account_name, tiktok_username, agency_id"),
-    adminSupabase.from("agencies").select("id, name, commission_rate"),
+    adminSupabase.from("agencies").select("id, name, commission_rate").eq("is_deleted", false),
   ]);
 
   // Handle（tiktok_username）でマッチ — 大文字小文字を無視して比較
@@ -611,7 +611,9 @@ export async function importCsvData(params: {
   );
 
   const agencyByNameMap = new Map(
-    (allAgencies ?? []).map((a) => [a.name, a])
+    (allAgencies ?? [])
+      .filter((a) => a.name !== null)
+      .map((a) => [a.name!.toLowerCase(), a])
   );
 
   // 3. Build csv_data insert rows (deduplicate by creator_id, last row wins)
@@ -636,7 +638,7 @@ export async function importCsvData(params: {
 
   if (unmatchedByHandle.size > 0) {
     const newLiverRows = Array.from(unmatchedByHandle.values()).map((row) => {
-      const agency = agencyByNameMap.get(row.creator_network_manager);
+      const agency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
       return {
         tiktok_username: row.handle,
         name: null,
@@ -672,7 +674,7 @@ export async function importCsvData(params: {
 
   const insertRows = deduplicatedRows.map((row) => {
     const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
-    const agency = agencyByNameMap.get(row.creator_network_manager);
+    const agency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
 
     const totalRewardJpy = Math.round(row.estimated_bonus * rate * 100) / 100;
     const agencyCommissionRate = agency?.commission_rate ?? 0;
@@ -723,11 +725,14 @@ export async function importCsvData(params: {
     });
 
   if (liverUpdates.length > 0) {
-    for (const { id, updates } of liverUpdates) {
-      await adminSupabase
-        .from("livers")
-        .update(updates)
-        .eq("id", id);
+    const BATCH = 50;
+    for (let i = 0; i < liverUpdates.length; i += BATCH) {
+      const batch = liverUpdates.slice(i, i + BATCH);
+      await Promise.all(
+        batch.map(({ id, updates }) =>
+          adminSupabase.from("livers").update(updates).eq("id", id)
+        )
+      );
     }
   }
 

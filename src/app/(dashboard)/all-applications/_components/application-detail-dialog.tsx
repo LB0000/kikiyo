@@ -53,8 +53,44 @@ const FORM_DATA_LABELS: Record<string, Record<string, string>> = {
   },
   objection: {
     objection_details: "異議内容",
+    objection_status: "異議申し立て状況",
+    violation_type: "違反種類",
+    objection_target: "対象",
   },
 };
+
+/** 異議申し立てチェックボックスの値→日本語ラベル変換マップ */
+const OBJECTION_VALUE_LABELS: Record<string, Record<string, string>> = {
+  objection_status: {
+    self_objected: "ご本人にて異議申し立て済み",
+  },
+  violation_type: {
+    dangerous_act: "危険行為",
+    suicide_self_harm: "自殺・自傷行為",
+    violence: "暴力",
+    hate_harassment: "ヘイト・嫌がらせ",
+    sexual_content: "性的コンテンツ",
+    minor: "未成年者",
+    illegal_spam_impersonation: "違法行為・スパム・なりすまし",
+    low_quality: "低品質コンテンツ",
+    suspension_ban: "停止・BAN",
+    other: "その他",
+  },
+  objection_target: {
+    live: "LIVE",
+    post: "投稿",
+    comment: "コメント",
+  },
+};
+
+function resolveCheckboxValues(key: string, raw: string): string {
+  const map = OBJECTION_VALUE_LABELS[key];
+  if (!map) return raw;
+  return raw
+    .split(",")
+    .map((v) => map[v] ?? v)
+    .join("、");
+}
 
 function getFormDataDetails(
   formTab: FormTab,
@@ -65,10 +101,13 @@ function getFormDataDetails(
   if (!labels) return [];
 
   return Object.entries(labels)
-    .map(([key, label]) => ({
-      label,
-      value: formData[key] != null ? String(formData[key]) : "",
-    }))
+    .map(([key, label]) => {
+      const raw = formData[key] != null ? String(formData[key]) : "";
+      const value = OBJECTION_VALUE_LABELS[key]
+        ? resolveCheckboxValues(key, raw)
+        : raw;
+      return { label, value };
+    })
     .filter((item) => item.value);
 }
 

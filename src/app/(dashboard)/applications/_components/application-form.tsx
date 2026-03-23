@@ -54,6 +54,48 @@ const FORM_DATA_FIELDS: Record<string, { key: string; label: string; type: "text
   ],
 };
 
+/** 異議申し立て専用チェックボックスグループ定義 */
+const OBJECTION_CHECKBOX_GROUPS: {
+  key: string;
+  label: string;
+  required?: boolean;
+  options: { value: string; label: string }[];
+}[] = [
+  {
+    key: "objection_status",
+    label: "異議申し立て状況",
+    required: true,
+    options: [
+      { value: "self_objected", label: "ご本人にて異議申し立て済み" },
+    ],
+  },
+  {
+    key: "violation_type",
+    label: "違反種類",
+    options: [
+      { value: "dangerous_act", label: "危険行為" },
+      { value: "suicide_self_harm", label: "自殺・自傷行為" },
+      { value: "violence", label: "暴力" },
+      { value: "hate_harassment", label: "ヘイト・嫌がらせ" },
+      { value: "sexual_content", label: "性的コンテンツ" },
+      { value: "minor", label: "未成年者" },
+      { value: "illegal_spam_impersonation", label: "違法行為・スパム・なりすまし" },
+      { value: "low_quality", label: "低品質コンテンツ" },
+      { value: "suspension_ban", label: "停止・BAN" },
+      { value: "other", label: "その他" },
+    ],
+  },
+  {
+    key: "objection_target",
+    label: "対象",
+    options: [
+      { value: "live", label: "LIVE" },
+      { value: "post", label: "投稿" },
+      { value: "comment", label: "コメント" },
+    ],
+  },
+];
+
 export function ApplicationForm({ agencyId, agencies = [] }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [selectedTab, setSelectedTab] = useState<FormTab>("affiliation_check");
@@ -95,6 +137,18 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
     if (!form.email) {
       toast.error("メールアドレスは必須です");
       return;
+    }
+    // 異議申し立て: 必須チェックボックスグループのバリデーション
+    if (selectedTab === "objection") {
+      for (const group of OBJECTION_CHECKBOX_GROUPS) {
+        if (group.required) {
+          const selected = formData[group.key];
+          if (!selected) {
+            toast.error(`「${group.label}」は必須です`);
+            return;
+          }
+        }
+      }
     }
     setStep("confirm");
   }
@@ -370,6 +424,47 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
               </div>
             ))}
 
+            {/* 異議申し立て専用チェックボックスグループ */}
+            {selectedTab === "objection" &&
+              OBJECTION_CHECKBOX_GROUPS.map((group) => (
+                <div key={group.key} className="space-y-3">
+                  <Label>
+                    {group.label}
+                    {group.required && <span className="text-destructive ml-1">※必須</span>}
+                  </Label>
+                  <div className="space-y-2">
+                  {(() => {
+                    const selected = formData[group.key]
+                      ? formData[group.key].split(",")
+                      : [];
+                    return group.options.map((option) => {
+                      const isChecked = selected.includes(option.value);
+                      return (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`${group.key}_${option.value}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const next = checked
+                                ? [...selected, option.value]
+                                : selected.filter((v) => v !== option.value);
+                              updateFormData(group.key, next.join(","));
+                            }}
+                          />
+                          <Label
+                            htmlFor={`${group.key}_${option.value}`}
+                            className="font-normal text-sm"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                      );
+                    });
+                  })()}
+                  </div>
+                </div>
+              ))}
+
             <div className="space-y-2">
               <Label>追加情報・備考</Label>
               <Textarea
@@ -428,6 +523,19 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                   value={formData[field.key] ?? ""}
                 />
               ))}
+              {selectedTab === "objection" &&
+                OBJECTION_CHECKBOX_GROUPS.map((group) => {
+                  const selected = formData[group.key]
+                    ? (formData[group.key] as string).split(",")
+                    : [];
+                  const labels = selected
+                    .map((v) => group.options.find((o) => o.value === v)?.label)
+                    .filter(Boolean)
+                    .join("、");
+                  return (
+                    <ConfirmRow key={group.key} label={group.label} value={labels} />
+                  );
+                })}
               <ConfirmRow label="追加情報" value={form.additional_info} />
             </div>
           </div>

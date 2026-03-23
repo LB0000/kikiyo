@@ -610,6 +610,13 @@ export async function importCsvData(params: {
       .map((l) => [l.tiktok_username!.toLowerCase(), l])
   );
 
+  // creator_id（liver_id）でも逆引きできるマップ
+  const liverByCreatorIdMap = new Map(
+    (allLivers ?? [])
+      .filter((l) => l.liver_id !== null)
+      .map((l) => [l.liver_id!, l])
+  );
+
   const agencyByNameMap = new Map(
     (allAgencies ?? [])
       .filter((a) => a.name !== null)
@@ -625,12 +632,39 @@ export async function importCsvData(params: {
 
   // --- 未登録ライバーの自動登録 ---
   const unmatchedByHandle = new Map<string, (typeof deduplicatedRows)[number]>();
+  const handleUpdates: { id: string; tiktok_username: string; account_name: string | null }[] = [];
+
   for (const row of deduplicatedRows) {
     if (row.handle) {
       const handleLower = row.handle.toLowerCase();
       if (!liverMap.has(handleLower)) {
-        unmatchedByHandle.set(handleLower, row);
+        // handleでマッチしない → creator_idで既存ライバーを検索
+        const existingByCreatorId = row.creator_id ? liverByCreatorIdMap.get(row.creator_id) : undefined;
+        if (existingByCreatorId) {
+          // 同一人物のhandle変更 → 既存ライバーを更新
+          handleUpdates.push({
+            id: existingByCreatorId.id,
+            tiktok_username: row.handle,
+            account_name: row.creator_nickname || existingByCreatorId.account_name,
+          });
+          // liverMapを新handleで更新
+          const updatedLiver = { ...existingByCreatorId, tiktok_username: row.handle, account_name: row.creator_nickname || existingByCreatorId.account_name };
+          liverMap.set(handleLower, updatedLiver);
+        } else {
+          unmatchedByHandle.set(handleLower, row);
+        }
       }
+    }
+  }
+
+  // handle変更のDB反映
+  for (const upd of handleUpdates) {
+    const { error } = await adminSupabase
+      .from("livers")
+      .update({ tiktok_username: upd.tiktok_username, account_name: upd.account_name, updated_at: new Date().toISOString() })
+      .eq("id", upd.id);
+    if (error) {
+      console.warn("[importCsvData] handle更新スキップ:", upd.tiktok_username, error.message);
     }
   }
 
@@ -658,16 +692,7 @@ export async function importCsvData(params: {
       if (data && data.length > 0) {
         createdLivers.push(data[0]);
       } else if (error) {
-        console.warn("[importCsvData] ライバー自動登録リトライ (liver_id除外):", row.tiktok_username, error.message);
-        const { data: retryData, error: retryError } = await adminSupabase
-          .from("livers")
-          .insert({ ...row, liver_id: null })
-          .select("id, liver_id, account_name, tiktok_username, agency_id");
-        if (retryData && retryData.length > 0) {
-          createdLivers.push(retryData[0]);
-        } else if (retryError) {
-          console.warn("[importCsvData] ライバー自動登録スキップ:", row.tiktok_username, retryError.message);
-        }
+        console.warn("[importCsvData] ライバー自動登録スキップ:", row.tiktok_username, error.message);
       }
     }
     newLiverCount = createdLivers.length;
@@ -741,9 +766,12 @@ export async function importCsvData(params: {
     for (let i = 0; i < liverUpdates.length; i += BATCH) {
       const batch = liverUpdates.slice(i, i + BATCH);
       await Promise.all(
-        batch.map(({ id, updates }) =>
-          adminSupabase.from("livers").update(updates).eq("id", id)
-        )
+        batch.map(async ({ id, updates }) => {
+          const { error } = await adminSupabase.from("livers").update(updates).eq("id", id);
+          if (error) {
+            console.warn("[importCsvData] ライバーバックフィルスキップ:", id, error.message);
+          }
+        })
       );
     }
   }

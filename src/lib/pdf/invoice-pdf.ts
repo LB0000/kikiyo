@@ -224,7 +224,7 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
 
   doc.setFont(font, "bold");
   doc.setFontSize(14);
-  const companyText = "株式会社KIKIYO";
+  const companyText = "KIKIYO合同会社";
   const companyTextWidth = doc.getTextWidth(companyText);
   doc.text(companyText, marginL, y);
 

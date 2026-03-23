@@ -140,6 +140,9 @@ export async function updateLiver(
 
   if (error) {
     console.error("[updateLiver]", error.message);
+    if (error.code === "23505" && error.message.includes("unique_liver_id")) {
+      return { error: "このクリエイターIDは既に使用されています" };
+    }
     return { error: "ライバー情報の更新に失敗しました" };
   }
 

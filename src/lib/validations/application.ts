@@ -2,7 +2,6 @@ import { z } from "zod";
 
 const formTabValues = [
   "affiliation_check",
-  "million_special",
   "streaming_auth",
   "subscription_cancel",
   "account_id_change",

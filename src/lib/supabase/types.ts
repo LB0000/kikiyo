@@ -8,7 +8,6 @@ export type ApplicationStatus =
 export type AgencyRank = "rank_2" | "rank_3" | "rank_4";
 export type FormTab =
   | "affiliation_check"
-  | "million_special"
   | "streaming_auth"
   | "subscription_cancel"
   | "account_id_change"

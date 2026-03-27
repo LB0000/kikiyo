@@ -20,10 +20,9 @@ export const AGENCY_RANK_LABELS: Record<AgencyRank, string> = {
 };
 
 export const FORM_TAB_LABELS: Record<FormTab, string> = {
-  affiliation_check: "紐付け申請（事務所所属チェック）",
-  million_special: "100万人以上特別申請",
+  affiliation_check: "事務所（所属）登録申請",
   streaming_auth: "配信権限付与",
-  subscription_cancel: "サブスク解除申請",
+  subscription_cancel: "所属解除（退所）申請",
   account_id_change: "アカウントID変更",
   event_build: "イベント構築申請",
   special_referral: "特別送客申請",

@@ -138,6 +138,7 @@ IMPORTANT: Bubbleは汎用名（task1〜task6+）、Next.jsは説明的な名前
 
 ### 未対応（意図的）
 
+- **`million_special` (100万人以上特別申請)**: TikTok招待チケットルール変更に伴い削除。チケット4種類（一般/ゴールドチケット/フォロワー多数クリエイター/プレミアム）は `affiliation_check` の `form_data.ticket_type` に統合（027マイグレーション）
 - **代理店ランク rank_1**: Bubble版で削除済みのため意図的に省略
 - **代理店削除**: カスケード問題を回避するため Server Action なし
 - **申請の編集/削除**: ステータス変更のみ許可（改ざん防止）

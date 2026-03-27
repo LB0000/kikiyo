@@ -23,14 +23,19 @@ type Props = {
 type Step = "input" | "confirm" | "complete";
 
 const ALL_FORM_TABS = Object.keys(FORM_TAB_LABELS) as FormTab[];
-const PRIMARY_TABS: FormTab[] = ["affiliation_check", "million_special", "streaming_auth"];
+const PRIMARY_TABS: FormTab[] = ["affiliation_check", "streaming_auth", "subscription_cancel"];
 const SECONDARY_TABS = ALL_FORM_TABS.filter((t) => !PRIMARY_TABS.includes(t));
+
+/** 招待チケット種類 */
+const TICKET_TYPES = [
+  { value: "general", label: "一般" },
+  { value: "gold", label: "ゴールドチケット" },
+  { value: "high_follower", label: "フォロワー多数クリエイター" },
+  { value: "premium", label: "プレミアム" },
+] as const;
 
 /** フォーム種別ごとの form_data フィールド定義 */
 const FORM_DATA_FIELDS: Record<string, { key: string; label: string; type: "text" | "textarea" | "date" }[]> = {
-  million_special: [
-    { key: "follower_count", label: "フォロワー数", type: "text" },
-  ],
   streaming_auth: [
     { key: "reason", label: "配信理由", type: "textarea" },
   ],
@@ -96,6 +101,11 @@ const OBJECTION_CHECKBOX_GROUPS: {
   },
 ];
 
+/** チケット種類の値→ラベル変換 */
+const TICKET_TYPE_LABEL_MAP = Object.fromEntries(
+  TICKET_TYPES.map((t) => [t.value, t.label])
+);
+
 export function ApplicationForm({ agencyId, agencies = [] }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [selectedTab, setSelectedTab] = useState<FormTab>("affiliation_check");
@@ -136,6 +146,11 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
     e.preventDefault();
     if (!form.email) {
       toast.error("メールアドレスは必須です");
+      return;
+    }
+    // 事務所登録申請: チケット種類は必須
+    if (selectedTab === "affiliation_check" && !formData.ticket_type) {
+      toast.error("招待チケット種類を選択してください");
       return;
     }
     // 異議申し立て: 必須チェックボックスグループのバリデーション
@@ -254,7 +269,7 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
       {/* Step: Input */}
       {step === "input" && (
         <form onSubmit={handleConfirm} className="space-y-6">
-          {/* 申請種別 — 主要3つ + 折りたたみ (Hick's Law) */}
+          {/* 申請種別 */}
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">申請を選択してください</p>
             <p className="text-sm text-muted-foreground">
@@ -314,7 +329,9 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
             <p className="font-medium">{FORM_TAB_LABELS[selectedTab]}</p>
             <p className="text-sm text-muted-foreground">
               {selectedTab === "affiliation_check"
-                ? "事務所所属チェックのための紐付け申請を行います。以下の情報を入力してください。"
+                ? "事務所への所属登録申請を行います。以下の情報を入力してください。"
+                : selectedTab === "objection"
+                ? "まずはご本人様にて異議申し立てをお願いいたします。その結果、承認されなかった場合は、事務所側で改めて異議申し立てを行います。該当内容について、以下をご記入ください。"
                 : `${FORM_TAB_LABELS[selectedTab]}の申請を行います。以下の情報を入力してください。`}
             </p>
           </div>
@@ -388,6 +405,29 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                     }
                   />
                 </div>
+
+                {/* 招待チケット種類（必須） */}
+                <div className="space-y-3">
+                  <Label>
+                    招待チケット種類
+                    <span className="text-destructive ml-1">※必須</span>
+                  </Label>
+                  <RadioGroup
+                    value={formData.ticket_type ?? ""}
+                    onValueChange={(v) => updateFormData("ticket_type", v)}
+                    className="space-y-2"
+                  >
+                    {TICKET_TYPES.map((ticket) => (
+                      <div key={ticket.value} className="flex items-center space-x-2">
+                        <RadioGroupItem value={ticket.value} id={`ticket_${ticket.value}`} />
+                        <Label htmlFor={`ticket_${ticket.value}`} className="font-normal text-sm">
+                          {ticket.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="id_verified"
@@ -510,6 +550,10 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                   />
                   <ConfirmRow label="住所" value={form.address} />
                   <ConfirmRow label="生年月日" value={form.birth_date} />
+                  <ConfirmRow
+                    label="招待チケット種類"
+                    value={TICKET_TYPE_LABEL_MAP[formData.ticket_type] ?? "-"}
+                  />
                   <ConfirmRow
                     label="身分証明書確認"
                     value={form.id_verified ? "はい" : "いいえ"}

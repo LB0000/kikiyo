@@ -28,10 +28,18 @@ import {
 } from "@/lib/actions/applications";
 import type { ApplicationStatus, FormTab } from "@/lib/supabase/types";
 
+/** 招待チケット種類の値→ラベル変換マップ */
+const TICKET_TYPE_LABELS: Record<string, string> = {
+  general: "一般",
+  gold: "ゴールドチケット",
+  high_follower: "フォロワー多数クリエイター",
+  premium: "プレミアム",
+};
+
 /** フォーム種別ごとの form_data フィールドラベル */
 const FORM_DATA_LABELS: Record<string, Record<string, string>> = {
-  million_special: {
-    follower_count: "フォロワー数",
+  affiliation_check: {
+    ticket_type: "招待チケット種類",
   },
   streaming_auth: {
     reason: "配信理由",
@@ -103,7 +111,9 @@ function getFormDataDetails(
   return Object.entries(labels)
     .map(([key, label]) => {
       const raw = formData[key] != null ? String(formData[key]) : "";
-      const value = OBJECTION_VALUE_LABELS[key]
+      const value = key === "ticket_type"
+        ? (TICKET_TYPE_LABELS[raw] ?? raw)
+        : OBJECTION_VALUE_LABELS[key]
         ? resolveCheckboxValues(key, raw)
         : raw;
       return { label, value };

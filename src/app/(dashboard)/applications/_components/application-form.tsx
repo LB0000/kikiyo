@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -412,20 +419,79 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                     招待チケット種類
                     <span className="text-destructive ml-1">※必須</span>
                   </Label>
-                  <RadioGroup
+                  <Select
                     value={formData.ticket_type ?? ""}
                     onValueChange={(v) => updateFormData("ticket_type", v)}
-                    className="space-y-2"
                   >
-                    {TICKET_TYPES.map((ticket) => (
-                      <div key={ticket.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={ticket.value} id={`ticket_${ticket.value}`} />
-                        <Label htmlFor={`ticket_${ticket.value}`} className="font-normal text-sm">
+                    <SelectTrigger className="w-64" aria-label="招待チケット種類を選択">
+                      <SelectValue placeholder="チケット種類を選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TICKET_TYPES.map((ticket) => (
+                        <SelectItem key={ticket.value} value={ticket.value}>
                           {ticket.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* チケット種類の参照テーブル */}
+                  <div className="rounded-lg border text-sm">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="px-4 py-2 text-left font-medium w-48">チケット種類</th>
+                          <th className="px-4 py-2 text-left font-medium">条件</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        <tr>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-3 rounded-sm bg-orange-400" />
+                              一般
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            フォロワー数が200K人以下 <strong className="text-foreground">かつ</strong> いずれかの月の最高ダイヤモンド数が200K個未満
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-3 rounded-sm bg-orange-400" />
+                              ゴールドチケット
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            フォロワー数が1M人以下、<strong className="text-foreground">かつ</strong> フォロワー数が200K人超 <strong className="text-foreground">または</strong> いずれかの月の最高ダイヤモンド数が200K個以上
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-3 rounded-sm bg-violet-500" />
+                              フォロワー多数クリエイター
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            フォロワー数が1M〜5M人
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="size-3 rounded-sm bg-orange-400" />
+                              プレミアム
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            フォロワー数が200K人超 <strong className="text-foreground">または</strong> いずれかの月の最高ダイヤモンド数が200K個以上
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-2">

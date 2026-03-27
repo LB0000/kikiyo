@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
-import { FORM_TAB_LABELS } from "@/lib/constants";
+import { FORM_TAB_LABELS, TICKET_TYPE_LABELS } from "@/lib/constants";
 import { createApplication } from "@/lib/actions/applications";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import type { FormTab } from "@/lib/supabase/types";
@@ -108,10 +108,6 @@ const OBJECTION_CHECKBOX_GROUPS: {
   },
 ];
 
-/** チケット種類の値→ラベル変換 */
-const TICKET_TYPE_LABEL_MAP = Object.fromEntries(
-  TICKET_TYPES.map((t) => [t.value, t.label])
-);
 
 export function ApplicationForm({ agencyId, agencies = [] }: Props) {
   const [step, setStep] = useState<Step>("input");
@@ -618,7 +614,7 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                   <ConfirmRow label="生年月日" value={form.birth_date} />
                   <ConfirmRow
                     label="招待チケット種類"
-                    value={TICKET_TYPE_LABEL_MAP[formData.ticket_type] ?? "-"}
+                    value={TICKET_TYPE_LABELS[formData.ticket_type] ?? "-"}
                   />
                   <ConfirmRow
                     label="身分証明書確認"

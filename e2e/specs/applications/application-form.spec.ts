@@ -23,8 +23,8 @@ test.describe("Application Form (/applications)", () => {
     await expect(
       page.getByText(FORM_TABS.AFFILIATION_CHECK).first(),
     ).toBeVisible();
-    await expect(page.getByText(FORM_TABS.MILLION_SPECIAL).first()).toBeVisible();
     await expect(page.getByText(FORM_TABS.STREAMING_AUTH).first()).toBeVisible();
+    await expect(page.getByText(FORM_TABS.SUBSCRIPTION_CANCEL).first()).toBeVisible();
   });
 
   test("should show affiliation_check fields by default", async ({ page }) => {
@@ -37,11 +37,6 @@ test.describe("Application Form (/applications)", () => {
   test("should switch to streaming_auth fields", async ({ page }) => {
     await page.getByText(FORM_TABS.STREAMING_AUTH).first().click();
     await expect(page.getByText("配信理由")).toBeVisible();
-  });
-
-  test("should switch to million_special fields", async ({ page }) => {
-    await page.getByText(FORM_TABS.MILLION_SPECIAL).first().click();
-    await expect(page.getByText("フォロワー数")).toBeVisible();
   });
 
   test("should show secondary application types when expanded", async ({

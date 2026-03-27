@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import {
   APPLICATION_STATUS_LABELS,
   FORM_TAB_LABELS,
+  TICKET_TYPE_LABELS,
 } from "@/lib/constants";
 import { STATUS_DOT_COLORS } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -27,14 +28,6 @@ import {
   type ApplicationRow,
 } from "@/lib/actions/applications";
 import type { ApplicationStatus, FormTab } from "@/lib/supabase/types";
-
-/** 招待チケット種類の値→ラベル変換マップ */
-const TICKET_TYPE_LABELS: Record<string, string> = {
-  general: "一般",
-  gold: "ゴールドチケット",
-  high_follower: "フォロワー多数クリエイター",
-  premium: "プレミアム",
-};
 
 /** フォーム種別ごとの form_data フィールドラベル */
 const FORM_DATA_LABELS: Record<string, Record<string, string>> = {

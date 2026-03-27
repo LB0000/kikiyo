@@ -29,6 +29,13 @@ export const FORM_TAB_LABELS: Record<FormTab, string> = {
   objection: "事務所用 異議申し立て",
 };
 
+export const TICKET_TYPE_LABELS: Record<string, string> = {
+  general: "一般",
+  gold: "ゴールドチケット",
+  high_follower: "フォロワー多数クリエイター",
+  premium: "プレミアム",
+};
+
 export const REVENUE_TASK_LABELS: Record<RevenueTask, string> = {
   task_1: "タスク1",
   task_2: "タスク2",

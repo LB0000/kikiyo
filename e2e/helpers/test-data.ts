@@ -13,12 +13,11 @@ export const INVALID = {
   VALID_PASSWORD: "TestPass1",
 } as const;
 
-/** 申請フォームの全8タブ */
+/** 申請フォームの全7タブ */
 export const FORM_TABS = {
-  AFFILIATION_CHECK: "紐付け申請（事務所所属チェック）",
-  MILLION_SPECIAL: "100万人以上特別申請",
+  AFFILIATION_CHECK: "事務所（所属）登録申請",
   STREAMING_AUTH: "配信権限付与",
-  SUBSCRIPTION_CANCEL: "サブスク解除申請",
+  SUBSCRIPTION_CANCEL: "所属解除（退所）申請",
   ACCOUNT_ID_CHANGE: "アカウントID変更",
   EVENT_BUILD: "イベント構築申請",
   SPECIAL_REFERRAL: "特別送客申請",

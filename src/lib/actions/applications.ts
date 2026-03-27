@@ -95,6 +95,15 @@ export async function createApplication(params: {
     }
   }
 
+  // 事務所登録申請: チケット種類のサーバーサイドバリデーション
+  if (v.form_tab === "affiliation_check") {
+    const validTickets = ["general", "gold", "high_follower", "premium"];
+    const ticket = (v.form_data as Record<string, unknown> | undefined)?.ticket_type;
+    if (!ticket || !validTickets.includes(String(ticket))) {
+      return { error: "招待チケット種類を選択してください" };
+    }
+  }
+
   const { error } = await supabase.from("applications").insert({
     name: v.name || null,
     address: v.address || null,

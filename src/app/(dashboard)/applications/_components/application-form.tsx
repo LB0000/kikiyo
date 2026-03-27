@@ -448,7 +448,7 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                         <tr>
                           <td className="px-4 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="size-3 rounded-sm bg-orange-400" />
+                              <span className="size-3 rounded-sm bg-amber-600" />
                               一般
                             </span>
                           </td>
@@ -459,7 +459,7 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                         <tr>
                           <td className="px-4 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="size-3 rounded-sm bg-orange-400" />
+                              <span className="size-3 rounded-sm bg-yellow-400" />
                               ゴールドチケット
                             </span>
                           </td>
@@ -470,7 +470,7 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                         <tr>
                           <td className="px-4 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="size-3 rounded-sm bg-violet-500" />
+                              <span className="size-3 rounded-sm bg-blue-500" />
                               フォロワー多数クリエイター
                             </span>
                           </td>
@@ -481,7 +481,7 @@ export function ApplicationForm({ agencyId, agencies = [] }: Props) {
                         <tr>
                           <td className="px-4 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="size-3 rounded-sm bg-orange-400" />
+                              <span className="size-3 rounded-sm bg-orange-500" />
                               プレミアム
                             </span>
                           </td>

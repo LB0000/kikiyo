@@ -42,3 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code (personal permissions, never commit)
+.claude/settings.local.json
+.claude/agent-memory/
+
+# parallel dev handoff (ephemeral, never commit)
+.ai/

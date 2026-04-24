@@ -329,7 +329,7 @@ export function DashboardClient({
             {isAdmin && <TabsTrigger value="special-bonus">特別ボーナス一覧</TabsTrigger>}
           </TabsList>
           <TabsContent value="data" className="mt-4">
-            <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} livers={livers} />
+            <DataTable key={`${selectedReportId}-${agencyFilter ?? "all"}`} rows={dashboardData.csvRows} livers={livers} isAdmin={isAdmin} />
           </TabsContent>
           <TabsContent value="refund" className="mt-4">
             <RefundTable

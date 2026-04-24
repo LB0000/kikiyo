@@ -73,55 +73,78 @@ livers, liver_agencies, monthly_reports, csv_data, refunds, applications
 
 ## TikTok CSV → DB データフロー
 
-### 全フィールド対応表（確定）
+### ⚠️ ボーナス項目は2026.3でルール変更
 
-| # | TikTok CSVヘッダー | csv_data DB列 | UI表示名 | 用途 |
+TikTok Backstage が2026.3からボーナス構造を刷新。旧ルール（Rookie milestones / Revenue scale）は廃止、
+新ルール（Ranked up / Maintained tiers / Off-platform (2026.3) / Incremental revenue incentive）に置換。
+実装は**両方のデータ形式を共存**させる（過去データ保護）。
+
+- 旧レポート（〜2026.2）: 旧DB列（`bonus_rookie_*`, `bonus_revenue_scale`）を使用
+- 新レポート（2026.3〜）: 新DB列（`bonus_ranked_up` ほか）を使用
+- 支払計算には `payment_bonus`（①+②+③+④+⑤合計）を使用。`estimated_bonus` は参考値
+
+### 全フィールド対応表（2026.3〜・最新ルール）
+
+| # | TikTok CSVヘッダー | csv_data DB列 | UI表示名 | 代理店表示 |
 |---|---|---|---|---|
-| 1 | Data Month | data_month | データ月 | 期間識別 |
-| 2 | — | liver_id → livers.name | 氏名 | ライバー氏名（DB結合） |
-| 3 | Creator nickname | creator_nickname | ニックネーム | TikTok表示名 |
-| 4 | Handle | handle | クリエイターID | TikTokユーザー名 |
-| 5 | Group | group | グループ | 分類 |
-| 6 | Diamonds | diamonds | ダイヤモンド | 収益指標 |
-| 7 | Valid days(d) | valid_days | 有効日数 | 活動指標 |
-| 8 | LIVE duration(h) | live_duration | 有効時間 | 活動指標 |
-| 9 | Estimated bonus | estimated_bonus | 推定ボーナス | 主要指標(USD) |
-| 10 | Rookie half-milestone bonus task | bonus_rookie_half_milestone | ルーキーM0.5 | ボーナス内訳 |
-| 11 | Rookie milestone 1 bonus task | bonus_rookie_milestone_1 | ルーキーM1R | ボーナス内訳 |
-| 12 | Rookie milestone 1 retention bonus task | bonus_rookie_retention | ルーキーM１ | ボーナス内訳 |
-| 13 | Rookie milestone 2 bonus task | bonus_rookie_milestone_2 | ルーキーM２ | ボーナス内訳 |
-| 14 | Activeness task task | bonus_activeness | アクティブタスク | ボーナス内訳 |
-| 15 | Off-platform creator task task | bonus_off_platform | 新優良クリエイタータスク | ボーナス内訳 |
-| 16 | Revenue scale task task | bonus_revenue_scale | 収益スケール | ボーナス内訳 |
-| — | Creator ID | creator_id | (非表示) | 参考値（紐付けには handle を使用） |
-| — | Creator Network manager | creator_network_manager | (非表示) | 代理店紐付けキー |
-| — | Group manager | group_manager | (非表示) | 未使用 |
-| — | Is violative creators | is_violative | (非表示) | 違反フラグ |
-| — | The creator was Rookie... | was_rookie | (非表示) | ルーキーフラグ |
-| — | (派生) | total_reward_jpy | (非表示) | = estimated_bonus × rate |
-| — | (派生) | agency_reward_jpy | (非表示) | = estimated_bonus × rate × commission |
-| — | (FK) | liver_id | (非表示) | creator_id → livers.liver_id |
-| — | (FK) | agency_id | (非表示) | creator_network_manager → agencies.name |
+| 1 | Data Month | data_month | データ月 | ✅ |
+| 2 | — (結合) | liver_id → livers.name | 氏名 | ✅ |
+| 3 | Creator nickname | creator_nickname | ニックネーム | ✅ |
+| 4 | Handle | handle | クリエイターID | ✅ |
+| 5 | Group | group | グループ | ✅ |
+| 6 | Diamonds | diamonds | ダイヤモンド | ✅ |
+| 7 | Valid days(d) | valid_days | 有効日数 | ✅ |
+| 8 | LIVE duration(h) | live_duration | 有効時間 | ✅ |
+| ① | Estimated bonus - Ranked up | bonus_ranked_up | ランクアップインセンティブ | ✅ |
+| ② | Estimated bonus - Maintained tiers | bonus_maintained_tiers | ランク維持 | ✅ |
+| ③ | Estimated bonus - Activeness incentive | bonus_activeness | アクティブ度インセンティブ | ✅ |
+| ④ | Estimated bonus - Off-platform creator task | bonus_off_platform | 新優良クリエイタータスク | ✅ |
+| ⑤ | Estimated bonus - Off-platform creator task (2026.3) | bonus_off_platform_2026_03 | 他社プラットフォームクリエイター | ✅ |
+| — | Estimated bonus - Incremental revenue incentive | bonus_incremental_revenue | 売上増加 | ❌**非表示** |
+| — | Estimated bonus | estimated_bonus | (内部値・参考) | ❌**非表示** |
+| 派生 | (①+②+③+④+⑤) | **payment_bonus** | 推定ボーナス（支払対象） | ✅ |
+| — | Creator ID | creator_id | (非表示) | — |
+| — | Creator Network manager | creator_network_manager | (非表示・紐付けキー) | — |
+| — | Group manager | group_manager | (非表示・未使用) | — |
+| — | Is violative creators | is_violative | (非表示) | — |
+| — | The creator was Rookie... | was_rookie | (非表示) | — |
+| 派生 | — | total_reward_jpy | = **payment_bonus × rate** | ✅ |
+| 派生 | — | agency_reward_jpy | = **payment_bonus × rate × commission** | ✅ |
+| FK | — | liver_id | (非表示) | — |
+| FK | — | agency_id | (非表示) | — |
 
-### Bubble ↔ Next.js ボーナスフィールド対応表
+### CSVパーサの実装ルール（重要）
 
-IMPORTANT: Bubbleは汎用名（task1〜task6+）、Next.jsは説明的な名前を使用。フィールド数も異なる（6 vs 7）。
-部分一致キーで TikTok CSVヘッダーをマッチングする（`getByPartial` in dashboard.ts）。
+`src/lib/actions/dashboard.ts` の `parseCsv` / `importCsvData` 実装時の注意:
 
-| Bubble | Next.js DB列 | 実TikTok CSVヘッダー | 部分一致キー |
-|--------|-------------|---------------------|-------------|
-| task1 | bonus_rookie_half_milestone | Estimated bonus - Rookie half-milestone bonus task | `rookie half-milestone` |
-| task2 | bonus_activeness | Estimated bonus - Activeness task task | `activeness` |
-| task3 | bonus_revenue_scale | Estimated bonus - Revenue scale task task | `revenue scale` |
-| task4 | bonus_rookie_milestone_1 | Estimated bonus - Rookie milestone 1 bonus task | `rookie milestone 1 bonus task` |
-| task5 | bonus_rookie_milestone_2 | Estimated bonus - Rookie milestone 2 bonus task | `rookie milestone 2` |
-| task6+ | bonus_off_platform | Estimated bonus - Off-platform creator task task | `off-platform` |
-| (なし) | bonus_rookie_retention | Estimated bonus - Rookie milestone 1 retention bonus task | `milestone 1 retention` |
+1. **`estimated_bonus` 列を報酬計算に使わない**（2026.3以降は売上増加が混入する）
+2. `payment_bonus = bonus_ranked_up + bonus_maintained_tiers + bonus_activeness + bonus_off_platform + bonus_off_platform_2026_03` を計算して保存
+3. ④と⑤の区別: ヘッダー `Off-platform creator task (2026.3)` は⑤、`Off-platform creator task` は④。部分一致で検索する際は ⑤を先にマッチさせて除外してから ④ をマッチ
+4. 旧レポート（〜2026.2）は新列が0、`payment_bonus = estimated_bonus` でバックフィル済み（マイグレ029）
+5. 代理店ユーザー向けの画面・CSV出力では `bonus_incremental_revenue` と `estimated_bonus` を**非表示**
+
+### 旧ルール対応表（〜2026.2・歴史記録）
+
+2026.2以前のレポートに保存されているデータ。新規CSVインポートでは使わない。
+
+| 旧 Bubble | 旧 Next.js DB列 | 旧TikTok CSVヘッダー |
+|--------|-------------|---------------------|
+| task1 | bonus_rookie_half_milestone | Estimated bonus - Rookie half-milestone bonus task |
+| task2 | bonus_activeness | Estimated bonus - Activeness task task |
+| task3 | bonus_revenue_scale | Estimated bonus - Revenue scale task task |
+| task4 | bonus_rookie_milestone_1 | Estimated bonus - Rookie milestone 1 bonus task |
+| task5 | bonus_rookie_milestone_2 | Estimated bonus - Rookie milestone 2 bonus task |
+| task6+ | bonus_off_platform | Estimated bonus - Off-platform creator task task |
+| (なし) | bonus_rookie_retention | Estimated bonus - Rookie milestone 1 retention bonus task |
+
+新ルールと共存する列（同じ意味で2026.3以降も存続）:
+- `bonus_activeness` (③ Activeness incentive と同じ列に保存)
+- `bonus_off_platform` (④ Off-platform creator task と同じ列に保存)
 
 ### リンクロジック
 
 - **ライバー紐付け**: `csv_data.handle` ↔ `livers.tiktok_username`（大文字小文字無視で一致）
-- **代理店紐付け**: `csv_data.creator_network_manager` = `agencies.name`（名前完全一致）
+- **代理店紐付け**: `csv_data.creator_network_manager` = `agencies.name`（名前完全一致、Backstage グループ名）
 - 紐付け失敗 → `NULL`（件数はトーストで通知）
 
 ## Bubble ↔ Next.js 既知の差分

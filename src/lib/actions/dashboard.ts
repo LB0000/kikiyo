@@ -18,14 +18,23 @@ const revenueTaskSchema = z.enum([
 // Types
 // ---------------------------------------------------------------------------
 
-// Bubble ↔ Next.js ボーナスフィールド対応表:
-//   Bubble task1  → bonus_rookie_half_milestone (Estimated bonus - Rookie half-milestone bonus task)
-//   Bubble task2  → bonus_activeness            (Estimated bonus - Activeness task task)
-//   Bubble task3  → bonus_revenue_scale         (Estimated bonus - Revenue scale task task)
-//   Bubble task4  → bonus_rookie_milestone_1    (Estimated bonus - Rookie milestone 1 bonus task)
-//   Bubble task5  → bonus_rookie_milestone_2    (Estimated bonus - Rookie milestone 2 bonus task)
-//   Bubble task6+ → bonus_off_platform          (Estimated bonus - Off-platform creator task task)
-//   (Bubbleなし)  → bonus_rookie_retention      (Estimated bonus - Rookie milestone 1 retention bonus task)
+// ボーナスフィールド対応（詳細は AGENTS.md 参照）:
+//   旧ルール（〜2026.2）:
+//     bonus_rookie_half_milestone (Rookie half-milestone bonus task)
+//     bonus_rookie_milestone_1    (Rookie milestone 1 bonus task)
+//     bonus_rookie_milestone_2    (Rookie milestone 2 bonus task)
+//     bonus_rookie_retention      (Rookie milestone 1 retention bonus task)
+//     bonus_revenue_scale         (Revenue scale task task)
+//     bonus_activeness            (Activeness task task)
+//     bonus_off_platform          (Off-platform creator task task)
+//   新ルール（2026.3〜）:
+//     ① bonus_ranked_up            (Estimated bonus - Ranked up)
+//     ② bonus_maintained_tiers     (Estimated bonus - Maintained tiers)
+//     ③ bonus_activeness           (Estimated bonus - Activeness incentive) ※旧と同列
+//     ④ bonus_off_platform         (Estimated bonus - Off-platform creator task) ※旧と同列
+//     ⑤ bonus_off_platform_2026_03 (Estimated bonus - Off-platform creator task (2026.3))
+//     — bonus_incremental_revenue  (Estimated bonus - Incremental revenue incentive) 非表示
+//     payment_bonus = ①+②+③+④+⑤（支払対象、売上増加は含まない）
 type CsvRow = {
   creator_id: string;
   creator_nickname: string;
@@ -40,6 +49,7 @@ type CsvRow = {
   live_duration: string;
   is_violative_creators: boolean;
   the_creator_was_rookie_at_the_time_of_first_joining: boolean;
+  // 旧ルール（〜2026.2）
   bonus_rookie_half_milestone: number;
   bonus_activeness: number;
   bonus_revenue_scale: number;
@@ -47,6 +57,13 @@ type CsvRow = {
   bonus_rookie_milestone_2: number;
   bonus_off_platform: number;
   bonus_rookie_retention: number;
+  // 新ルール（2026.3〜）
+  bonus_ranked_up: number;
+  bonus_maintained_tiers: number;
+  bonus_off_platform_2026_03: number;
+  bonus_incremental_revenue: number;
+  /** 支払ボーナス = ①+②+③+④+⑤（新ルール）または estimated_bonus（旧ルール互換） */
+  payment_bonus: number;
 };
 
 export type MonthlyReportItem = {
@@ -83,12 +100,16 @@ export type DashboardData = {
     creator_network_manager: string | null;
     data_month: string | null;
     diamonds: number;
+    /** CSV の Estimated bonus 列そのまま（2026.3 以降は ①〜⑤+売上増加 の合計、参考値） */
     estimated_bonus: number;
+    /** 支払対象ボーナス = ①+②+③+④+⑤（2026.3〜）または estimated_bonus（旧ルール互換） */
+    payment_bonus: number;
     valid_days: string | null;
     live_duration: string | null;
     total_reward_jpy: number;
     agency_reward_jpy: number;
     liver_id: string | null;
+    // 旧ルール（〜2026.2）
     bonus_rookie_half_milestone: number;
     bonus_rookie_milestone_1: number;
     bonus_rookie_retention: number;
@@ -96,6 +117,11 @@ export type DashboardData = {
     bonus_activeness: number;
     bonus_off_platform: number;
     bonus_revenue_scale: number;
+    // 新ルール（2026.3〜）
+    bonus_ranked_up: number;
+    bonus_maintained_tiers: number;
+    bonus_off_platform_2026_03: number;
+    bonus_incremental_revenue: number;
   }>;
   refunds: Array<{
     id: string;
@@ -170,7 +196,7 @@ export async function getDashboardData(
 
   let csvQuery = supabase
     .from("csv_data")
-    .select("id, creator_id, creator_nickname, handle, group, creator_network_manager, data_month, diamonds, estimated_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy, liver_id, bonus_rookie_half_milestone, bonus_rookie_milestone_1, bonus_rookie_retention, bonus_rookie_milestone_2, bonus_activeness, bonus_off_platform, bonus_revenue_scale")
+    .select("id, creator_id, creator_nickname, handle, group, creator_network_manager, data_month, diamonds, estimated_bonus, payment_bonus, valid_days, live_duration, total_reward_jpy, agency_reward_jpy, liver_id, bonus_rookie_half_milestone, bonus_rookie_milestone_1, bonus_rookie_retention, bonus_rookie_milestone_2, bonus_activeness, bonus_off_platform, bonus_revenue_scale, bonus_ranked_up, bonus_maintained_tiers, bonus_off_platform_2026_03, bonus_incremental_revenue")
     .eq("monthly_report_id", monthlyReportId);
 
   if (agencyId) {
@@ -251,8 +277,10 @@ export async function getDashboardData(
   const specialBonusRows = specialBonuses ?? [];
 
   // Compute summary
+  // totalBonus は「支払対象ボーナス」= payment_bonus ベース。
+  // （2026.3 以降の CSV は estimated_bonus に売上増加が混入するため使わない）
   const totalDiamonds = rows.reduce((sum, r) => sum + r.diamonds, 0);
-  const totalBonus = rows.reduce((sum, r) => sum + r.estimated_bonus, 0);
+  const totalBonus = rows.reduce((sum, r) => sum + r.payment_bonus, 0);
   const totalRewardJpy = rows.reduce((sum, r) => sum + r.total_reward_jpy, 0);
   const totalAgencyRewardJpy = rows.reduce(
     (sum, r) => sum + r.agency_reward_jpy,
@@ -374,12 +402,20 @@ function parseCsvText(csvText: string): CsvRow[] | { error: string } {
     return "";
   }
 
-  // 部分一致（小文字）でフィールドを取得（ボーナス系カラム用）
-  function getByPartial(row: Record<string, string>, ...fragments: string[]): string {
+  // 部分一致（小文字）でフィールドを取得（ボーナス系カラム用）。
+  // excludeFragments を指定すると、そこに含まれるヘッダは除外してマッチ（④と⑤の区別用）。
+  function getByPartial(
+    row: Record<string, string>,
+    fragments: string[],
+    excludeFragments: string[] = []
+  ): string {
+    const excludeLower = excludeFragments.map((f) => f.toLowerCase());
     for (const frag of fragments) {
       const lower = frag.toLowerCase();
       for (const [lk, origKey] of keyMap) {
-        if (lk.includes(lower) && row[origKey] !== undefined) return row[origKey];
+        if (!lk.includes(lower)) continue;
+        if (excludeLower.some((ex) => lk.includes(ex))) continue;
+        if (row[origKey] !== undefined) return row[origKey];
       }
     }
     return "0";
@@ -395,46 +431,109 @@ function parseCsvText(csvText: string): CsvRow[] | { error: string } {
     return lower === "true" || lower === "yes";
   };
 
-  return parsed.data.map((row) => ({
-    creator_id: get(row, "Creator ID", "creator_id"),
-    creator_nickname: get(row, "Creator nickname", "Creator Nickname", "creator_nickname"),
-    handle: get(row, "Handle", "handle"),
-    group: get(row, "Group", "group"),
-    group_manager: get(row, "Group manager", "Group Manager", "group_manager"),
-    creator_network_manager: get(row, "Creator Network manager", "Creator Network Manager", "creator_network_manager"),
-    data_month: get(row, "Data Month", "data_month"),
-    diamonds: safeFloat(get(row, "Diamonds", "diamonds") || "0"),
-    estimated_bonus: safeFloat(get(row, "Estimated bonus", "Estimated Bonus", "estimated_bonus") || "0"),
-    valid_days: get(row, "Valid days(d)", "Valid Days", "valid_days"),
-    live_duration: get(row, "LIVE duration(h)", "Live Duration", "live_duration"),
-    is_violative_creators: safeBool(
+  // 新ルール判定: 「Ranked up」列が存在すれば 2026.3 以降のフォーマット
+  const isNewFormat = lowerKeys.some((k) => k.includes("ranked up"));
+
+  return parsed.data.map((row) => {
+    const creator_id = get(row, "Creator ID", "creator_id");
+    const creator_nickname = get(row, "Creator nickname", "Creator Nickname", "creator_nickname");
+    const handle = get(row, "Handle", "handle");
+    const group = get(row, "Group", "group");
+    const group_manager = get(row, "Group manager", "Group Manager", "group_manager");
+    const creator_network_manager = get(row, "Creator Network manager", "Creator Network Manager", "creator_network_manager");
+    const data_month = get(row, "Data Month", "data_month");
+    const diamonds = safeFloat(get(row, "Diamonds", "diamonds") || "0");
+    const estimated_bonus = safeFloat(get(row, "Estimated bonus", "Estimated Bonus", "estimated_bonus") || "0");
+    const valid_days = get(row, "Valid days(d)", "Valid Days", "valid_days");
+    const live_duration = get(row, "LIVE duration(h)", "Live Duration", "live_duration");
+    const is_violative_creators = safeBool(
       get(row, "Is violative creators", "Is Violative Creators", "is_violative_creators") || "false"
-    ),
-    the_creator_was_rookie_at_the_time_of_first_joining: safeBool(
+    );
+    const the_creator_was_rookie_at_the_time_of_first_joining = safeBool(
       get(row, "The creator was Rookie at the time of first joining", "The Creator Was Rookie At The Time Of First Joining", "the_creator_was_rookie_at_the_time_of_first_joining") || "false"
-    ),
-    bonus_rookie_half_milestone: safeFloat(
-      getByPartial(row, "rookie half-milestone", "Rookie Half Milestone", "bonus_rookie_half_milestone")
-    ),
-    bonus_activeness: safeFloat(
-      getByPartial(row, "activeness", "bonus_activeness")
-    ),
-    bonus_revenue_scale: safeFloat(
-      getByPartial(row, "revenue scale", "Revenue Scale", "bonus_revenue_scale")
-    ),
-    bonus_rookie_milestone_1: safeFloat(
-      getByPartial(row, "rookie milestone 1 bonus task", "bonus_rookie_milestone_1")
-    ),
-    bonus_rookie_milestone_2: safeFloat(
-      getByPartial(row, "rookie milestone 2", "bonus_rookie_milestone_2")
-    ),
-    bonus_off_platform: safeFloat(
-      getByPartial(row, "off-platform", "bonus_off_platform")
-    ),
-    bonus_rookie_retention: safeFloat(
-      getByPartial(row, "milestone 1 retention", "bonus_rookie_retention")
-    ),
-  }));
+    );
+
+    // --- 旧ルール列（〜2026.2） ---
+    const bonus_rookie_half_milestone = safeFloat(
+      getByPartial(row, ["rookie half-milestone", "Rookie Half Milestone", "bonus_rookie_half_milestone"])
+    );
+    const bonus_revenue_scale = safeFloat(
+      getByPartial(row, ["revenue scale", "Revenue Scale", "bonus_revenue_scale"])
+    );
+    const bonus_rookie_milestone_1 = safeFloat(
+      getByPartial(row, ["rookie milestone 1 bonus task", "bonus_rookie_milestone_1"])
+    );
+    const bonus_rookie_milestone_2 = safeFloat(
+      getByPartial(row, ["rookie milestone 2", "bonus_rookie_milestone_2"])
+    );
+    const bonus_rookie_retention = safeFloat(
+      getByPartial(row, ["milestone 1 retention", "bonus_rookie_retention"])
+    );
+
+    // --- 新旧共存列 ---
+    // ③ Activeness incentive（新） / Activeness task task（旧）どちらも "activeness" でマッチ
+    const bonus_activeness = safeFloat(
+      getByPartial(row, ["activeness", "bonus_activeness"])
+    );
+    // ④ Off-platform creator task — ⑤「(2026.3)」付きは除外
+    const bonus_off_platform = safeFloat(
+      getByPartial(row, ["off-platform", "bonus_off_platform"], ["(2026.3)"])
+    );
+
+    // --- 新ルール列（2026.3〜） ---
+    const bonus_ranked_up = safeFloat(
+      getByPartial(row, ["ranked up", "bonus_ranked_up"])
+    );
+    const bonus_maintained_tiers = safeFloat(
+      getByPartial(row, ["maintained tier", "bonus_maintained_tiers"])
+    );
+    // ⑤ Off-platform creator task (2026.3) — 2026.3 付きだけを拾う
+    const bonus_off_platform_2026_03 = safeFloat(
+      getByPartial(row, ["off-platform creator task (2026.3)", "bonus_off_platform_2026_03"])
+    );
+    const bonus_incremental_revenue = safeFloat(
+      getByPartial(row, ["incremental revenue", "bonus_incremental_revenue"])
+    );
+
+    // --- 支払ボーナス（estimated_bonus と分離） ---
+    // 新ルール: ①+②+③+④+⑤（売上増加は含まない）
+    // 旧ルール: estimated_bonus と同値（旧フォーマットには売上増加列がないため）
+    const payment_bonus = isNewFormat
+      ? bonus_ranked_up +
+        bonus_maintained_tiers +
+        bonus_activeness +
+        bonus_off_platform +
+        bonus_off_platform_2026_03
+      : estimated_bonus;
+
+    return {
+      creator_id,
+      creator_nickname,
+      handle,
+      group,
+      group_manager,
+      creator_network_manager,
+      data_month,
+      diamonds,
+      estimated_bonus,
+      valid_days,
+      live_duration,
+      is_violative_creators,
+      the_creator_was_rookie_at_the_time_of_first_joining,
+      bonus_rookie_half_milestone,
+      bonus_activeness,
+      bonus_revenue_scale,
+      bonus_rookie_milestone_1,
+      bonus_rookie_milestone_2,
+      bonus_off_platform,
+      bonus_rookie_retention,
+      bonus_ranked_up,
+      bonus_maintained_tiers,
+      bonus_off_platform_2026_03,
+      bonus_incremental_revenue,
+      payment_bonus,
+    };
+  });
 }
 
 export async function importCsvData(params: {
@@ -713,9 +812,11 @@ export async function importCsvData(params: {
     const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
     const agency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
 
-    const totalRewardJpy = Math.round(row.estimated_bonus * rate * 100) / 100;
+    // 報酬計算は payment_bonus ベース（売上増加は含めない／2026.3新ルール対応）。
+    // 旧ルールの場合 payment_bonus = estimated_bonus（parseCsvText でフォールバック済み）。
+    const totalRewardJpy = Math.round(row.payment_bonus * rate * 100) / 100;
     const agencyCommissionRate = agency?.commission_rate ?? 0;
-    const agencyRewardJpy = Math.round(row.estimated_bonus * rate * agencyCommissionRate * 100) / 100;
+    const agencyRewardJpy = Math.round(row.payment_bonus * rate * agencyCommissionRate * 100) / 100;
 
     return {
       creator_id: row.creator_id,
@@ -727,6 +828,7 @@ export async function importCsvData(params: {
       data_month: row.data_month,
       diamonds: row.diamonds,
       estimated_bonus: row.estimated_bonus,
+      // 旧ルール列（〜2026.2）
       bonus_rookie_half_milestone: row.bonus_rookie_half_milestone,
       bonus_activeness: row.bonus_activeness,
       bonus_revenue_scale: row.bonus_revenue_scale,
@@ -734,6 +836,12 @@ export async function importCsvData(params: {
       bonus_rookie_milestone_2: row.bonus_rookie_milestone_2,
       bonus_off_platform: row.bonus_off_platform,
       bonus_rookie_retention: row.bonus_rookie_retention,
+      // 新ルール列（2026.3〜、マイグレ029）
+      bonus_ranked_up: row.bonus_ranked_up,
+      bonus_maintained_tiers: row.bonus_maintained_tiers,
+      bonus_off_platform_2026_03: row.bonus_off_platform_2026_03,
+      bonus_incremental_revenue: row.bonus_incremental_revenue,
+      payment_bonus: row.payment_bonus,
       valid_days: row.valid_days,
       live_duration: row.live_duration,
       is_violative: row.is_violative_creators,
@@ -1044,7 +1152,7 @@ export async function previewRateChange(
         .single(),
       supabase
         .from("csv_data")
-        .select("estimated_bonus, total_reward_jpy, agency_reward_jpy, agency_id")
+        .select("payment_bonus, total_reward_jpy, agency_reward_jpy, agency_id")
         .eq("monthly_report_id", monthlyReportId),
       supabase
         .from("refunds")
@@ -1077,7 +1185,7 @@ export async function previewRateChange(
 
   const oldTotalRewardJpy = csvRows.reduce((s, r) => s + r.total_reward_jpy, 0);
   const newTotalRewardJpy = csvRows.reduce(
-    (s, r) => s + Math.round(r.estimated_bonus * newRate * 100) / 100,
+    (s, r) => s + Math.round(r.payment_bonus * newRate * 100) / 100,
     0
   );
 
@@ -1087,7 +1195,7 @@ export async function previewRateChange(
   );
   const newTotalAgencyRewardJpy = csvRows.reduce((s, r) => {
     const commission = r.agency_id ? (agencyMap.get(r.agency_id) ?? 0) : 0;
-    return s + Math.round(r.estimated_bonus * newRate * commission * 100) / 100;
+    return s + Math.round(r.payment_bonus * newRate * commission * 100) / 100;
   }, 0);
 
   const oldTotalRefundJpy = refundRows.reduce((s, r) => s + r.amount_jpy, 0);

@@ -235,6 +235,7 @@ export type Database = {
           data_month: string | null;
           diamonds: number;
           estimated_bonus: number;
+          // 旧ルール（〜2026.2）
           bonus_rookie_half_milestone: number;
           bonus_activeness: number;
           bonus_revenue_scale: number;
@@ -242,6 +243,12 @@ export type Database = {
           bonus_rookie_milestone_2: number;
           bonus_off_platform: number;
           bonus_rookie_retention: number;
+          // 新ルール（2026.3〜）: マイグレ029で追加
+          bonus_ranked_up: number;
+          bonus_maintained_tiers: number;
+          bonus_off_platform_2026_03: number;
+          bonus_incremental_revenue: number;
+          payment_bonus: number;
           valid_days: string | null;
           live_duration: string | null;
           is_violative: boolean;
@@ -272,6 +279,11 @@ export type Database = {
           bonus_rookie_milestone_2?: number;
           bonus_off_platform?: number;
           bonus_rookie_retention?: number;
+          bonus_ranked_up?: number;
+          bonus_maintained_tiers?: number;
+          bonus_off_platform_2026_03?: number;
+          bonus_incremental_revenue?: number;
+          payment_bonus?: number;
           valid_days?: string | null;
           live_duration?: string | null;
           is_violative?: boolean;
@@ -302,6 +314,11 @@ export type Database = {
           bonus_rookie_milestone_2?: number;
           bonus_off_platform?: number;
           bonus_rookie_retention?: number;
+          bonus_ranked_up?: number;
+          bonus_maintained_tiers?: number;
+          bonus_off_platform_2026_03?: number;
+          bonus_incremental_revenue?: number;
+          payment_bonus?: number;
           valid_days?: string | null;
           live_duration?: string | null;
           is_violative?: boolean;

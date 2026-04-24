@@ -56,7 +56,7 @@ invoices:  -- 発行時スナップショット
 - invoicesスナップショット側も `agency_company_name` / `agency_contract_person_name` を追加
 
 ### タスク
-- [ ] **1-1** マイグレ新規 (`028_add_agency_company_info.sql`)
+- [ ] **1-1** マイグレ新規 (`030_add_agency_company_info.sql`)
   - `agencies` に `company_name TEXT`, `contract_person_name TEXT` 追加
   - `invoices` に `agency_company_name TEXT`, `agency_contract_person_name TEXT` 追加（スナップショット）
 - [ ] **1-2** `src/lib/supabase/types.ts` 手動反映
@@ -209,7 +209,7 @@ TikTok Backstage側でボーナス項目の構造が2026.3から変わった。
 | 2 | 要望#2 スキーマ改修 (マイグレ029ドラフト済) | 即時 | 3月支払に直結、過払いリスクあり |
 | 3 | 要望#2 CSVパーサ・計算ロジック改修 | 2-1後 | |
 | 4 | 要望#2 表示・CSV出力権限分け | 2-3後 | |
-| 5 | 要望#1 マイグレ028 + UI改修 | 即時〜並行可 | データ変更はローリスク |
+| 5 | 要望#1 マイグレ030 + UI改修 | 即時〜並行可 | データ変更はローリスク |
 | 6 | 要望#3 E2E回帰テスト追加 | 並行可 | ログイン系の安定性担保 |
 
 ---

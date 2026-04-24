@@ -64,6 +64,9 @@ export type Database = {
           bank_account_number: string | null;
           bank_account_holder: string | null;
           registration_email_sent_at: string | null;
+          // マイグレ030で追加
+          company_name: string | null;
+          contract_person_name: string | null;
         };
         Insert: {
           id?: string;
@@ -82,6 +85,8 @@ export type Database = {
           bank_account_number?: string | null;
           bank_account_holder?: string | null;
           registration_email_sent_at?: string | null;
+          company_name?: string | null;
+          contract_person_name?: string | null;
         };
         Update: {
           id?: string;
@@ -100,6 +105,8 @@ export type Database = {
           bank_account_number?: string | null;
           bank_account_holder?: string | null;
           registration_email_sent_at?: string | null;
+          company_name?: string | null;
+          contract_person_name?: string | null;
         };
       };
       agency_hierarchy: {
@@ -420,6 +427,9 @@ export type Database = {
           created_by: string;
           created_at: string;
           updated_at: string;
+          // マイグレ030で追加
+          agency_company_name: string | null;
+          agency_contract_person_name: string | null;
         };
         Insert: {
           id?: string;
@@ -448,6 +458,8 @@ export type Database = {
           created_by: string;
           created_at?: string;
           updated_at?: string;
+          agency_company_name?: string | null;
+          agency_contract_person_name?: string | null;
         };
         Update: {
           id?: string;
@@ -475,6 +487,8 @@ export type Database = {
           sent_at?: string | null;
           created_by?: string;
           created_at?: string;
+          agency_company_name?: string | null;
+          agency_contract_person_name?: string | null;
           updated_at?: string;
         };
       };

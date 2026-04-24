@@ -433,6 +433,8 @@ function CompanyInfoTab({
     resolver: zodResolver(agencyCompanyInfoSchema),
     defaultValues: {
       invoice_registration_number: "",
+      company_name: "",
+      contract_person_name: "",
       company_address: "",
       representative_name: "",
       bank_name: "",
@@ -452,6 +454,8 @@ function CompanyInfoTab({
           form.reset({
             invoice_registration_number:
               result.data.invoice_registration_number ?? "",
+            company_name: result.data.company_name ?? "",
+            contract_person_name: result.data.contract_person_name ?? "",
             company_address: result.data.company_address ?? "",
             representative_name: result.data.representative_name ?? "",
             bank_name: result.data.bank_name ?? "",
@@ -492,6 +496,48 @@ function CompanyInfoTab({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="company_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>会社名（請求書宛名）</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="KIKIYO合同会社"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                請求書に表示される正式名称。空の場合は代理店名（Backstageグループ名）が使われます。
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="contract_person_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>契約者氏名</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="山田太郎"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                請求書に契約者として表示されます。
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="invoice_registration_number"

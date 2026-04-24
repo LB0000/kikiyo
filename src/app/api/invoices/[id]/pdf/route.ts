@@ -48,6 +48,8 @@ export async function GET(
   const pdfBuffer = generateInvoicePdf({
     invoice_number: invoice.invoice_number,
     agency_name: invoice.agency_name,
+    agency_company_name: invoice.agency_company_name,
+    agency_contract_person_name: invoice.agency_contract_person_name,
     agency_address: invoice.agency_address,
     agency_representative: invoice.agency_representative,
     invoice_registration_number: invoice.invoice_registration_number,

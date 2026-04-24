@@ -38,6 +38,8 @@ export type InvoiceDetail = {
   invoice_registration_number: string | null;
   deductible_rate: number;
   agency_name: string;
+  agency_company_name: string | null;
+  agency_contract_person_name: string | null;
   agency_address: string | null;
   agency_representative: string | null;
   bank_name: string | null;
@@ -55,6 +57,8 @@ export type InvoiceDetail = {
 
 export type InvoicePreview = {
   agencyName: string;
+  agencyCompanyName: string | null;
+  agencyContractPersonName: string | null;
   agencyAddress: string | null;
   agencyRepresentative: string | null;
   invoiceRegistrationNumber: string | null;
@@ -163,7 +167,7 @@ export async function getInvoiceDetail(
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, agency_id, monthly_report_id, subtotal_jpy, tax_rate, tax_amount_jpy, total_jpy, is_invoice_registered, invoice_registration_number, deductible_rate, agency_name, agency_address, agency_representative, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder, data_month, exchange_rate, commission_rate, sent_at, created_by, created_at"
+      "id, invoice_number, agency_id, monthly_report_id, subtotal_jpy, tax_rate, tax_amount_jpy, total_jpy, is_invoice_registered, invoice_registration_number, deductible_rate, agency_name, agency_company_name, agency_contract_person_name, agency_address, agency_representative, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder, data_month, exchange_rate, commission_rate, sent_at, created_by, created_at"
     )
     .eq("id", invoiceId)
     .single();
@@ -209,7 +213,7 @@ export async function getInvoicePreview(
     supabase
       .from("agencies")
       .select(
-        "name, commission_rate, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
+        "name, company_name, contract_person_name, commission_rate, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
       )
       .eq("id", agencyId)
       .single(),
@@ -309,6 +313,8 @@ export async function getInvoicePreview(
 
   return {
     agencyName: agency.name,
+    agencyCompanyName: agency.company_name,
+    agencyContractPersonName: agency.contract_person_name,
     agencyAddress: agency.company_address,
     agencyRepresentative: agency.representative_name,
     invoiceRegistrationNumber: agency.invoice_registration_number,
@@ -372,7 +378,7 @@ export async function createAndSendInvoice(params: {
     supabase
       .from("agencies")
       .select(
-        "name, commission_rate, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
+        "name, company_name, contract_person_name, commission_rate, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
       )
       .eq("id", agencyId)
       .single(),
@@ -514,6 +520,8 @@ export async function createAndSendInvoice(params: {
       invoice_registration_number: agency.invoice_registration_number,
       deductible_rate: deductibleRate,
       agency_name: agency.name,
+      agency_company_name: agency.company_name,
+      agency_contract_person_name: agency.contract_person_name,
       agency_address: agency.company_address,
       agency_representative: agency.representative_name,
       bank_name: agency.bank_name,

@@ -853,7 +853,7 @@ export async function getAgencyCompanyInfo(agencyId: string) {
   const { data, error } = await supabase
     .from("agencies")
     .select(
-      "id, name, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
+      "id, name, company_name, contract_person_name, invoice_registration_number, company_address, representative_name, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder"
     )
     .eq("id", agencyId)
     .single();
@@ -887,6 +887,8 @@ export async function updateAgencyCompanyInfo(
     .from("agencies")
     .update({
       invoice_registration_number: v.invoice_registration_number || null,
+      company_name: v.company_name || null,
+      contract_person_name: v.contract_person_name || null,
       company_address: v.company_address || null,
       representative_name: v.representative_name || null,
       bank_name: v.bank_name || null,

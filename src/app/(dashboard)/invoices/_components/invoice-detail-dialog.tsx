@@ -103,6 +103,18 @@ export function InvoiceDetailDialog({
                 <span className="text-muted-foreground">代理店名</span>
                 <span>{invoice.agency_name}</span>
               </div>
+              {invoice.agency_company_name && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">会社名</span>
+                  <span>{invoice.agency_company_name}</span>
+                </div>
+              )}
+              {invoice.agency_contract_person_name && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">契約者</span>
+                  <span>{invoice.agency_contract_person_name}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">対象月</span>
                 <span>{invoice.data_month ?? "-"}</span>

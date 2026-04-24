@@ -12,6 +12,8 @@ export const agencyCompanyInfoSchema = z.object({
       (v) => v === "" || /^T[0-9]{13}$/.test(v),
       "T + 13桁の数字で入力してください"
     ),
+  company_name: z.string(),
+  contract_person_name: z.string(),
   company_address: z.string(),
   representative_name: z.string(),
   bank_name: z.string(),

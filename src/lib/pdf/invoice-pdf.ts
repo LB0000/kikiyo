@@ -50,6 +50,10 @@ function registerFonts(doc: jsPDF): boolean {
 export type InvoicePdfData = {
   invoice_number: string;
   agency_name: string;
+  /** 請求書に表示する会社名。空の場合は agency_name を使用 */
+  agency_company_name: string | null;
+  /** 契約者氏名。表示位置は代表者名の下 */
+  agency_contract_person_name: string | null;
   agency_address: string | null;
   agency_representative: string | null;
   invoice_registration_number: string | null;
@@ -177,7 +181,7 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
   // PDFメタデータ
   doc.setProperties({
     title: `請求書 ${data.invoice_number}`,
-    author: data.agency_name,
+    author: data.agency_company_name?.trim() || data.agency_name,
     subject: `請求書 ${data.invoice_number} - ${data.data_month ?? ""}`,
     creator: "KIKIYO LIVE MANAGER",
   });
@@ -246,10 +250,14 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
   // ════════════════════════════════════════════════════
   // 請求元情報: 右側
   // ════════════════════════════════════════════════════
+  // 会社名（agency_company_name）が登録されていればそれを表示、なければ代理店名
+  // （agency_name = Backstage グループ名）を代替表示する。
+  const issuerName = data.agency_company_name?.trim() || data.agency_name;
+
   let ry = addressStartY;
   doc.setFont(font, "bold");
   doc.setFontSize(10);
-  doc.text(sanitizeText(data.agency_name), rightEdge, ry, { align: "right" });
+  doc.text(sanitizeText(issuerName), rightEdge, ry, { align: "right" });
   ry += 5;
 
   doc.setFont(font, "normal");
@@ -260,6 +268,10 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
   }
   if (data.agency_representative) {
     doc.text(`代表者: ${sanitizeText(data.agency_representative)}`, rightEdge, ry, { align: "right" });
+    ry += 4.5;
+  }
+  if (data.agency_contract_person_name) {
+    doc.text(`契約者: ${sanitizeText(data.agency_contract_person_name)}`, rightEdge, ry, { align: "right" });
     ry += 4.5;
   }
   if (data.is_invoice_registered && data.invoice_registration_number) {

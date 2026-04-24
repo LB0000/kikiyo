@@ -1,12 +1,35 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
   sendEmail,
   escapeHtml,
   getValidAppUrl,
   wrapEmailLayout,
 } from "@/lib/email";
+
+/**
+ * サーバー側で Supabase セッションを終了し、sb-* Cookie を明示削除してログイン画面に遷移する。
+ *
+ * ブラウザ側 `supabase.auth.signOut()` では HTTP-only やチャンク分割された sb-* Cookie
+ * を取りこぼすケースがあり、残存 Cookie の累積で Edge 側がリクエストヘッダ上限に達して
+ * ERR_CONNECTION_RESET を返す事象を防ぐための仕組み。
+ */
+export async function signOutAction(): Promise<never> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+
+  const cookieStore = await cookies();
+  for (const c of cookieStore.getAll()) {
+    if (c.name.startsWith("sb-") || c.name.toLowerCase().includes("supabase")) {
+      cookieStore.delete(c.name);
+    }
+  }
+
+  redirect("/login");
+}
 
 export async function requestPasswordReset(email: string) {
   const trimmed = email.trim();

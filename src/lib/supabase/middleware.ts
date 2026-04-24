@@ -1,6 +1,22 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+/**
+ * リダイレクトを返す際に、Supabase のトークンリフレッシュ等で supabaseResponse に
+ * 積まれた Set-Cookie を新しいレスポンスへ引き継ぐ。
+ *
+ * これをやらないと、Supabase 公式が警告する「browser and server go out of sync and
+ * terminate the user's session prematurely」状態に陥り、Cookie 欠落／累積の原因となる。
+ * https://supabase.com/docs/guides/auth/server-side/nextjs
+ */
+function redirectWithCookies(url: URL, source: NextResponse): NextResponse {
+  const redirected = NextResponse.redirect(url);
+  source.cookies.getAll().forEach((cookie) => {
+    redirected.cookies.set(cookie.name, cookie.value, cookie);
+  });
+  return redirected;
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -48,14 +64,14 @@ export async function updateSession(request: NextRequest) {
   if (!session && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url, supabaseResponse);
   }
 
   // 認証済みユーザーがログインページにアクセスした場合（reset-passwordは許可）
   if (session && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url, supabaseResponse);
   }
 
   return supabaseResponse;

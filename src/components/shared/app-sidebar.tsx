@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
+import { signOutAction } from "@/lib/actions/auth";
 import { NAV_ITEMS } from "@/lib/constants";
 import type { UserRole } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -48,8 +48,6 @@ type AppSidebarProps = {
 
 export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
 
   const filteredItems = NAV_ITEMS.filter((item) =>
     item.roles.includes(userRole)
@@ -58,13 +56,9 @@ export function AppSidebar({ userRole, userEmail }: AppSidebarProps) {
   const initials = userEmail.split("@")[0].slice(0, 2).toUpperCase();
 
   async function handleLogout() {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // サインアウト失敗してもログイン画面に遷移
-    }
-    router.push("/login");
-    router.refresh();
+    // サーバーアクション内で cookies API 経由の sb-* Cookie 明示削除 + redirect("/login")
+    // までを一気にやるため、呼び出し側ではルーター遷移不要。
+    await signOutAction();
   }
 
   return (

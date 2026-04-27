@@ -270,10 +270,8 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
     doc.text(`代表者: ${sanitizeText(data.agency_representative)}`, rightEdge, ry, { align: "right" });
     ry += 4.5;
   }
-  if (data.agency_contract_person_name) {
-    doc.text(`契約者: ${sanitizeText(data.agency_contract_person_name)}`, rightEdge, ry, { align: "right" });
-    ry += 4.5;
-  }
+  // 契約者氏名（agency_contract_person_name）はデータとしては保持するが、
+  // 発注元判断（2026-04-27）により請求書 PDF には表示しない。
   if (data.is_invoice_registered && data.invoice_registration_number) {
     doc.setFontSize(8.5);
     doc.text(

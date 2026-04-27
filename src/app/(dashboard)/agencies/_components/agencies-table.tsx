@@ -135,7 +135,8 @@ export function AgenciesTable({ agencies, onSelect, onDelete }: Props) {
     let cmp = 0;
     switch (sortKey) {
       case "name":
-        cmp = a.name.localeCompare(b.name, "ja");
+        // 表示順は会社名優先（フォールバック: name）
+        cmp = (a.company_name || a.name).localeCompare(b.company_name || b.name, "ja");
         break;
       case "rank":
         cmp = (RANK_ORDER[a.rank ?? ""] ?? 99) - (RANK_ORDER[b.rank ?? ""] ?? 99);
@@ -196,7 +197,18 @@ export function AgenciesTable({ agencies, onSelect, onDelete }: Props) {
                     className="cursor-pointer"
                     onClick={() => onSelect(agency)}
                   >
-                    <TableCell className="font-medium">{agency.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {agency.company_name ? (
+                        <div className="flex flex-col">
+                          <span>{agency.company_name}</span>
+                          <span className="text-xs font-normal text-muted-foreground">
+                            {agency.name}
+                          </span>
+                        </div>
+                      ) : (
+                        agency.name
+                      )}
+                    </TableCell>
                     <TableCell>
                       {agency.rank ? (
                         <Badge

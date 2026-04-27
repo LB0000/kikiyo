@@ -16,6 +16,8 @@ import { sendEmail, escapeHtml, getValidAppUrl, wrapEmailLayout } from "@/lib/em
 export type AgencyWithHierarchy = {
   id: string;
   name: string;
+  /** 請求書宛名用の会社名。空の場合は name を代替使用 */
+  company_name: string | null;
   commission_rate: number;
   rank: string | null;
   user_id: string | null;
@@ -37,7 +39,7 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
   const [{ data: agencies, error }, { data: hierarchy }] = await Promise.all([
     supabase
       .from("agencies")
-      .select("id, name, commission_rate, rank, user_id, created_at, registration_email_sent_at")
+      .select("id, name, company_name, commission_rate, rank, user_id, created_at, registration_email_sent_at")
       .eq("is_deleted", false)
       .order("created_at", { ascending: false }),
     supabase
@@ -98,6 +100,7 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
     return {
       id: agency.id,
       name: agency.name,
+      company_name: agency.company_name ?? null,
       commission_rate: agency.commission_rate,
       rank: agency.rank,
       user_id: agency.user_id,

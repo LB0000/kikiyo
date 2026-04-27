@@ -35,7 +35,8 @@ type Props = {
 };
 
 const AGENCY_COLUMNS: CsvColumn<AgencyWithHierarchy>[] = [
-  { header: "代理店名", accessor: (r) => r.name },
+  { header: "会社名", accessor: (r) => r.company_name ?? r.name },
+  { header: "代理店名（Backstageグループ）", accessor: (r) => r.name },
   { header: "代理店ランク", accessor: (r) => r.rank ? AGENCY_RANK_LABELS[r.rank as AgencyRank] : "" },
   { header: "上位代理店", accessor: (r) => r.parent_agencies.map((p) => p.parent_name).join(", ") },
   { header: "手数料率", accessor: (r) => `${(r.commission_rate * 100).toFixed(1)}%` },
@@ -102,7 +103,9 @@ export function AgenciesClient({ agencies }: Props) {
   const filtered = agencies.filter((agency) => {
     if (search) {
       const q = search.toLowerCase();
-      if (!agency.name.toLowerCase().includes(q)) return false;
+      // 会社名と代理店名（Backstageグループ名）の両方を検索対象に
+      const haystack = `${agency.company_name ?? ""} ${agency.name}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
     }
     if (rankFilter !== "all" && agency.rank !== rankFilter) return false;
     if (statusFilter !== "all" && getOnboardingStatus(agency) !== statusFilter) return false;
@@ -126,7 +129,7 @@ export function AgenciesClient({ agencies }: Props) {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="代理店名で検索"
+              placeholder="会社名・代理店名で検索"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-72 pl-9"

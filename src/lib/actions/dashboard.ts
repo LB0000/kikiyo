@@ -154,6 +154,9 @@ export async function getMonthlyReports(): Promise<MonthlyReportItem[]> {
   const { data, error } = await supabase
     .from("monthly_reports")
     .select("id, rate, revenue_task, created_at, data_month")
+    // 表示期間（data_month: "YYYYMM"）の新しい順。
+    // data_month が null のレポートは末尾、同一期間内はアップロード日時の新しい順。
+    .order("data_month", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];

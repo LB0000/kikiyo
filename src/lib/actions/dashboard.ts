@@ -322,9 +322,22 @@ export async function getDashboardData(
     totalSpecialBonusJpy,
   };
 
+  // 売上増加（bonus_incremental_revenue）と実際の推定ボーナス（estimated_bonus 生値）は
+  // 社内参照のみで代理店には見せない。画面・CSV では adminOnly 列で隠しているが、
+  // サーバーが値を返すと Server Action レスポンス経由で取得できてしまうため、
+  // 代理店ユーザー向けにはサーバー側でも 0 にマスクする（支払計算は payment_bonus
+  // ベースのため、この 2 値のマスクは集計・請求に影響しない）。
+  const csvRowsForClient = isAdmin
+    ? rows
+    : rows.map((r) => ({
+        ...r,
+        estimated_bonus: 0,
+        bonus_incremental_revenue: 0,
+      }));
+
   return {
     report,
-    csvRows: rows,
+    csvRows: csvRowsForClient,
     refunds: refundRows,
     specialBonuses: specialBonusRows,
     summary,

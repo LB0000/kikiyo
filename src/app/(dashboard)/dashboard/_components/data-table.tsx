@@ -66,14 +66,18 @@ function fmtBonus(n: number): string {
 /**
  * レポートが新ルール（2026.3〜）か旧ルール（〜2026.2）かを行データから推測。
  * payment_bonus は両方で埋まる（旧はバックフィル）ため、新ルール特有の列で判定する。
+ *
+ * 判定キーには ①ranked_up / ②maintained_tiers / ⑤off_platform_2026_03 のみを使う。
+ * bonus_incremental_revenue（売上増加）は管理者専用の参照値で、代理店ユーザーには
+ * サーバー側で 0 にマスクされて返る（getDashboardData 参照）。これを判定に含めると
+ * 同一レポートでも管理者と代理店で新旧判定が割れるため、判定キーから除外している。
  */
 function detectIsNewRule(rows: CsvDataRow[]): boolean {
   return rows.some(
     (r) =>
       r.bonus_ranked_up > 0 ||
       r.bonus_maintained_tiers > 0 ||
-      r.bonus_off_platform_2026_03 > 0 ||
-      r.bonus_incremental_revenue > 0
+      r.bonus_off_platform_2026_03 > 0
   );
 }
 

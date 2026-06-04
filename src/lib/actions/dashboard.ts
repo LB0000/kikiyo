@@ -100,7 +100,11 @@ export type DashboardData = {
     creator_network_manager: string | null;
     data_month: string | null;
     diamonds: number;
-    /** CSV の Estimated bonus 列そのまま（2026.3 以降は ①〜⑤+売上増加 の合計、参考値） */
+    /**
+     * CSV の Estimated bonus 列そのまま（2026.3 以降は ①〜⑤+売上増加 の合計、参考値）。
+     * ⚠️ 代理店ユーザー（role != system_admin）には getDashboardData が 0 にマスクして返す。
+     * 管理者のみ実値。金額計算には使わず payment_bonus を使うこと。
+     */
     estimated_bonus: number;
     /** 支払対象ボーナス = ①+②+③+④+⑤（2026.3〜）または estimated_bonus（旧ルール互換） */
     payment_bonus: number;
@@ -121,6 +125,10 @@ export type DashboardData = {
     bonus_ranked_up: number;
     bonus_maintained_tiers: number;
     bonus_off_platform_2026_03: number;
+    /**
+     * 売上増加（Incremental revenue）。社内参照のみ・支払対象外。
+     * ⚠️ 代理店ユーザーには getDashboardData が 0 にマスクして返す（管理者のみ実値）。
+     */
     bonus_incremental_revenue: number;
   }>;
   refunds: Array<{
@@ -327,6 +335,10 @@ export async function getDashboardData(
   // サーバーが値を返すと Server Action レスポンス経由で取得できてしまうため、
   // 代理店ユーザー向けにはサーバー側でも 0 にマスクする（支払計算は payment_bonus
   // ベースのため、この 2 値のマスクは集計・請求に影響しない）。
+  // 旧ルール（〜2026.2）は estimated_bonus = payment_bonus で代理店に見せても問題ない値だが、
+  // ロール×ルールで分岐を増やさず一貫してマスクする（代理店側は両列とも非表示のため実害なし）。
+  // 注意: これはアプリ層のマスクで、RLS は行単位のみ。代理店が anon key で csv_data を
+  // 直接クエリする経路は塞いでいない（完全防御が必要なら View 化 or 列権限が別途必要）。
   const csvRowsForClient = isAdmin
     ? rows
     : rows.map((r) => ({

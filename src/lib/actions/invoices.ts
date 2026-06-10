@@ -106,19 +106,18 @@ export async function getInvoices(
   const supabase = await createClient();
 
   // 代理店ユーザーは自分の閲覧可能代理店の請求書のみ取得
-  let effectiveAgencyId = agencyId;
+  let viewableIds: string[] | null = null;
   if (user.role !== "system_admin") {
     const { data: viewable } = await supabase
       .from("profile_viewable_agencies")
       .select("agency_id")
       .eq("profile_id", user.id);
-    const viewableIds = (viewable ?? []).map((v) => v.agency_id);
-    if (agencyId && !viewableIds.includes(agencyId)) {
+    viewableIds = (viewable ?? []).map((v) => v.agency_id);
+    if (viewableIds.length === 0) {
       return [];
     }
-    // agency_user は必ず閲覧可能代理店でフィルタ
-    if (!effectiveAgencyId && viewableIds.length > 0) {
-      effectiveAgencyId = viewableIds[0];
+    if (agencyId && !viewableIds.includes(agencyId)) {
+      return [];
     }
   }
 
@@ -129,8 +128,11 @@ export async function getInvoices(
     )
     .order("created_at", { ascending: false });
 
-  if (effectiveAgencyId) {
-    query = query.eq("agency_id", effectiveAgencyId);
+  if (agencyId) {
+    query = query.eq("agency_id", agencyId);
+  } else if (viewableIds) {
+    // agency_user は閲覧可能な全代理店でフィルタ（先頭1件に絞らない）
+    query = query.in("agency_id", viewableIds);
   }
 
   const { data, error } = await query;

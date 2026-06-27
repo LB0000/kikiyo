@@ -3,6 +3,9 @@ import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask, Acc
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   system_admin: "システム管理者",
   agency_user: "代理店ユーザー",
+  // 要望#4: 専用ナビ/権限の配線は 4-D で実装。ここではラベルのみ先行追加。
+  manager_user: "マネージャー",
+  scout_user: "スカウト",
 };
 
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {

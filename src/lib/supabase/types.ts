@@ -1,4 +1,11 @@
-export type UserRole = "system_admin" | "agency_user";
+// 要望#4: マネージャー代表者(manager_user)・スカウト(scout_user)がログイン主体に追加。
+// DB側 enum は supabase/migrations/032_add_manager_scout_roles.sql。
+// 実アクセス制御（担当分のみ表示・専用画面）の配線は 4-D で実装する。
+export type UserRole =
+  | "system_admin"
+  | "agency_user"
+  | "manager_user"
+  | "scout_user";
 export type ApplicationStatus =
   | "completed"
   | "released"

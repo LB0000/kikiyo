@@ -331,7 +331,8 @@ KIKIYO（企業）
     - 計算: manager=1350／三次=900／total_side=2250／scout=75／**source合計（scout除く）=4500（元本一致）**／manager_id同期 すべて期待値一致（並列(あ)）。冪等性（2回実行で4行不変）OK。
     - RLS: **manager は total_side 不可視**（{manager,agency,scout}のみ）＝CRITICAL修正の実証。scout は自分のscout行1件のみ。admin は total_side 可視。
     - CASCADE: csv_data→monthly_report 削除で distributions が孤児なく0件に。042 のメタ検査もOK。
-    - ⚠️ 残: 本番 Supabase への適用（032含む）と、カスケード(い)期待値の実測（v5回答後）。pgTAP 本体（`supabase db test`）は CI 整備時に。
+    - ✅ **全シーケンス適用ドライラン（2026-06-27）**: 本番同様（実 `user_role` enum＋各ファイル個別Tx）で **032→042 全11ファイルが順に適用成功**（enum=4値、未実行だった041の再配線RPCも作成）。本番適用手順は **[docs/4_migration_runbook.md](docs/4_migration_runbook.md)** にまとめた。
+    - ⚠️ 残: **本番 Supabase への適用はユーザー作業**（CLI未リンク・DBパスワード非保持・要明示承認）。カスケード(い)期待値の実測は v5回答後。
   - ✅ **database-reviewer 静的レビュー実施（2026-06-27）**: 計算正確性＝並列/カスケード両方式で設計数値例と一致・元本一致は恒等式として成立を確認。指摘反映:
     - HIGH#1: 040 スカウトループに `JOIN scouts sc ... is_deleted=false` 追加（削除済みスカウトへの誤分配防止）。
     - HIGH#2: 041 の2ループに `ORDER BY monthly_report_id` 追加（並行更新時のデッドロック防止）。

@@ -322,6 +322,21 @@ KIKIYO（企業）
   - 確認3点 → ✅ **回答受領（2026-06-24）**: ①スカウト報酬は**担当ライバーの売上ベース**＝`liver_scouts` を計算単位に採用（`scout_agencies` は補助）。②マネージャー代表者は**ライバー別の生データ（csv_data）まで閲覧可**＝037 で `csv_data`/`livers` に `manager_user` 閲覧ポリシー追加。③トータルサイドの実体＝R6 で代理店登録・取り分は手数料率で表現（v4 ④で取得、設計側で吸収）。
   - 残: **R6 トータルサイド登録4点**（メール/グループ名/手数料率/親代理店）— データ入力でスキーマ非依存・実装と並行取得可。
 - **4-B. 報酬計算ロジック**: ✅詳細設計完了（2026-06-25）→ **[docs/4B_distribution_calc_design.md](docs/4B_distribution_calc_design.md)**。中核は冪等RPC `recalculate_distributions(p_monthly_report_id)`（マイグレ039〜042＋Server Action）。既存4経路は無改変で後段 `PERFORM`、`agency_reward_jpy`/invoices には非干渉。並列/カスケードの%掛け方は **039 の戦略関数に隔離**（v5 回答待ち・1〜2行差替で切替）。スカウトは `liver_scouts` ベース別軸、total_side が丸め残差吸収で元本一致。検証は pgTAP（両方式の期待値表を先行作成）。
+  - ✅ **実装完了（2026-06-27, コード）**: マイグレ **039〜042** ＋ Server Action `recalculateDistributions`（`src/lib/actions/distributions.ts`）＋ import経路接続（`dashboard.ts` 取込成功直後に冪等RPCを1回await・失敗はwarn）＋ types.ts追従（`PayeeKind`／`distributions`／`distribution_rules` 型）＋ pgTAP `supabase/tests/distributions_test.sql`（並列(あ)を有効・カスケード(い)期待値はコメントで先行作成）。
+    - 039: `get_distribution_rate`／`calc_distribution_base`（★%掛け方の唯一の切替点・**デフォルト並列(あ)**）／`calc_distribution_amount`。
+    - 040: 中核RPC（admin限定・`FOR UPDATE`ロック・冪等DELETE+INSERT・manager_id同期・source毎にmanager→三次→total_side残差・スカウト別軸）。over-allocation（率合計>100%）は `RAISE` で検知。
+    - 041: 既存3RPC（exchange/commission/liver_agency）を最新定義（029/031）踏襲＋末尾 `PERFORM`。影響月のみループ。
+    - 042: distributions FK の `ON DELETE CASCADE` を `information_schema` で明示検証（孤児防止）。
+  - ⚠️ **未適用・DB未実行検証**: 本セッションは適用先DBなし（Docker不調）。**SQLは手動レビューのみ・pgTAPは未実行**。マイグレ032〜042 をSupabase適用後に pgTAP（`supabase db test`）で並列/カスケード両期待値を実測する必要あり。
+  - ✅ **database-reviewer 静的レビュー実施（2026-06-27）**: 計算正確性＝並列/カスケード両方式で設計数値例と一致・元本一致は恒等式として成立を確認。指摘反映:
+    - HIGH#1: 040 スカウトループに `JOIN scouts sc ... is_deleted=false` 追加（削除済みスカウトへの誤分配防止）。
+    - HIGH#2: 041 の2ループに `ORDER BY monthly_report_id` 追加（並行更新時のデッドロック防止）。
+    - HIGH#3: distributions.ts の service_role コメントを実挙動（auth.uid()=NULL は admin ガードを**素通り**＝権限担保はTS層＋userセッション利用に依存）に訂正。
+    - MEDIUM#4: 039 に複合インデックス `idx_distribution_rules_agency_kind(agency_id,payee_kind)` 追加。
+    - LOW#8: 040 manager_id同期に `AND agency_id IS NOT NULL`。LOW#7(GRANT): 全マイグレが PUBLIC デフォルト依存の慣習 → 明示不要で整合。
+    - 任意フォロー（未対応）: MEDIUM#5 = 037 の `scout_id = (SELECT get_user_scout_id())` サブクエリ化（RLS perf・4-B範囲外・pre-existing）。
+  - 🔲 **v5 回答到着後**: 039 `calc_distribution_base` をカスケードに差替（必要時）＋ pgTAP のカスケード期待値を有効化。
+  - `tsc --noEmit`／`eslint` クリーン（TS側）。SQLは静的レビュー済み・DB未実行（適用後 pgTAP 実測が必須）。
 - **4-C. 請求書**: ✅仕様確定（2026-06-24）。**代理店宛PDFは従来通り（代理店ごとに1枚、既存 `UNIQUE(agency_id, monthly_report_id)` 維持）**。マネージャー・スカウト分はPDF発行せず**分配明細を画面表示**するのみ（→ `invoices` の制約変更は不要、分配明細テーブル/ビューを新設）。
 - **4-D. UI/権限**: ✅仕様確定（2026-06-24）。マネージャー代表者ログイン（`manager_user`・**代表者1アカウント**・**閲覧範囲は自分の担当分のみ**）、スカウト用閲覧ログイン（請求書なし・自分の分配明細のみ）。代理店ページは既存流用。`profile_viewable_agencies`／`profile_viewable_agencies` 相当の仕組みを流用・拡張し「担当分のみ表示」を強制。
 - **4-E. 移行・運用**: マネージャー↔代理店↔ライバーの初期手動登録、月次の紐付け更新フロー。

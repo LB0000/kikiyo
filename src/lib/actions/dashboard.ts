@@ -945,6 +945,15 @@ export async function importCsvData(params: {
     }
   }
 
+  // ★4-B: 取込成功直後に当該月の多段分配明細を生成（冪等RPC）。
+  // 失敗しても import 本体は成功扱い（warn のみ）。後続の再計算（率変更・手動）で復旧する。
+  const { error: recalcError } = await supabase.rpc("recalculate_distributions", {
+    p_monthly_report_id: report.id,
+  });
+  if (recalcError) {
+    console.warn("[importCsvData] 分配明細の再計算をスキップ:", recalcError.message);
+  }
+
   revalidatePath("/dashboard");
   return {
     success: true,

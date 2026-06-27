@@ -29,6 +29,8 @@ export type RevenueTask =
   | "task_5"
   | "task_6_plus";
 export type AccountType = "futsu" | "toza";
+// 要望#4: 分配先種別（DB enum payee_kind / 033）。distributions・distribution_rules で使用。
+export type PayeeKind = "total_side" | "manager" | "agency" | "scout";
 
 export type Database = {
   public: {
@@ -596,6 +598,74 @@ export type Database = {
           updated_at?: string;
         };
       };
+      // 要望#4: 分配ルール（率マスタ・035）
+      distribution_rules: {
+        Row: {
+          id: string;
+          agency_id: string;
+          payee_kind: PayeeKind;
+          manager_id: string | null;
+          scout_id: string | null;
+          payee_agency_id: string | null;
+          rate: number;
+          is_deleted: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          agency_id: string;
+          payee_kind: PayeeKind;
+          manager_id?: string | null;
+          scout_id?: string | null;
+          payee_agency_id?: string | null;
+          rate?: number;
+          is_deleted?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          rate?: number;
+          is_deleted?: boolean;
+          updated_at?: string;
+        };
+      };
+      // 要望#4: 分配明細スナップショット（036）。4-B の RPC が DELETE+INSERT で生成。
+      distributions: {
+        Row: {
+          id: string;
+          monthly_report_id: string;
+          source_agency_id: string | null;
+          payee_kind: PayeeKind;
+          manager_id: string | null;
+          scout_id: string | null;
+          payee_agency_id: string | null;
+          base_amount_jpy: number;
+          applied_rate: number;
+          amount_jpy: number;
+          tier: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          monthly_report_id: string;
+          source_agency_id?: string | null;
+          payee_kind: PayeeKind;
+          manager_id?: string | null;
+          scout_id?: string | null;
+          payee_agency_id?: string | null;
+          base_amount_jpy: number;
+          applied_rate: number;
+          amount_jpy: number;
+          tier?: number;
+          created_at?: string;
+        };
+        Update: {
+          base_amount_jpy?: number;
+          applied_rate?: number;
+          amount_jpy?: number;
+        };
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -604,6 +674,7 @@ export type Database = {
       form_tab: FormTab;
       revenue_task: RevenueTask;
       account_type: AccountType;
+      payee_kind: PayeeKind;
     };
   };
 };

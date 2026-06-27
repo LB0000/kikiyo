@@ -327,7 +327,11 @@ KIKIYO（企業）
     - 040: 中核RPC（admin限定・`FOR UPDATE`ロック・冪等DELETE+INSERT・manager_id同期・source毎にmanager→三次→total_side残差・スカウト別軸）。over-allocation（率合計>100%）は `RAISE` で検知。
     - 041: 既存3RPC（exchange/commission/liver_agency）を最新定義（029/031）踏襲＋末尾 `PERFORM`。影響月のみループ。
     - 042: distributions FK の `ON DELETE CASCADE` を `information_schema` で明示検証（孤児防止）。
-  - ⚠️ **未適用・DB未実行検証**: 本セッションは適用先DBなし（Docker不調）。**SQLは手動レビューのみ・pgTAPは未実行**。マイグレ032〜042 をSupabase適用後に pgTAP（`supabase db test`）で並列/カスケード両期待値を実測する必要あり。
+  - ✅ **DB実行検証 合格（2026-06-27, ローカルPostgres16）**: Docker不調のため homebrew postgresql@16 で使い捨てクラスタを作成し、マイグレ033〜042を実適用して検証。
+    - 計算: manager=1350／三次=900／total_side=2250／scout=75／**source合計（scout除く）=4500（元本一致）**／manager_id同期 すべて期待値一致（並列(あ)）。冪等性（2回実行で4行不変）OK。
+    - RLS: **manager は total_side 不可視**（{manager,agency,scout}のみ）＝CRITICAL修正の実証。scout は自分のscout行1件のみ。admin は total_side 可視。
+    - CASCADE: csv_data→monthly_report 削除で distributions が孤児なく0件に。042 のメタ検査もOK。
+    - ⚠️ 残: 本番 Supabase への適用（032含む）と、カスケード(い)期待値の実測（v5回答後）。pgTAP 本体（`supabase db test`）は CI 整備時に。
   - ✅ **database-reviewer 静的レビュー実施（2026-06-27）**: 計算正確性＝並列/カスケード両方式で設計数値例と一致・元本一致は恒等式として成立を確認。指摘反映:
     - HIGH#1: 040 スカウトループに `JOIN scouts sc ... is_deleted=false` 追加（削除済みスカウトへの誤分配防止）。
     - HIGH#2: 041 の2ループに `ORDER BY monthly_report_id` 追加（並行更新時のデッドロック防止）。

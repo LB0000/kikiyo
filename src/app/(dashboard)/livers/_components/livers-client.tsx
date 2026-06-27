@@ -131,9 +131,11 @@ export function LiversClient({ livers, agencies, isAdmin }: Props) {
             </Button>
           )}
         </div>
-        <Button className="rounded-full" onClick={() => setBulkOpen(true)}>
-          申請状況一括変更
-        </Button>
+        {isAdmin && (
+          <Button className="rounded-full" onClick={() => setBulkOpen(true)}>
+            申請状況一括変更
+          </Button>
+        )}
       </div>
 
       <LiversTable

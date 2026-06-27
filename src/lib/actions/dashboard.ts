@@ -182,13 +182,23 @@ export async function getDashboardData(
 ): Promise<DashboardData | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
-  // ダッシュボードは admin / 代理店ユーザーのみ。manager/scout は /distributions に集約（直接呼出も拒否）。
-  if (user.role !== "system_admin" && user.role !== "agency_user") {
+  // ダッシュボード（生データ閲覧）は admin / 代理店ユーザー / マネージャー代表者のみ。
+  // スカウトは分配明細のみ（/distributions）＝直接呼出も拒否。
+  // 行スコープ: 代理店=profile_viewable_agencies、マネージャー=037 manager RLS（担当代理店）。
+  // 内部列マスク（estimated_bonus/incremental）は非adminに一律適用＝マネージャーも対象。
+  if (
+    user.role !== "system_admin" &&
+    user.role !== "agency_user" &&
+    user.role !== "manager_user"
+  ) {
     return { error: "権限がありません" };
   }
 
-  // 代理店ユーザーは自分の閲覧可能代理店のデータのみ取得可能
-  if (user.role !== "system_admin" && agencyId) {
+  // 代理店ユーザーは profile_viewable_agencies で agencyId を明示検証。
+  // マネージャーは 037 の manager RLS が csv_data 行を担当代理店に絞るため、agencyId を
+  // 指定しても担当外なら 0 行（漏洩なし）。明示検証は不要（dashboard-client も非adminには
+  // agencyId を渡さない）。
+  if (user.role === "agency_user" && agencyId) {
     const supabaseCheck = await createClient();
     const { data: viewable } = await supabaseCheck
       .from("profile_viewable_agencies")

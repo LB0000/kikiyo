@@ -354,7 +354,17 @@ KIKIYO（企業）
     - コード品質: dashboard/page.tsx を早期リダイレクト化（無駄クエリ削減）、agencies/all-applications のリダイレクト先をロール別に（2ホップ回避）、`formatDataMonth` を `lib/utils` に共通化、`DISTRIBUTION_ONLY_ROLES` を readonly 化。
     - 任意フォロー（未対応）: 041 の既存3RPCの NULL ガードは029/031と完全一致を保つため据置（pre-existing・別タスク）。getDistributions のDB障害時フィードバック（現状[]）。
     - `tsc`／`eslint`／`next build` 全通過。
-  - 🔲 **次フェーズ（フル）**: マネージャーの**生データ閲覧**（既存 dashboard/livers のマスキングを `manager_user` 向けに拡張し担当代理店のライバー別 csv_data を既存画面で閲覧）。代理店ごとの率入力・マネージャー登録・紐付け管理 UI（4-A マスタの CRUD 画面）。
+  - ✅ **フル（生データ閲覧）実装＋DB検証 完了（2026-06-27）**: マネージャーが既存 dashboard/livers で担当代理店のライバー別生データ(csv_data)を閲覧可能に。
+    - `getDashboardData` 許可リストに `manager_user` 追加（内部列マスクは非adminへ一律＝マネージャーも estimated_bonus/incremental は0マスク・編集系はadmin限定）。agencyId検証は agency_user のみ（マネージャーは037 RLSが安全にスコープ）。
+    - dashboard/livers ページの締め出しを **scout_user のみ** に変更（マネージャーは通す）。NAV に「ライバー名簿」「TikTokバックエンド」へ manager_user を追加。invoices/applications/agencies/all-applications は引き続きマネージャー締め出し。
+    - `getLivers` は純RLS依存のため無改修（037 livers ポリシーで自動スコープ）。
+    - ✅ **DB実行検証（ローカルPG16, RLS有効）**: マネージャーは担当代理店(A)の livers/csv_data/agencies のみ閲覧でき、担当外(Z)は完全不可視（5アサート全t）。`tsc`/`eslint`/`next build` 通過。
+    - ✅ **security/code レビュー反映（2026-06-27）**:
+      - BLOCK: `invoices`/`applications` ページのガードを負の定数依存から**正の許可チェック**（admin/agency_userのみ）へ変更。`updateLiver` に manager 明示拒否を追加。
+      - 保守性: 意味が陳腐化した `DISTRIBUTION_ONLY_ROLES` を**廃止**し `fallbackPathForRole(role)`（scout→/distributions・他→/dashboard）に統一。layout/各ページのコメントを現状に更新。
+      - PII: `getLivers` でマネージャーには email/address/contact/birth_date を**非返却**（列レベル抑止）。livers の「申請状況一括変更」ボタンを isAdmin ガード。
+      - ⚠️ **既知の受容リスク（要フォロー）**: csv_data の estimated_bonus/bonus_incremental_revenue・livers PII は**アプリ層マスク**であり、RLS は行単位のみ。代理店ユーザー同様、anon key で Supabase 直接クエリすれば担当スコープ内の実値を取得しうる（既存の accepted risk をマネージャーへ拡大）。根本対策は列権限 or マスク済みビュー化（別チケット）。
+  - 🔲 **次フェーズ（管理UI）**: 代理店ごとの率入力・マネージャー/スカウト登録・紐付け管理（manager_agencies/scout_agencies/liver_scouts/distribution_rules）の CRUD 画面（4-A マスタの管理画面）。現状これらは初期データを手動INSERT前提（4-E）。
 - **4-E. 移行・運用**: マネージャー↔代理店↔ライバーの初期手動登録、月次の紐付け更新フロー。
 
 ### ⚠️ 着手前に潰す既存の地雷（今回の調査で発見、マネージャー＝複数代理店管理で顕在化）

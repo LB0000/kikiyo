@@ -61,9 +61,16 @@ export const PAYEE_KIND_LABELS: Record<PayeeKind, string> = {
   scout: "スカウト",
 };
 
-// 要望#4(4-D MVP): 分配明細のみ閲覧するロール。これらは代理店向けの各ページに入れず
-// /distributions へ集約する（生データ閲覧の既存ページ流用は次フェーズ）。
-export const DISTRIBUTION_ONLY_ROLES: readonly UserRole[] = ["manager_user", "scout_user"];
+// 要望#4: アクセス不可ページからのリダイレクト先（ロール別の既定ホーム）。
+// - scout_user: 分配明細のみ → /distributions
+// - admin / agency_user / manager_user: 生データ画面が既定 → /dashboard
+// 各ページのガードは「許可ロールの否定」で書き（負の定数に依存しない）、不許可時に本関数で遷移する。
+//   dashboard / livers: scout_user のみ不可
+//   invoices / applications: admin / agency_user のみ可（manager/scout 不可）
+//   agencies / all-applications: admin のみ可
+export function fallbackPathForRole(role: UserRole): string {
+  return role === "scout_user" ? "/distributions" : "/dashboard";
+}
 
 /** 消費税率（10%） */
 export const CONSUMPTION_TAX_RATE = 0.1;
@@ -82,7 +89,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     title: "ライバー名簿",
     href: "/livers",
-    roles: ["system_admin", "agency_user"],
+    roles: ["system_admin", "agency_user", "manager_user"],
     icon: "users",
   },
   {
@@ -94,7 +101,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     title: "TikTokバックエンド",
     href: "/dashboard",
-    roles: ["system_admin", "agency_user"],
+    roles: ["system_admin", "agency_user", "manager_user"],
     icon: "monitor",
   },
   {

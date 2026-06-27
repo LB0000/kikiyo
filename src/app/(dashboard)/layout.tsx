@@ -6,9 +6,11 @@ import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 
 // ダッシュボード配下に入れるロール。未対応ロールはフェイルクローズで /login へ。
-// 要望#4(4-D MVP): manager_user/scout_user を解放（閲覧先は /distributions に集約）。
-// 代理店向け各ページ（dashboard/livers/invoices/applications）は DISTRIBUTION_ONLY_ROLES
-// を /distributions へリダイレクトして締め出す。生データ閲覧の既存ページ流用は次フェーズ。
+// 要望#4: manager_user/scout_user を解放。各ページのアクセス制御:
+//   dashboard / livers: scout_user のみ /distributions へ（manager は生データ閲覧可＝4-Dフル）
+//   invoices / applications: admin / agency_user のみ（manager/scout は fallbackPathForRole へ）
+//   agencies / all-applications: admin のみ
+//   distributions: admin / manager / scout（代理店ユーザーは /invoices へ）
 const DASHBOARD_ALLOWED_ROLES: readonly UserRole[] = [
   "system_admin",
   "agency_user",

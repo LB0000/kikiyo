@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
 import { getLivers } from "@/lib/actions/livers";
 import { createClient } from "@/lib/supabase/server";
+import { DISTRIBUTION_ONLY_ROLES } from "@/lib/constants";
 import { LiversClient } from "./_components/livers-client";
 
 export default async function LiversPage() {
   const [user, livers] = await Promise.all([getAuthUser(), getLivers()]);
   if (!user) redirect("/login");
+  if (DISTRIBUTION_ONLY_ROLES.includes(user.role)) redirect("/distributions");
 
   // admin用: 代理店リストを取得（ライバー編集の代理店変更用）
   let agencies: { id: string; name: string }[] = [];

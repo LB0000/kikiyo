@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
 import { getAgencies } from "@/lib/actions/agencies";
+import { DISTRIBUTION_ONLY_ROLES } from "@/lib/constants";
 import { ApplicationForm } from "./_components/application-form";
 
 export default async function ApplicationsPage() {
   const user = await getAuthUser();
   if (!user) redirect("/login");
+  if (DISTRIBUTION_ONLY_ROLES.includes(user.role)) redirect("/distributions");
 
   // system_admin は代理店に所属していないため、代理店選択用リストを取得
   const agencies = user.role === "system_admin"

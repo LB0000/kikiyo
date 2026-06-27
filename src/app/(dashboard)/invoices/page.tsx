@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
 import { getInvoices } from "@/lib/actions/invoices";
 import { getMonthlyReports } from "@/lib/actions/dashboard";
+import { DISTRIBUTION_ONLY_ROLES } from "@/lib/constants";
 import { InvoicesClient } from "./_components/invoices-client";
 
 export default async function InvoicesPage() {
@@ -9,6 +10,7 @@ export default async function InvoicesPage() {
   if (!user) {
     redirect("/login");
   }
+  if (DISTRIBUTION_ONLY_ROLES.includes(user.role)) redirect("/distributions");
 
   const [invoices, reports] = await Promise.all([
     getInvoices(),

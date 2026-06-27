@@ -1,4 +1,4 @@
-import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask, AccountType } from "./supabase/types";
+import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask, AccountType, PayeeKind } from "./supabase/types";
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   system_admin: "システム管理者",
@@ -52,6 +52,18 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   futsu: "普通",
   toza: "当座",
 };
+
+// 要望#4: 分配先種別の表示ラベル。
+export const PAYEE_KIND_LABELS: Record<PayeeKind, string> = {
+  total_side: "トータルサイド",
+  manager: "マネージャー",
+  agency: "三次代理店",
+  scout: "スカウト",
+};
+
+// 要望#4(4-D MVP): 分配明細のみ閲覧するロール。これらは代理店向けの各ページに入れず
+// /distributions へ集約する（生データ閲覧の既存ページ流用は次フェーズ）。
+export const DISTRIBUTION_ONLY_ROLES: readonly UserRole[] = ["manager_user", "scout_user"];
 
 /** 消費税率（10%） */
 export const CONSUMPTION_TAX_RATE = 0.1;
@@ -108,5 +120,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/invoices",
     roles: ["system_admin", "agency_user"],
     icon: "receipt",
+  },
+  {
+    // 要望#4: 分配明細。admin=全件、マネージャー=担当分、スカウト=自分分（RLSスコープ）。
+    title: "分配明細",
+    href: "/distributions",
+    roles: ["system_admin", "manager_user", "scout_user"],
+    icon: "coins",
   },
 ];

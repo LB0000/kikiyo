@@ -339,6 +339,18 @@ KIKIYO（企業）
   - `tsc --noEmit`／`eslint` クリーン（TS側）。SQLは静的レビュー済み・DB未実行（適用後 pgTAP 実測が必須）。
 - **4-C. 請求書**: ✅仕様確定（2026-06-24）。**代理店宛PDFは従来通り（代理店ごとに1枚、既存 `UNIQUE(agency_id, monthly_report_id)` 維持）**。マネージャー・スカウト分はPDF発行せず**分配明細を画面表示**するのみ（→ `invoices` の制約変更は不要、分配明細テーブル/ビューを新設）。
 - **4-D. UI/権限**: ✅仕様確定（2026-06-24）。マネージャー代表者ログイン（`manager_user`・**代表者1アカウント**・**閲覧範囲は自分の担当分のみ**）、スカウト用閲覧ログイン（請求書なし・自分の分配明細のみ）。代理店ページは既存流用。`profile_viewable_agencies`／`profile_viewable_agencies` 相当の仕組みを流用・拡張し「担当分のみ表示」を強制。
+  - ✅ **MVP 実装完了（2026-06-27, `next build` 通過）**: 分配明細ページ `/distributions` を新設し admin=全件／manager=担当分／scout=自分分を **RLS(037) スコープ**で表示（＝4-C「画面表示」も充足）。
+    - `getDistributions(monthlyReportId)`（`distributions.ts`）: PostgREST 埋め込みで payee 名解決（RLSで読めない参照は null フォールバック）。`DistributionListItem` 型。
+    - ページ `distributions/page.tsx` ＋ クライアント `distributions-client.tsx`（月セレクタ・合計・種別バッジ・基準額/率/分配額テーブル）。`PAYEE_KIND_LABELS` 追加。
+    - 配線: `layout.tsx` の `DASHBOARD_ALLOWED_ROLES` に manager/scout 追加、`NAV_ITEMS` に「分配明細」（roles=admin/manager/scout・icon `coins`）追加。`DISTRIBUTION_ONLY_ROLES` で dashboard/livers/invoices/applications を `/distributions` へリダイレクト（フェイルクローズ維持）。
+  - ✅ **code-reviewer＋security-reviewer 実施（2026-06-27）。CRITICAL含む指摘を反映**:
+    - 🔴 **CRITICAL（情報漏洩）**: 037 の manager向け distributions ポリシーは「total_side は source_agency_id NULL だから不可視」と仮定していたが、4-B(040)実装では total_side の source_agency_id に対象代理店IDが入る（source毎残差方式）ため、**マネージャーが total_side＝発注元マージンを閲覧可能**だった。→ 037 ポリシーに `payee_kind <> 'total_side'` を追加（admin限定を担保）＋ getDistributions にも非adminは total_side 除外の多層防御。
+    - HIGH: `getInvoiceDetail`／`/api/invoices/[id]/pdf` に明示ロールガード（admin/agency_userのみ。RLS頼みにしない）。
+    - MEDIUM: 040 admin ガードを `IS DISTINCT FROM`（service_role/NULL uid拒否）＋distributions.tsコメント訂正。`getDashboardData` にロールガード。`getAuthUser` の app_metadata.role を列挙値で実行時検証（fail-closed）。getDistributions に UUID 検証。`recalculateDistributions` で `/distributions` も revalidate。
+    - コード品質: dashboard/page.tsx を早期リダイレクト化（無駄クエリ削減）、agencies/all-applications のリダイレクト先をロール別に（2ホップ回避）、`formatDataMonth` を `lib/utils` に共通化、`DISTRIBUTION_ONLY_ROLES` を readonly 化。
+    - 任意フォロー（未対応）: 041 の既存3RPCの NULL ガードは029/031と完全一致を保つため据置（pre-existing・別タスク）。getDistributions のDB障害時フィードバック（現状[]）。
+    - `tsc`／`eslint`／`next build` 全通過。
+  - 🔲 **次フェーズ（フル）**: マネージャーの**生データ閲覧**（既存 dashboard/livers のマスキングを `manager_user` 向けに拡張し担当代理店のライバー別 csv_data を既存画面で閲覧）。代理店ごとの率入力・マネージャー登録・紐付け管理 UI（4-A マスタの CRUD 画面）。
 - **4-E. 移行・運用**: マネージャー↔代理店↔ライバーの初期手動登録、月次の紐付け更新フロー。
 
 ### ⚠️ 着手前に潰す既存の地雷（今回の調査で発見、マネージャー＝複数代理店管理で顕在化）

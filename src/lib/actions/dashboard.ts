@@ -182,6 +182,10 @@ export async function getDashboardData(
 ): Promise<DashboardData | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  // ダッシュボードは admin / 代理店ユーザーのみ。manager/scout は /distributions に集約（直接呼出も拒否）。
+  if (user.role !== "system_admin" && user.role !== "agency_user") {
+    return { error: "権限がありません" };
+  }
 
   // 代理店ユーザーは自分の閲覧可能代理店のデータのみ取得可能
   if (user.role !== "system_admin" && agencyId) {

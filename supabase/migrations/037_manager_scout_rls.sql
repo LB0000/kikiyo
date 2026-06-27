@@ -110,13 +110,16 @@ CREATE POLICY "マネージャーは担当代理店の分配ルールを閲覧" 
   );
 
 -- distributions: 担当マネージャー（分配元＝自代理店） / スカウト本人
--- 注: total_side 行（source_agency_id IS NULL = 統括の全額受領）は意図的に
--- マネージャー/スカウトに見せない（admin のみ）。担当者には自分のスコープの分配のみ表示する。
+-- ⚠️ total_side 行は **発注元（統括）の取り分＝マージン** を表すため admin 限定。
+--    4-B（040）の実装では total_side 行の source_agency_id に対象代理店IDが入る
+--    （source毎の残差吸収方式）。そのため source_agency_id だけで絞ると total_side が
+--    マネージャーに漏れる → `payee_kind <> 'total_side'` を必須条件にする。
 -- 監査系（assignment_change_logs / distribution_rule_change_logs）も admin 限定のまま
 -- （034/035 の管理者ポリシーのみ。担当者向けポリシーは付与しない＝設計上の意図）。
 CREATE POLICY "マネージャーは担当代理店の分配明細のみ" ON distributions
   FOR SELECT USING (
     get_user_role() = 'manager_user'
+    AND payee_kind <> 'total_side'
     AND source_agency_id IN (SELECT get_user_manager_agency_ids())
   );
 CREATE POLICY "スカウトは自分の分配明細のみ" ON distributions

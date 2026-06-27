@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
 import { getApplications } from "@/lib/actions/applications";
+import { DISTRIBUTION_ONLY_ROLES } from "@/lib/constants";
 import { AllApplicationsClient } from "./_components/all-applications-client";
 
 export default async function AllApplicationsPage() {
@@ -8,8 +9,9 @@ export default async function AllApplicationsPage() {
     getAuthUser(),
     getApplications(),
   ]);
-  if (!user || user.role !== "system_admin") {
-    redirect("/dashboard");
+  if (!user) redirect("/login");
+  if (user.role !== "system_admin") {
+    redirect(DISTRIBUTION_ONLY_ROLES.includes(user.role) ? "/distributions" : "/dashboard");
   }
 
   return (

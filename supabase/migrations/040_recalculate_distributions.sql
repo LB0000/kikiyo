@@ -33,8 +33,10 @@ DECLARE
   v_ts_rate   NUMERIC;
   v_scout_rate NUMERIC;
 BEGIN
-  -- 1. admin ガード（既存4本と同一）
-  IF (SELECT role FROM public.profiles WHERE id = auth.uid()) != 'system_admin' THEN
+  -- 1. admin ガード。IS DISTINCT FROM で auth.uid()=NULL（service_role 直呼び等）も確実に拒否する
+  --    （`!=` だと NULL 比較が NULL=偽になり素通りする。既存029/031の緩い挙動を本関数では締める）。
+  --    PERFORM経由（041のSECURITY DEFINER RPC）でも auth.uid() は元の管理者のまま＝通過する。
+  IF (SELECT role FROM public.profiles WHERE id = auth.uid()) IS DISTINCT FROM 'system_admin' THEN
     RAISE EXCEPTION '権限がありません';
   END IF;
 

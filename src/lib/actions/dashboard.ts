@@ -891,7 +891,9 @@ export async function importCsvData(params: {
       total_reward_jpy: totalRewardJpy,
       agency_reward_jpy: agencyRewardJpy,
       liver_id: liver?.id ?? null,
-      agency_id: agency?.id ?? null,
+      // ライバーに設定済みの所属代理店を優先し、未設定ならCNM列で突合（従来挙動）。
+      // CNMが空欄/代理店名と不一致のグループ（kikiyo@onishi・CANDY等）を分配計算に乗せるため。
+      agency_id: liver?.agency_id ?? agency?.id ?? null,
       monthly_report_id: report.id,
       upload_agency_id: uploadAgencyId || null,
     };

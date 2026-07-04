@@ -764,6 +764,9 @@ export async function importCsvData(params: {
       .map((a) => [a.name!.toLowerCase(), a])
   );
 
+  // agency_id 逆引き（agency_reward_jpy を実際に採用する agency_id と同じ代理店の率で計算するため）
+  const agencyByIdMap = new Map((allAgencies ?? []).map((a) => [a.id, a]));
+
   // 3. Build csv_data insert rows (deduplicate by creator_id, last row wins)
   const rowsByCreatorId = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
@@ -852,12 +855,20 @@ export async function importCsvData(params: {
 
   const insertRows = deduplicatedRows.map((row) => {
     const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
-    const agency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
+    const cnmAgency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
+
+    // 実際に採用する所属代理店（ライバー設定済みを優先、無ければCNM列で突合）。
+    const effectiveAgencyId = liver?.agency_id ?? cnmAgency?.id ?? null;
+    const effectiveAgency = effectiveAgencyId
+      ? agencyByIdMap.get(effectiveAgencyId)
+      : undefined;
 
     // 報酬計算は payment_bonus ベース（売上増加は含めない／2026.3新ルール対応）。
     // 旧ルールの場合 payment_bonus = estimated_bonus（parseCsvText でフォールバック済み）。
+    // 手数料率は agency_id（＝effectiveAgencyId）が指す代理店から引く。CNM名突合の代理店と
+    // ライバー設定済み代理店が食い違っても、agency_id と agency_reward_jpy の基準を一致させる。
     const totalRewardJpy = Math.round(row.payment_bonus * rate * 100) / 100;
-    const agencyCommissionRate = agency?.commission_rate ?? 0;
+    const agencyCommissionRate = effectiveAgency?.commission_rate ?? 0;
     const agencyRewardJpy = Math.round(row.payment_bonus * rate * agencyCommissionRate * 100) / 100;
 
     return {
@@ -893,7 +904,7 @@ export async function importCsvData(params: {
       liver_id: liver?.id ?? null,
       // ライバーに設定済みの所属代理店を優先し、未設定ならCNM列で突合（従来挙動）。
       // CNMが空欄/代理店名と不一致のグループ（kikiyo@onishi・CANDY等）を分配計算に乗せるため。
-      agency_id: liver?.agency_id ?? agency?.id ?? null,
+      agency_id: effectiveAgencyId,
       monthly_report_id: report.id,
       upload_agency_id: uploadAgencyId || null,
     };

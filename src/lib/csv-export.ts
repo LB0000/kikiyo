@@ -5,6 +5,19 @@ export type CsvColumn<T> = {
   accessor: (row: T) => string | number | boolean | null | undefined;
 };
 
+// CSV/数式インジェクション対策（CWE-1236）。
+// Excel等が =,+,-,@,TAB,CR で始まるセルを数式として解釈するのを防ぐため、
+// 該当する文字列セルの先頭にシングルクォートを付与して無害化する。
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
+function sanitizeCsvCell(
+  val: string | number | boolean | null | undefined,
+): string | number | boolean {
+  if (val === null || val === undefined) return "";
+  if (typeof val !== "string") return val;
+  return FORMULA_TRIGGER.test(val) ? `'${val}` : val;
+}
+
 export function exportCsv<T>(
   rows: T[],
   columns: CsvColumn<T>[],
@@ -12,10 +25,7 @@ export function exportCsv<T>(
 ) {
   const headers = columns.map((c) => c.header);
   const data = rows.map((row) =>
-    columns.map((col) => {
-      const val = col.accessor(row);
-      return val ?? "";
-    }),
+    columns.map((col) => sanitizeCsvCell(col.accessor(row))),
   );
 
   const csv = Papa.unparse({ fields: headers, data });

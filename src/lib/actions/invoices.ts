@@ -163,6 +163,10 @@ export async function getInvoiceDetail(
 ): Promise<InvoiceDetail | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  // 請求書は admin / 代理店ユーザーのみ。manager/scout 等は明示的に拒否（RLS頼みにしない）。
+  if (user.role !== "system_admin" && user.role !== "agency_user") {
+    return { error: "権限がありません" };
+  }
 
   const supabase = await createClient();
 

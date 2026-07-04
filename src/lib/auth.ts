@@ -2,6 +2,14 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/supabase/types";
 
+// app_metadata.role（JWTクレーム由来）を信頼する前に列挙値で実行時検証する。
+const VALID_ROLES: readonly UserRole[] = [
+  "system_admin",
+  "agency_user",
+  "manager_user",
+  "scout_user",
+];
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -19,8 +27,12 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
 
   if (!user) return null;
 
-  // app_metadata に role が設定済みなら DB クエリ不要（< 1ms）
-  const metaRole = user.app_metadata?.role as UserRole | undefined;
+  // app_metadata に role が設定済みなら DB クエリ不要（< 1ms）。
+  // 未知の文字列は信頼せず profiles 参照にフォールバックする（fail-closed）。
+  const rawMetaRole = user.app_metadata?.role;
+  const metaRole = VALID_ROLES.includes(rawMetaRole as UserRole)
+    ? (rawMetaRole as UserRole)
+    : undefined;
   if (metaRole) {
     return {
       id: user.id,

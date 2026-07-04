@@ -52,18 +52,22 @@ export async function getLivers(): Promise<LiverRow[]> {
     (allAgencies ?? []).map((a) => [a.id, a.name])
   );
 
+  // マネージャー代表者は名簿（氏名・状況等）は見るが、ライバー個人情報（PII）は閲覧対象外。
+  // admin / 代理店ユーザーのみ PII を返す（行スコープは RLS、ここは列レベルの抑止）。
+  const showPii = user.role === "system_admin" || user.role === "agency_user";
+
   return livers.map((liver) => ({
     id: liver.id,
     name: liver.name,
     account_name: liver.account_name,
     liver_id: liver.liver_id,
-    email: liver.email,
+    email: showPii ? liver.email : null,
     tiktok_username: liver.tiktok_username,
     status: liver.status,
     link: liver.link,
-    address: liver.address,
-    contact: liver.contact,
-    birth_date: liver.birth_date,
+    address: showPii ? liver.address : null,
+    contact: showPii ? liver.contact : null,
+    birth_date: showPii ? liver.birth_date : null,
     acquisition_date: liver.acquisition_date,
     streaming_start_date: liver.streaming_start_date,
     agency_id: liver.agency_id,
@@ -90,6 +94,10 @@ export async function updateLiver(
 ) {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  // 編集は admin / 代理店ユーザーのみ。manager/scout は閲覧専用＝明示拒否（RLS頼みにしない）。
+  if (user.role !== "system_admin" && user.role !== "agency_user") {
+    return { error: "権限がありません" };
+  }
 
   const parsed = updateLiverSchema.safeParse(data);
   if (!parsed.success) {

@@ -182,9 +182,23 @@ export async function getDashboardData(
 ): Promise<DashboardData | { error: string }> {
   const user = await getAuthUser();
   if (!user) return { error: "認証が必要です" };
+  // ダッシュボード（生データ閲覧）は admin / 代理店ユーザー / マネージャー代表者のみ。
+  // スカウトは分配明細のみ（/distributions）＝直接呼出も拒否。
+  // 行スコープ: 代理店=profile_viewable_agencies、マネージャー=037 manager RLS（担当代理店）。
+  // 内部列マスク（estimated_bonus/incremental）は非adminに一律適用＝マネージャーも対象。
+  if (
+    user.role !== "system_admin" &&
+    user.role !== "agency_user" &&
+    user.role !== "manager_user"
+  ) {
+    return { error: "権限がありません" };
+  }
 
-  // 代理店ユーザーは自分の閲覧可能代理店のデータのみ取得可能
-  if (user.role !== "system_admin" && agencyId) {
+  // 代理店ユーザーは profile_viewable_agencies で agencyId を明示検証。
+  // マネージャーは 037 の manager RLS が csv_data 行を担当代理店に絞るため、agencyId を
+  // 指定しても担当外なら 0 行（漏洩なし）。明示検証は不要（dashboard-client も非adminには
+  // agencyId を渡さない）。
+  if (user.role === "agency_user" && agencyId) {
     const supabaseCheck = await createClient();
     const { data: viewable } = await supabaseCheck
       .from("profile_viewable_agencies")
@@ -750,6 +764,9 @@ export async function importCsvData(params: {
       .map((a) => [a.name!.toLowerCase(), a])
   );
 
+  // agency_id 逆引き（agency_reward_jpy を実際に採用する agency_id と同じ代理店の率で計算するため）
+  const agencyByIdMap = new Map((allAgencies ?? []).map((a) => [a.id, a]));
+
   // 3. Build csv_data insert rows (deduplicate by creator_id, last row wins)
   const rowsByCreatorId = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
@@ -838,12 +855,20 @@ export async function importCsvData(params: {
 
   const insertRows = deduplicatedRows.map((row) => {
     const liver = row.handle ? liverMap.get(row.handle.toLowerCase()) : undefined;
-    const agency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
+    const cnmAgency = agencyByNameMap.get(row.creator_network_manager.toLowerCase());
+
+    // 実際に採用する所属代理店（ライバー設定済みを優先、無ければCNM列で突合）。
+    const effectiveAgencyId = liver?.agency_id ?? cnmAgency?.id ?? null;
+    const effectiveAgency = effectiveAgencyId
+      ? agencyByIdMap.get(effectiveAgencyId)
+      : undefined;
 
     // 報酬計算は payment_bonus ベース（売上増加は含めない／2026.3新ルール対応）。
     // 旧ルールの場合 payment_bonus = estimated_bonus（parseCsvText でフォールバック済み）。
+    // 手数料率は agency_id（＝effectiveAgencyId）が指す代理店から引く。CNM名突合の代理店と
+    // ライバー設定済み代理店が食い違っても、agency_id と agency_reward_jpy の基準を一致させる。
     const totalRewardJpy = Math.round(row.payment_bonus * rate * 100) / 100;
-    const agencyCommissionRate = agency?.commission_rate ?? 0;
+    const agencyCommissionRate = effectiveAgency?.commission_rate ?? 0;
     const agencyRewardJpy = Math.round(row.payment_bonus * rate * agencyCommissionRate * 100) / 100;
 
     return {
@@ -877,7 +902,9 @@ export async function importCsvData(params: {
       total_reward_jpy: totalRewardJpy,
       agency_reward_jpy: agencyRewardJpy,
       liver_id: liver?.id ?? null,
-      agency_id: agency?.id ?? null,
+      // ライバーに設定済みの所属代理店を優先し、未設定ならCNM列で突合（従来挙動）。
+      // CNMが空欄/代理店名と不一致のグループ（kikiyo@onishi・CANDY等）を分配計算に乗せるため。
+      agency_id: effectiveAgencyId,
       monthly_report_id: report.id,
       upload_agency_id: uploadAgencyId || null,
     };
@@ -943,6 +970,15 @@ export async function importCsvData(params: {
           : `CSVデータの登録に失敗しました: ${insertError.message}`,
       };
     }
+  }
+
+  // ★4-B: 取込成功直後に当該月の多段分配明細を生成（冪等RPC）。
+  // 失敗しても import 本体は成功扱い（warn のみ）。後続の再計算（率変更・手動）で復旧する。
+  const { error: recalcError } = await supabase.rpc("recalculate_distributions", {
+    p_monthly_report_id: report.id,
+  });
+  if (recalcError) {
+    console.warn("[importCsvData] 分配明細の再計算をスキップ:", recalcError.message);
   }
 
   revalidatePath("/dashboard");

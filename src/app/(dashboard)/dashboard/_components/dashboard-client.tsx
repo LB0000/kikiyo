@@ -24,6 +24,7 @@ import {
   type DashboardData,
 } from "@/lib/actions/dashboard";
 import { REVENUE_TASK_LABELS } from "@/lib/constants";
+import { formatDataMonth } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -123,21 +124,6 @@ export function DashboardClient({
   }, [selectedReportId, agencyFilter, refreshKey]);
 
   const selectedReport = reports.find((r) => r.id === selectedReportId);
-
-  function formatDataMonth(dataMonth: string | null, createdAt: string): string {
-    if (dataMonth) {
-      // "202511" → "2025/11"
-      if (/^\d{6}$/.test(dataMonth)) {
-        return `${dataMonth.slice(0, 4)}/${dataMonth.slice(4)}`;
-      }
-      // "2025-11" → "2025/11"
-      if (/^\d{4}-\d{2}$/.test(dataMonth)) {
-        return dataMonth.replace("-", "/");
-      }
-      return dataMonth;
-    }
-    return new Date(createdAt).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit" });
-  }
 
   async function handleDeleteReport() {
     if (!selectedReportId) return;

@@ -15,6 +15,7 @@ import {
   FileText,
   Receipt,
   ExternalLink,
+  Coins,
   LogOut,
   KeyRound,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "file-text": FileText,
   receipt: Receipt,
   "external-link": ExternalLink,
+  coins: Coins,
 };
 
 type AppSidebarProps = {

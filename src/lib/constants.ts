@@ -1,8 +1,11 @@
-import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask, AccountType } from "./supabase/types";
+import type { UserRole, ApplicationStatus, AgencyRank, FormTab, RevenueTask, AccountType, PayeeKind } from "./supabase/types";
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   system_admin: "システム管理者",
   agency_user: "代理店ユーザー",
+  // 要望#4: 専用ナビ/権限の配線は 4-D で実装。ここではラベルのみ先行追加。
+  manager_user: "マネージャー",
+  scout_user: "スカウト",
 };
 
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -50,6 +53,25 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   toza: "当座",
 };
 
+// 要望#4: 分配先種別の表示ラベル。
+export const PAYEE_KIND_LABELS: Record<PayeeKind, string> = {
+  total_side: "トータルサイド",
+  manager: "マネージャー",
+  agency: "三次代理店",
+  scout: "スカウト",
+};
+
+// 要望#4: アクセス不可ページからのリダイレクト先（ロール別の既定ホーム）。
+// - scout_user: 分配明細のみ → /distributions
+// - admin / agency_user / manager_user: 生データ画面が既定 → /dashboard
+// 各ページのガードは「許可ロールの否定」で書き（負の定数に依存しない）、不許可時に本関数で遷移する。
+//   dashboard / livers: scout_user のみ不可
+//   invoices / applications: admin / agency_user のみ可（manager/scout 不可）
+//   agencies / all-applications: admin のみ可
+export function fallbackPathForRole(role: UserRole): string {
+  return role === "scout_user" ? "/distributions" : "/dashboard";
+}
+
 /** 消費税率（10%） */
 export const CONSUMPTION_TAX_RATE = 0.1;
 
@@ -67,7 +89,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     title: "ライバー名簿",
     href: "/livers",
-    roles: ["system_admin", "agency_user"],
+    roles: ["system_admin", "agency_user", "manager_user"],
     icon: "users",
   },
   {
@@ -79,7 +101,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     title: "TikTokバックエンド",
     href: "/dashboard",
-    roles: ["system_admin", "agency_user"],
+    roles: ["system_admin", "agency_user", "manager_user"],
     icon: "monitor",
   },
   {
@@ -105,5 +127,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/invoices",
     roles: ["system_admin", "agency_user"],
     icon: "receipt",
+  },
+  {
+    // 要望#4: 分配明細。admin=全件、マネージャー=担当分、スカウト=自分分（RLSスコープ）。
+    title: "分配明細",
+    href: "/distributions",
+    roles: ["system_admin", "manager_user", "scout_user"],
+    icon: "coins",
   },
 ];

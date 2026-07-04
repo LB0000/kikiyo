@@ -11,6 +11,10 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
+  // 請求書PDFは admin / 代理店ユーザーのみ。manager/scout 等は明示拒否（RLS頼みにしない）。
+  if (user.role !== "system_admin" && user.role !== "agency_user") {
+    return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+  }
 
   const { id } = await params;
   const { searchParams } = new URL(request.url);

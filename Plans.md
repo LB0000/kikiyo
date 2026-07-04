@@ -309,10 +309,63 @@ KIKIYO（企業）
 - `commission_rate` の本番値: CANDY=0.1 / KOOL=0.5 / ききよ=1.0 / kikiyo@onishi=0.2 / VENKEI=0.0（代理店取り分率）。
 
 ### 実装フェーズ（たたき台。最終工数は仕様確定後）
-- **4-A. データモデル**: `managers` テーブル、マネージャー↔代理店（1:N or N:N）紐付け、`distribution_rules`（月×ライバー or 階層×分配先×率）、`profiles.role` に `manager_user` 追加。グループ／マネージャーのマスタ保持。
-- **4-B. 報酬計算ロジック**: `importCsvData` / `update_exchange_rate` / `update_commission_rate` を階層分配（トータルサイド→マネージャー→代理店/スカウト/三次）に拡張。`csv_data` or 別テーブルに各分配先の報酬額を保存。
-- **4-C. 請求書**: 分配先ごとの請求書発行（単位は要確認）。`invoices` のユニーク制約・スナップショット列を分配先対応に。
-- **4-D. UI/権限**: マネージャー専用ログイン・管理画面、代理店/スカウト用ページ新設、「自分の管理対象のみ表示」。`profile_viewable_agencies` の仕組みを流用・拡張。
+- **4-A. データモデル**: ✅詳細設計完了（2026-06-24）→ **[docs/4A_data_model_design.md](docs/4A_data_model_design.md)**。要点: 分配先は案B（`managers`/`scouts` 独立テーブル＋代理店は既存 `agencies` 再利用、`payee_kind` enum＋排他的アークCHECK）／固定マスタは案②（現在値上書き＋change_log、確定値は `distributions` スナップショット）／マイグレ **032〜038** に分割（032 enum追加は単独Tx必須）。`user_role` に `manager_user`＋`scout_user` 追加。`csv_data.manager_id` は派生・任意列。
+  - ✅ **マイグレ 032〜038 作成完了・database-reviewer 2回実施・指摘反映済み（2026-06-24）**。
+    - 032〜036: テーブル定義＋管理者RLS（値域CHECK・監査ログ種別CHECK 反映）。
+    - 037: manager_user/scout_user の RLS ＋ ヘルパ `get_user_manager_agency_ids()`/`get_user_scout_id()` ＋ 既存 agencies/livers/csv_data へマネージャー閲覧拡張。**CRITICAL（manager_agencies ポリシーの再帰リスク）を managers 直接結合に修正**、scouts/liver_scouts ポリシーを EXISTS 化、total_side 行・監査ログの admin 限定を意図明示。
+    - 038: `csv_data.manager_id`（派生キャッシュ・`ON DELETE SET NULL`）。
+  - ⚠️ **マイグレ未適用**（031含め Supabase SQL Editor 適用は本番反映フェーズでまとめて実施）。
+  - ✅ **TS側追従 完了（2026-06-27）**: `types.ts` の `UserRole` に `manager_user`/`scout_user` を追加（DB enum 032 と一致）、`constants.ts` `USER_ROLE_LABELS` にラベル追加（`Record<UserRole>` 網羅）。`auth.ts` は `UserRole` 経由のため自動追従（app_metadata.role 受理）。`tsc --noEmit`／`eslint` クリーン。実アクセス制御（担当分のみ・専用画面）の配線は 4-D。
+  - ✅ **暫定セキュリティガード追加（2026-06-27, code-reviewer HIGH指摘対応）**: `(dashboard)/layout.tsx` に `DASHBOARD_ALLOWED_ROLES`（system_admin/agency_user）のフェイルクローズ判定を追加。新ロールはマイグレ適用順に関わらずダッシュボード到達不可（`monthly_reports` RLS が `auth.uid() IS NOT NULL` のため、ガードなしだと032適用直後に全レポート＝為替レート等が漏洩する穴を塞ぐ）。
+  - ⚠️ **4-D 実装時の必須同時更新（code-reviewer MEDIUM）**: manager_user/scout_user を解放する際、①`(dashboard)/layout.tsx` の `DASHBOARD_ALLOWED_ROLES` ②`NAV_ITEMS`（constants.ts）③請求書系の `agency_user` ホワイトリスト3箇所（`invoices-client.tsx:83,96` 表示条件／`actions/invoices.ts:206` getInvoicePreview／`actions/invoices.ts:363` createAndSendInvoice）を必ず同時更新。見落とすと「UIは見えるが Server Action で拒否」等の非対称状態になる。
+  - 🔲 **未着手**: 4-B（多段分配計算・マイグレ039〜042＋Server Action）。4-D（マネージャー/スカウト UI）。
+  - 確認3点 → ✅ **回答受領（2026-06-24）**: ①スカウト報酬は**担当ライバーの売上ベース**＝`liver_scouts` を計算単位に採用（`scout_agencies` は補助）。②マネージャー代表者は**ライバー別の生データ（csv_data）まで閲覧可**＝037 で `csv_data`/`livers` に `manager_user` 閲覧ポリシー追加。③トータルサイドの実体＝R6 で代理店登録・取り分は手数料率で表現（v4 ④で取得、設計側で吸収）。
+  - 残: **R6 トータルサイド登録4点**（メール/グループ名/手数料率/親代理店）— データ入力でスキーマ非依存・実装と並行取得可。
+- **4-B. 報酬計算ロジック**: ✅詳細設計完了（2026-06-25）→ **[docs/4B_distribution_calc_design.md](docs/4B_distribution_calc_design.md)**。中核は冪等RPC `recalculate_distributions(p_monthly_report_id)`（マイグレ039〜042＋Server Action）。既存4経路は無改変で後段 `PERFORM`、`agency_reward_jpy`/invoices には非干渉。並列/カスケードの%掛け方は **039 の戦略関数に隔離**（v5 回答待ち・1〜2行差替で切替）。スカウトは `liver_scouts` ベース別軸、total_side が丸め残差吸収で元本一致。検証は pgTAP（両方式の期待値表を先行作成）。
+  - ✅ **実装完了（2026-06-27, コード）**: マイグレ **039〜042** ＋ Server Action `recalculateDistributions`（`src/lib/actions/distributions.ts`）＋ import経路接続（`dashboard.ts` 取込成功直後に冪等RPCを1回await・失敗はwarn）＋ types.ts追従（`PayeeKind`／`distributions`／`distribution_rules` 型）＋ pgTAP `supabase/tests/distributions_test.sql`（並列(あ)を有効・カスケード(い)期待値はコメントで先行作成）。
+    - 039: `get_distribution_rate`／`calc_distribution_base`（★%掛け方の唯一の切替点・**デフォルト並列(あ)**）／`calc_distribution_amount`。
+    - 040: 中核RPC（admin限定・`FOR UPDATE`ロック・冪等DELETE+INSERT・manager_id同期・source毎にmanager→三次→total_side残差・スカウト別軸）。over-allocation（率合計>100%）は `RAISE` で検知。
+    - 041: 既存3RPC（exchange/commission/liver_agency）を最新定義（029/031）踏襲＋末尾 `PERFORM`。影響月のみループ。
+    - 042: distributions FK の `ON DELETE CASCADE` を `information_schema` で明示検証（孤児防止）。
+  - ✅ **DB実行検証 合格（2026-06-27, ローカルPostgres16）**: Docker不調のため homebrew postgresql@16 で使い捨てクラスタを作成し、マイグレ033〜042を実適用して検証。
+    - 計算: manager=1350／三次=900／total_side=2250／scout=75／**source合計（scout除く）=4500（元本一致）**／manager_id同期 すべて期待値一致（並列(あ)）。冪等性（2回実行で4行不変）OK。
+    - RLS: **manager は total_side 不可視**（{manager,agency,scout}のみ）＝CRITICAL修正の実証。scout は自分のscout行1件のみ。admin は total_side 可視。
+    - CASCADE: csv_data→monthly_report 削除で distributions が孤児なく0件に。042 のメタ検査もOK。
+    - ✅ **全シーケンス適用ドライラン（2026-06-27）**: 本番同様（実 `user_role` enum＋各ファイル個別Tx）で **032→042 全11ファイルが順に適用成功**（enum=4値、未実行だった041の再配線RPCも作成）。本番適用手順は **[docs/4_migration_runbook.md](docs/4_migration_runbook.md)** にまとめた。
+    - ⚠️ 残: **本番 Supabase への適用はユーザー作業**（CLI未リンク・DBパスワード非保持・要明示承認）。カスケード(い)期待値の実測は v5回答後。
+  - ✅ **database-reviewer 静的レビュー実施（2026-06-27）**: 計算正確性＝並列/カスケード両方式で設計数値例と一致・元本一致は恒等式として成立を確認。指摘反映:
+    - HIGH#1: 040 スカウトループに `JOIN scouts sc ... is_deleted=false` 追加（削除済みスカウトへの誤分配防止）。
+    - HIGH#2: 041 の2ループに `ORDER BY monthly_report_id` 追加（並行更新時のデッドロック防止）。
+    - HIGH#3: distributions.ts の service_role コメントを実挙動（auth.uid()=NULL は admin ガードを**素通り**＝権限担保はTS層＋userセッション利用に依存）に訂正。
+    - MEDIUM#4: 039 に複合インデックス `idx_distribution_rules_agency_kind(agency_id,payee_kind)` 追加。
+    - LOW#8: 040 manager_id同期に `AND agency_id IS NOT NULL`。LOW#7(GRANT): 全マイグレが PUBLIC デフォルト依存の慣習 → 明示不要で整合。
+    - 任意フォロー（未対応）: MEDIUM#5 = 037 の `scout_id = (SELECT get_user_scout_id())` サブクエリ化（RLS perf・4-B範囲外・pre-existing）。
+  - 🔲 **v5 回答到着後**: 039 `calc_distribution_base` をカスケードに差替（必要時）＋ pgTAP のカスケード期待値を有効化。
+  - `tsc --noEmit`／`eslint` クリーン（TS側）。SQLは静的レビュー済み・DB未実行（適用後 pgTAP 実測が必須）。
+- **4-C. 請求書**: ✅仕様確定（2026-06-24）。**代理店宛PDFは従来通り（代理店ごとに1枚、既存 `UNIQUE(agency_id, monthly_report_id)` 維持）**。マネージャー・スカウト分はPDF発行せず**分配明細を画面表示**するのみ（→ `invoices` の制約変更は不要、分配明細テーブル/ビューを新設）。
+- **4-D. UI/権限**: ✅仕様確定（2026-06-24）。マネージャー代表者ログイン（`manager_user`・**代表者1アカウント**・**閲覧範囲は自分の担当分のみ**）、スカウト用閲覧ログイン（請求書なし・自分の分配明細のみ）。代理店ページは既存流用。`profile_viewable_agencies`／`profile_viewable_agencies` 相当の仕組みを流用・拡張し「担当分のみ表示」を強制。
+  - ✅ **MVP 実装完了（2026-06-27, `next build` 通過）**: 分配明細ページ `/distributions` を新設し admin=全件／manager=担当分／scout=自分分を **RLS(037) スコープ**で表示（＝4-C「画面表示」も充足）。
+    - `getDistributions(monthlyReportId)`（`distributions.ts`）: PostgREST 埋め込みで payee 名解決（RLSで読めない参照は null フォールバック）。`DistributionListItem` 型。
+    - ページ `distributions/page.tsx` ＋ クライアント `distributions-client.tsx`（月セレクタ・合計・種別バッジ・基準額/率/分配額テーブル）。`PAYEE_KIND_LABELS` 追加。
+    - 配線: `layout.tsx` の `DASHBOARD_ALLOWED_ROLES` に manager/scout 追加、`NAV_ITEMS` に「分配明細」（roles=admin/manager/scout・icon `coins`）追加。`DISTRIBUTION_ONLY_ROLES` で dashboard/livers/invoices/applications を `/distributions` へリダイレクト（フェイルクローズ維持）。
+  - ✅ **code-reviewer＋security-reviewer 実施（2026-06-27）。CRITICAL含む指摘を反映**:
+    - 🔴 **CRITICAL（情報漏洩）**: 037 の manager向け distributions ポリシーは「total_side は source_agency_id NULL だから不可視」と仮定していたが、4-B(040)実装では total_side の source_agency_id に対象代理店IDが入る（source毎残差方式）ため、**マネージャーが total_side＝発注元マージンを閲覧可能**だった。→ 037 ポリシーに `payee_kind <> 'total_side'` を追加（admin限定を担保）＋ getDistributions にも非adminは total_side 除外の多層防御。
+    - HIGH: `getInvoiceDetail`／`/api/invoices/[id]/pdf` に明示ロールガード（admin/agency_userのみ。RLS頼みにしない）。
+    - MEDIUM: 040 admin ガードを `IS DISTINCT FROM`（service_role/NULL uid拒否）＋distributions.tsコメント訂正。`getDashboardData` にロールガード。`getAuthUser` の app_metadata.role を列挙値で実行時検証（fail-closed）。getDistributions に UUID 検証。`recalculateDistributions` で `/distributions` も revalidate。
+    - コード品質: dashboard/page.tsx を早期リダイレクト化（無駄クエリ削減）、agencies/all-applications のリダイレクト先をロール別に（2ホップ回避）、`formatDataMonth` を `lib/utils` に共通化、`DISTRIBUTION_ONLY_ROLES` を readonly 化。
+    - 任意フォロー（未対応）: 041 の既存3RPCの NULL ガードは029/031と完全一致を保つため据置（pre-existing・別タスク）。getDistributions のDB障害時フィードバック（現状[]）。
+    - `tsc`／`eslint`／`next build` 全通過。
+  - ✅ **フル（生データ閲覧）実装＋DB検証 完了（2026-06-27）**: マネージャーが既存 dashboard/livers で担当代理店のライバー別生データ(csv_data)を閲覧可能に。
+    - `getDashboardData` 許可リストに `manager_user` 追加（内部列マスクは非adminへ一律＝マネージャーも estimated_bonus/incremental は0マスク・編集系はadmin限定）。agencyId検証は agency_user のみ（マネージャーは037 RLSが安全にスコープ）。
+    - dashboard/livers ページの締め出しを **scout_user のみ** に変更（マネージャーは通す）。NAV に「ライバー名簿」「TikTokバックエンド」へ manager_user を追加。invoices/applications/agencies/all-applications は引き続きマネージャー締め出し。
+    - `getLivers` は純RLS依存のため無改修（037 livers ポリシーで自動スコープ）。
+    - ✅ **DB実行検証（ローカルPG16, RLS有効）**: マネージャーは担当代理店(A)の livers/csv_data/agencies のみ閲覧でき、担当外(Z)は完全不可視（5アサート全t）。`tsc`/`eslint`/`next build` 通過。
+    - ✅ **security/code レビュー反映（2026-06-27）**:
+      - BLOCK: `invoices`/`applications` ページのガードを負の定数依存から**正の許可チェック**（admin/agency_userのみ）へ変更。`updateLiver` に manager 明示拒否を追加。
+      - 保守性: 意味が陳腐化した `DISTRIBUTION_ONLY_ROLES` を**廃止**し `fallbackPathForRole(role)`（scout→/distributions・他→/dashboard）に統一。layout/各ページのコメントを現状に更新。
+      - PII: `getLivers` でマネージャーには email/address/contact/birth_date を**非返却**（列レベル抑止）。livers の「申請状況一括変更」ボタンを isAdmin ガード。
+      - ⚠️ **既知の受容リスク（要フォロー）**: csv_data の estimated_bonus/bonus_incremental_revenue・livers PII は**アプリ層マスク**であり、RLS は行単位のみ。代理店ユーザー同様、anon key で Supabase 直接クエリすれば担当スコープ内の実値を取得しうる（既存の accepted risk をマネージャーへ拡大）。根本対策は列権限 or マスク済みビュー化（別チケット）。
+  - 🔲 **次フェーズ（管理UI）**: 代理店ごとの率入力・マネージャー/スカウト登録・紐付け管理（manager_agencies/scout_agencies/liver_scouts/distribution_rules）の CRUD 画面（4-A マスタの管理画面）。現状これらは初期データを手動INSERT前提（4-E）。
 - **4-E. 移行・運用**: マネージャー↔代理店↔ライバーの初期手動登録、月次の紐付け更新フロー。
 
 ### ⚠️ 着手前に潰す既存の地雷（今回の調査で発見、マネージャー＝複数代理店管理で顕在化）
@@ -323,9 +376,9 @@ KIKIYO（企業）
 > 031 の適用後の影響: 旧ルール行は `payment_bonus = estimated_bonus` でバックフィル済み（029）のため結果不変。新ルール月（202603〜）の行のみ、手数料率変更・代理店変更を実行した場合の再計算が正しくなる。適用しない限り既存データは変わらない（関数定義の置き換えのみ）。
 
 ### 残る不明点（Kouyama44 / kana / オーナーへ確認）→ 2026-06-11 発注元回答を反映
-- [ ] 1人が複数ロール（例: キャンディーさんがスカウト10%＋担当40%）のとき、**同一人物への支払いを合算するか分離するか**。→ **未回答・再確認中**
-- [ ] スカウト・マネージャーは**ログインできる主体**か、**集計上の区分だけ**か。→ 🔶 **一部確定（2026-06-11）: マネージャーの代表者はログインする** ＝ `manager_user` ロール＋マネージャー専用画面はスコープ確定。残確認: ①代表者1アカウントか、マネージャーごとに個別発行か ②代表者の閲覧範囲（全マネージャー分か担当分のみか） ③スカウトはログインするか
-- [ ] 請求書は**分配先ごとに別発行**か、**1枚にまとめる**か。発行方向（誰→誰）。→ 回答「意味がわかりません」＝**質問が伝わらず。選択肢提示で言い直して再確認中**
+- [x] 1人が複数ロール（例: キャンディーさんがスカウト10%＋担当40%）のとき、**同一人物への支払いを合算するか分離するか**。→ 🔶 **2026-06-24 回答: 代理店とスカウトは「分けて」計算・記録する（合算しない）**。ただし**スカウトの請求は（現時点では）すべてトータルサイドにまとめる**。→ 請求書の発行先詳細は下記で確認中。
+- [x] スカウト・マネージャーは**ログインできる主体**か、**集計上の区分だけ**か。→ ✅ **確定（2026-06-24）**: マネージャー代表者はログインする＝`manager_user` ロール＋専用画面。**①アカウントは「代表者おひとり分」**。**③スカウトもログインする**（＝閲覧用ログインあり、ただし請求書はトータルサイドに集約）。**②代表者の閲覧範囲＝「ご自分の担当分だけ」**（自分が担当するマネージャー/代理店/スカウト分のみ。他社は不可）。→ ✅ **全項目確定**。
+- [x] 請求書は**分配先ごとに別発行**か、**1枚にまとめる**か。発行方向（誰→誰）。→ ✅ **確定（2026-06-24）**: **代理店宛は従来通り「代理店ごとに1枚ずつ」PDF発行**。**マネージャー・スカウトには請求書を発行せず、画面で内訳が見えれば十分（請求書はトータルサイドに集約）**。＝既存の `UNIQUE(agency_id, monthly_report_id)` 制約は代理店請求書としてそのまま維持可。マネージャー/スカウト分は**画面表示用の分配明細**として保持（PDF自動発行は追加しない）。
 - [x] マネージャー↔ライバーの紐付けは**月ごとに変わりうるか** → ✅ 回答「**変更があるまでは固定**」＝固定マスタ方式。月次積み分けは不要。変更時のみ管理画面で更新（確定済み請求書はスナップショットなので過去に遡及しない設計とする）
 - [x] 各階層のパーセンテージの**確定値**と運用 → ✅ 回答「**管理画面側で入力**」＝率はハードコードせず、**管理者が管理画面から入力・変更できるUIが要件**（`distribution_rules` のCRUD画面が確定スコープ入り）
 - [x] 三次代理店（クール配下）の分配率・請求単位 → ✅ 回答「**管理画面側で入力**」＝同上、画面から設定できれば良い
@@ -366,8 +419,8 @@ KIKIYO（企業）
 ### 見積もり方針（2026-06-12 決定）
 会議合意済みの **20万円（税別）** で見積書を出す。実工数は13〜19人日相当（市場価格50〜90万規模）だが、合意済み金額の引き上げはしない。代わりに**内訳と「別途見積もり」の注記でスコープを固定**する。
 - 内訳: ①DB設計・構築 4万 ②報酬分配の自動計算 6万 ③管理画面拡張（分配率入力・マネージャー登録・紐付け管理）5万 ④マネージャー代表者用ログイン・閲覧画面 4万 ⑤検証・本番反映・初期データ登録支援 1万 ＝ 計20万（税別）
-- **別途見積もり注記（必須）**: (a) 分配先ごとの請求書PDF自動発行（Q4が「分ける」の場合） (b) スカウト用ログイン・専用画面 (c) マネージャーごとの個別アカウント発行
-- 送付状況: ⬜ 未送付（送付時に追記）
+- **別途見積もり注記（必須）**: (a) ~~分配先ごとの請求書PDF自動発行~~ → **不要に確定（2026-06-24）**: 代理店宛は従来通り・マネージャー/スカウトは画面表示のみ。 (b) スカウト用ログイン・専用画面 → **20万に含めることで確定（2026-06-24）**。追加請求なし。閲覧専用ページとして実装（請求書なし・自分の分配明細のみ）。内訳④に内包。 (c) マネージャーごとの個別アカウント発行 → **不要に確定（代表者おひとり分）**。
+- 送付状況: ✅ 2026-06-24 発注元より **20万円（税別）で承認** 受領。要望#4 実装フェーズへ移行。
 
 ### 発注元への再確認文 v2（2026-06-11 作成、未回答3件＋Q4言い直し）
 > 送付状況は送付時に追記。
@@ -399,6 +452,97 @@ KIKIYO（企業）
    ご登録に必要な情報4点をお願いいたします。
    ①ログイン用メールアドレス ②Backstageのグループ名 ③手数料率 ④親代理店の有無
 ```
+
+### 発注元への再確認文 v3（2026-06-24 作成、具体例つき・かみ砕き版）
+> v2 が Q4「意味がわかりません」と返ったため、具体的な人名・数字・選択肢で言い直す。送付状況は送付時に追記。
+```
+お世話になっております。マネージャー単位の管理への移行について、設計を始める前に
+3点だけ、具体例でご確認させてください。どちらか選ぶ／番号でお答えいただくだけで
+大丈夫です。
+
+① 同じ方が2つの役割を持つときの「お支払い」
+   例：キャンディーさんがスカウト10%・マネージャー担当40%を受け取るとき、
+   画面・請求書での見せ方は—
+   (あ) 合算する … 「50%ぶん＝1件」でまとめて表示・請求
+   (い) 分ける  … 「スカウト10%ぶん」「マネージャー40%ぶん」の2件に分ける
+   → （あ）か（い）どちらが良いですか？
+
+② 請求書（PDF）の作り方
+   現在は毎月、代理店ごとに請求書PDFを1枚ずつ自動作成しています。移行後は—
+   (あ) 相手ごとに分けて作る … マネージャー様・スカウト様・代理店様それぞれに別PDF
+   (い) 1枚にまとめる … 請求書は全体で1枚。内訳は画面で確認できればOK
+   → （あ）か（い）どちらが良いですか？
+   （補足：(あ)は PDF自動発行が別途お見積りになります）
+
+③ ログインする人
+   (a) アカウントの数 … 「代表者おひとり分」で良いですか？マネージャーごとに別発行ですか？
+   (b) 見える範囲 … 代表者様の画面は「全マネージャー分」？「ご自分の担当分だけ」？
+   (c) スカウト様 … ご自身もログインしますか？（しない場合は集計表示のみ）
+
+あわせて、新規代理店「トータルサイド」様のご登録に必要な4点もお願いします。
+①ログイン用メールアドレス ②Backstageのグループ名（CSVのGroup列と一致するもの）
+③手数料率（取り分の％） ④親代理店の有無
+```
+
+> ✅ 2026-06-24 見積もり **20万円（税別）** 承認受領（発注元）。要望#4は実装フェーズへ。v3 の Q1/Q4/Q5 は全て回答受領・確定（上記「要望#4 仕様 確定サマリ」参照）。
+
+### 発注元への確認文 v4（2026-06-24 作成、4-A 着手後の追加確認＋トータルサイド登録）
+> 4-A データモデル設計で生じた残り2点（スカウト計算単位・マネージャー閲覧範囲）＋ R6 トータルサイド登録情報。
+> ②トータルサイドの取り分は下記④手数料率で解決（payee設計はこちらで吸収）。送付状況は送付時に追記。
+```
+お世話になっております。マネージャー単位管理の設計を進めております。
+あと2点だけ仕様のご確認と、新しく登録する「トータルサイド」様の情報をお願いします。
+番号でお答えいただくだけで大丈夫です。
+
+■ 確認① スカウトさんの報酬は「何」に対して発生しますか？
+   例：スカウトAさんがライバーを3人獲得しているとします。Aさんの報酬は—
+   (あ) 獲得したライバーごと … その3人それぞれの売上に応じてAさんの報酬が決まる
+   (い) 代理店まとめて … Aさんが所属する代理店全体の売上に対する割合で決まる
+   → （あ）か（い）どちらですか？
+
+■ 確認② マネージャー代表者がログインしたとき、画面で見えるのは—
+   (あ) 分配の金額（誰にいくら）だけ見えればOK
+   (い) その元になる、ライバーごとの細かい売上データ（Backstage取込の生データ）まで見せる
+   → （あ）か（い）どちらですか？
+
+■ 新規登録「トータルサイド」様の情報（4点）
+   ①ログイン用メールアドレス
+   ②Backstageのグループ名（CSVの Group 列と一致するもの。無ければ「なし」）
+   ③取り分（手数料率）… マネージャー・代理店へ配る前にトータルサイドが受け取る％
+   ④親代理店の有無（トータルサイドの上にさらに別の代理店があるか）
+```
+
+> ✅ 2026-06-24 ①②回答受領＝①スカウトは担当ライバー売上ベース（`liver_scouts`）／②生データまで閲覧可。トータルサイド4点（R6）は外部待ち継続。
+
+### 発注元への確認文 v5（2026-06-25 作成、4-B 設計の前提＝%の掛け方＋R6再掲）
+> 4-B（多段分配計算）の計算式を左右する「割合の掛け方」を確定する。送付状況は送付時に追記。
+```
+お世話になっております。設計の詰めであと1点だけご確認と、先日お願いした
+トータルサイド様の情報を改めてお願いします。
+
+■ 確認 報酬の「割合の掛け方」について
+   ある月、あるライバーさんの対象額が 10万円 だったとします。
+   これを関係者へ分けるとき、どちらの考え方ですか？
+   (あ) みんな同じ10万円が基準 … 代理店◯%・スカウト◯%・マネージャー◯% を
+        それぞれ「10万円」に対して計算する（並列）
+   (い) 上から順に取って残りを分ける … トータルサイドがまず取り、その残りから
+        マネージャー、さらにその残りから代理店…と段階的に計算する（カスケード）
+   → （あ）か（い）どちらですか？（具体的な％は管理画面で設定できるようにします）
+
+■ 新規登録「トータルサイド」様の情報（4点・再掲）
+   ①ログイン用メールアドレス
+   ②Backstageのグループ名（CSVの Group 列と一致するもの。無ければ「なし」）
+   ③取り分（手数料率）… マネージャー・代理店へ配る前にトータルサイドが受け取る％
+   ④親代理店の有無
+```
+
+### 発注元への確認文 v6（2026-06-29 作成、本番適用後＝マスタ登録に必要な全情報）
+> 本番マイグレ適用＆計算エンジン検証完了を受け、実運用に必要な値を1通で回収する。
+> 全文は **[tmp/20260627_発注元確認_マスタ登録とv5R6.md](../../tmp/20260627_発注元確認_マスタ登録とv5R6.md)**（UTF-8）。
+> v5未回答分（%の掛け方）は **A/B 選択式**に変更（あ/い が伝わりにくかったため）。
+> 内容: ①%の掛け方 A=並列/B=カスケード ②R6トータルサイド4点 ③マネージャー（氏名/担当代理店/ログイン要否/率） ④三次代理店の率 ⑤スカウト（氏名/担当ライバー/率/ログイン要否）。
+> 回答受領後、`supabase/_apply/seed_template.sql` を埋めて INSERT＋recalc を生成・適用する。
+- 送付状況: ⬜ 未送付（送付時に追記）
 
 ---
 

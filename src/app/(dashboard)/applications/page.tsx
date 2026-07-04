@@ -1,11 +1,16 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
 import { getAgencies } from "@/lib/actions/agencies";
+import { fallbackPathForRole } from "@/lib/constants";
 import { ApplicationForm } from "./_components/application-form";
 
 export default async function ApplicationsPage() {
   const user = await getAuthUser();
   if (!user) redirect("/login");
+  // TikTok申請は admin / 代理店ユーザーのみ（manager/scout は不可）。
+  if (user.role !== "system_admin" && user.role !== "agency_user") {
+    redirect(fallbackPathForRole(user.role));
+  }
 
   // system_admin は代理店に所属していないため、代理店選択用リストを取得
   const agencies = user.role === "system_admin"

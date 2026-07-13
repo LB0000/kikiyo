@@ -439,6 +439,9 @@ export type Database = {
           // マイグレ030で追加
           agency_company_name: string | null;
           agency_contract_person_name: string | null;
+          // マイグレ046で追加（インボイス未登録ロイヤリティ控除のスナップショット）
+          royalty_rate: number;
+          royalty_deduction_jpy: number;
         };
         Insert: {
           id?: string;
@@ -452,6 +455,8 @@ export type Database = {
           is_invoice_registered?: boolean;
           invoice_registration_number?: string | null;
           deductible_rate?: number;
+          royalty_rate?: number;
+          royalty_deduction_jpy?: number;
           agency_name: string;
           agency_address?: string | null;
           agency_representative?: string | null;
@@ -482,6 +487,8 @@ export type Database = {
           is_invoice_registered?: boolean;
           invoice_registration_number?: string | null;
           deductible_rate?: number;
+          royalty_rate?: number;
+          royalty_deduction_jpy?: number;
           agency_name?: string;
           agency_address?: string | null;
           agency_representative?: string | null;
@@ -643,6 +650,8 @@ export type Database = {
           base_amount_jpy: number;
           applied_rate: number;
           amount_jpy: number;
+          // マイグレ046: インボイス未登録スカウト/マネージャー/三次代理店への2%控除額
+          royalty_deduction_jpy: number;
           tier: number;
           created_at: string;
         };
@@ -657,6 +666,7 @@ export type Database = {
           base_amount_jpy: number;
           applied_rate: number;
           amount_jpy: number;
+          royalty_deduction_jpy?: number;
           tier?: number;
           created_at?: string;
         };
@@ -664,6 +674,7 @@ export type Database = {
           base_amount_jpy?: number;
           applied_rate?: number;
           amount_jpy?: number;
+          royalty_deduction_jpy?: number;
         };
       };
     };

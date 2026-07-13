@@ -59,6 +59,8 @@ export async function GET(
     invoice_registration_number: invoice.invoice_registration_number,
     is_invoice_registered: invoice.is_invoice_registered,
     deductible_rate: invoice.deductible_rate,
+    royalty_rate: invoice.royalty_rate ?? 0,
+    royalty_deduction_jpy: invoice.royalty_deduction_jpy ?? 0,
     subtotal_jpy: invoice.subtotal_jpy,
     tax_rate: invoice.tax_rate,
     tax_amount_jpy: invoice.tax_amount_jpy,

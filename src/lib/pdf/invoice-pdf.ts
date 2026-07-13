@@ -59,6 +59,9 @@ export type InvoicePdfData = {
   invoice_registration_number: string | null;
   is_invoice_registered: boolean;
   deductible_rate: number;
+  /** インボイス未登録ロイヤリティ控除（マイグレ046）。0 の場合は表示しない */
+  royalty_rate: number;
+  royalty_deduction_jpy: number;
   subtotal_jpy: number;
   tax_rate: number;
   tax_amount_jpy: number;
@@ -449,6 +452,17 @@ export function generateInvoicePdf(data: InvoicePdfData): Buffer {
       marginL,
       y
     );
+    if (data.royalty_deduction_jpy > 0) {
+      y += 4;
+      const royaltyPercent = (data.royalty_rate * 100).toFixed(0);
+      // 控除額は銭単位のスナップショットのため formatCurrency（整数丸め）を使わずそのまま表示する
+      const royaltyAmount = data.royalty_deduction_jpy.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
+      doc.text(
+        `　インボイス未登録のため、報酬総額からロイヤリティ${royaltyPercent}%（¥${royaltyAmount}）を控除しています。`,
+        marginL,
+        y
+      );
+    }
     doc.setTextColor(0, 0, 0);
   }
 

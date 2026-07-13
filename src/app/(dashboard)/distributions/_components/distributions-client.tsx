@@ -117,6 +117,7 @@ export function DistributionsClient({
                 <TableHead>分配元代理店</TableHead>
                 <TableHead className="text-right">基準額</TableHead>
                 <TableHead className="text-right">分配率</TableHead>
+                <TableHead className="text-right">インボイス控除</TableHead>
                 <TableHead className="text-right">分配額</TableHead>
               </TableRow>
             </TableHeader>
@@ -132,6 +133,11 @@ export function DistributionsClient({
                   <TableCell className="text-muted-foreground">{row.source_agency_name ?? "—"}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(row.base_amount_jpy).toLocaleString("ja-JP")}円</TableCell>
                   <TableCell className="text-right tabular-nums">{(Number(row.applied_rate) * 100).toFixed(2)}%</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {Number(row.royalty_deduction_jpy) > 0
+                      ? `−${Number(row.royalty_deduction_jpy).toLocaleString("ja-JP")}円`
+                      : "—"}
+                  </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums">{Number(row.amount_jpy).toLocaleString("ja-JP")}円</TableCell>
                 </TableRow>
               ))}

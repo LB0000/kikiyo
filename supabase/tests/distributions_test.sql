@@ -2,16 +2,18 @@
 -- pgTAP: 多段分配計算（4-B）テスト
 -- ============================================
 -- 実行: supabase db test （要 pgtap 拡張）。
--- ⚠️ 本ファイルはマイグレ 032〜042 適用後の DB 前提。未適用環境では実行できない。
+-- ⚠️ 本ファイルはマイグレ 032〜046 適用後の DB 前提。未適用環境では実行できない。
 -- 数値シナリオは docs/4B_distribution_calc_design.md の検証表に対応:
 --   rate=15, source A 元本=$300→4500円, M率0.30 / 三次B率0.20 / scout S率0.05,
 --   S担当=L1($100→1500円)。
---   並列(あ): M=1350, B=900, total_side=2250, scout=75（source合計=4500）
---   カスケード(い): M=1350, B=630, total_side=2520, scout=75（source合計=4500）
+-- マイグレ046: インボイス未登録の分配先は分配額から2%控除（控除分は total_side 残差へ戻す。scout は別軸で控除のみ）。
+--   フィクスチャ: M=登録済（控除なし）/ B・S=未登録（2%控除）
+--   並列(あ): M=1350(控除0), B=900−18=882, total_side=2250+18=2268, scout=75−1.5=73.5（source合計=4500 維持）
+--   カスケード(い・控除前): M=1350, B=630, total_side=2520, scout=75
 -- 現状デフォルトは並列(あ)。カスケードへ切替時（039 差替後）は下部の期待値ブロックを入替える。
 
 BEGIN;
-SELECT plan(12);
+SELECT plan(15);
 
 -- --------------------------------------------
 -- パート1: 039 戦略ヘルパ（auth 不要・純粋関数）
@@ -47,8 +49,9 @@ INSERT INTO agencies (id, name, commission_rate)
   VALUES ('00000000-0000-0000-0000-0000000000a2', 'AgencyA', 0),
          ('00000000-0000-0000-0000-0000000000b2', 'AgencyB', 0);
 
--- マネージャー M / スカウト S
-INSERT INTO managers (id, name) VALUES ('00000000-0000-0000-0000-0000000000a3', 'ManagerM');
+-- マネージャー M（インボイス登録済＝控除なし）/ スカウト S（未登録＝2%控除）
+INSERT INTO managers (id, name, invoice_registration_number)
+  VALUES ('00000000-0000-0000-0000-0000000000a3', 'ManagerM', 'T1234567890123');
 INSERT INTO scouts   (id, name) VALUES ('00000000-0000-0000-0000-0000000000a4', 'ScoutS');
 INSERT INTO manager_agencies (agency_id, manager_id)
   VALUES ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-0000000000a3');
@@ -76,19 +79,28 @@ INSERT INTO csv_data (liver_id, agency_id, monthly_report_id, payment_bonus) VAL
 -- 実行
 SELECT recalculate_distributions('00000000-0000-0000-0000-0000000000a1');
 
--- 期待値（並列(あ)）
+-- 期待値（並列(あ)＋046 ロイヤリティ控除）
 SELECT is(
   (SELECT amount_jpy FROM distributions WHERE payee_kind='manager' AND manager_id='00000000-0000-0000-0000-0000000000a3'),
-  1350::numeric, 'manager M = ROUND(4500*0.30) = 1350');
+  1350::numeric, 'manager M = ROUND(4500*0.30) = 1350（登録済・控除なし）');
+SELECT is(
+  (SELECT royalty_deduction_jpy FROM distributions WHERE payee_kind='manager' AND manager_id='00000000-0000-0000-0000-0000000000a3'),
+  0::numeric, 'manager M: インボイス登録済 → 控除0');
 SELECT is(
   (SELECT amount_jpy FROM distributions WHERE payee_kind='agency' AND payee_agency_id='00000000-0000-0000-0000-0000000000b2'),
-  900::numeric, '三次B = ROUND(4500*0.20) = 900（並列）');
+  882::numeric, '三次B = 900 − 2%控除18 = 882（未登録・並列）');
+SELECT is(
+  (SELECT royalty_deduction_jpy FROM distributions WHERE payee_kind='agency' AND payee_agency_id='00000000-0000-0000-0000-0000000000b2'),
+  18::numeric, '三次B: 未登録 → 控除 ROUND(900*0.02) = 18');
 SELECT is(
   (SELECT amount_jpy FROM distributions WHERE payee_kind='total_side'),
-  2250::numeric, 'total_side = 4500-1350-900 = 2250（並列）');
+  2268::numeric, 'total_side = 4500-1350-900+控除戻し18 = 2268（並列）');
 SELECT is(
   (SELECT amount_jpy FROM distributions WHERE payee_kind='scout' AND scout_id='00000000-0000-0000-0000-0000000000a4'),
-  75::numeric, 'scout S = ROUND(1500*0.05) = 75（別軸）');
+  73.5::numeric, 'scout S = 75 − 2%控除1.5 = 73.5（未登録・別軸）');
+SELECT is(
+  (SELECT royalty_deduction_jpy FROM distributions WHERE payee_kind='scout' AND scout_id='00000000-0000-0000-0000-0000000000a4'),
+  1.5::numeric, 'scout S: 未登録 → 控除 ROUND(75*0.02) = 1.5');
 
 -- 元本一致: source A の分配合計（scout 除く）＝ gross 4500
 SELECT is(

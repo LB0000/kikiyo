@@ -143,6 +143,16 @@ export function InvoiceDetailDialog({
                   {(invoice.commission_rate * 100).toFixed(1)}%
                 </span>
               </div>
+              {invoice.royalty_deduction_jpy > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    インボイス未登録控除（{(invoice.royalty_rate * 100).toFixed(0)}%）
+                  </span>
+                  <span className="text-red-600">
+                    −{invoice.royalty_deduction_jpy.toLocaleString("ja-JP")}円
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">税抜金額</span>
                 <span>

@@ -17,6 +17,8 @@ export type DistributionListItem = {
   base_amount_jpy: number;
   applied_rate: number;
   amount_jpy: number;
+  /** インボイス未登録の分配先への2%控除額（amount_jpy は控除後）。 */
+  royalty_deduction_jpy: number;
   tier: number;
 };
 
@@ -52,7 +54,7 @@ export async function getDistributions(
   let query = supabase
     .from("distributions")
     .select(
-      "id, monthly_report_id, payee_kind, base_amount_jpy, applied_rate, amount_jpy, tier, " +
+      "id, monthly_report_id, payee_kind, base_amount_jpy, applied_rate, amount_jpy, royalty_deduction_jpy, tier, " +
         "source:agencies!source_agency_id(name), manager:managers(name), " +
         "scout:scouts(name), payee:agencies!payee_agency_id(name)"
     )
@@ -78,6 +80,7 @@ export async function getDistributions(
       base_amount_jpy: number;
       applied_rate: number;
       amount_jpy: number;
+      royalty_deduction_jpy: number;
       tier: number;
       source: EmbeddedName;
       manager: EmbeddedName;
@@ -101,6 +104,7 @@ export async function getDistributions(
       base_amount_jpy: r.base_amount_jpy,
       applied_rate: r.applied_rate,
       amount_jpy: r.amount_jpy,
+      royalty_deduction_jpy: r.royalty_deduction_jpy,
       tier: r.tier,
     };
   });

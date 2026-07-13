@@ -186,6 +186,16 @@ export function CreateInvoiceDialog({
                     </span>
                   </div>
                 )}
+                {preview.royaltyDeductionJpy > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      インボイス未登録控除（2%）
+                    </span>
+                    <span className="text-red-600">
+                      −{preview.royaltyDeductionJpy.toLocaleString("ja-JP")}円
+                    </span>
+                  </div>
+                )}
                 <div className="my-2 h-px bg-border" />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">税抜金額</span>

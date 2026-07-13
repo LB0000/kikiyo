@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { createInvoiceSchema } from "@/lib/validations/invoice";
-import { CONSUMPTION_TAX_RATE, TAX_MULTIPLIER } from "@/lib/constants";
+import { CONSUMPTION_TAX_RATE, TAX_MULTIPLIER, INVOICE_ROYALTY_RATE } from "@/lib/constants";
 import { sendEmail, escapeHtml, getValidAppUrl } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +37,8 @@ export type InvoiceDetail = {
   is_invoice_registered: boolean;
   invoice_registration_number: string | null;
   deductible_rate: number;
+  royalty_rate: number;
+  royalty_deduction_jpy: number;
   agency_name: string;
   agency_company_name: string | null;
   agency_contract_person_name: string | null;
@@ -76,6 +78,7 @@ export type InvoicePreview = {
   totalJpy: number;
   totalSpecialBonusJpy: number;
   deductibleRate: number;
+  royaltyDeductionJpy: number;
   existingInvoiceNumber: string | null;
 };
 
@@ -91,6 +94,19 @@ function getDeductibleRate(
   if (referenceDate < new Date("2026-10-01")) return 0.8;
   if (referenceDate < new Date("2029-10-01")) return 0.5;
   return 0.0;
+}
+
+/**
+ * インボイス未登録の支払先へのロイヤリティ控除額（2%）。
+ * 税込総額に対して適用し、控除後の額を税抜/税に分解する。
+ * 登録済み・総額0以下は控除なし。
+ */
+function getRoyaltyDeductionJpy(
+  grossIncTax: number,
+  isRegistered: boolean
+): number {
+  if (isRegistered || grossIncTax <= 0) return 0;
+  return Math.round(grossIncTax * INVOICE_ROYALTY_RATE * 100) / 100;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +189,7 @@ export async function getInvoiceDetail(
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, invoice_number, agency_id, monthly_report_id, subtotal_jpy, tax_rate, tax_amount_jpy, total_jpy, is_invoice_registered, invoice_registration_number, deductible_rate, agency_name, agency_company_name, agency_contract_person_name, agency_address, agency_representative, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder, data_month, exchange_rate, commission_rate, sent_at, created_by, created_at"
+      "id, invoice_number, agency_id, monthly_report_id, subtotal_jpy, tax_rate, tax_amount_jpy, total_jpy, is_invoice_registered, invoice_registration_number, deductible_rate, royalty_rate, royalty_deduction_jpy, agency_name, agency_company_name, agency_contract_person_name, agency_address, agency_representative, bank_name, bank_branch, bank_account_type, bank_account_number, bank_account_holder, data_month, exchange_rate, commission_rate, sent_at, created_by, created_at"
     )
     .eq("id", invoiceId)
     .single();
@@ -305,11 +321,13 @@ export async function getInvoicePreview(
   // grossAgencyJpy は既に税込のため、税込→税抜の順で算出
   // 特別ボーナスを加算、返金は代理店分（返金額×手数料率）を差し引く
   const grossIncTax = grossAgencyJpy + totalSpecialBonusJpy - totalRefundJpy * agency.commission_rate;
-  const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
+  // インボイス未登録の代理店はロイヤリティ2%を総額から控除してから税抜/税に分解する
+  const isInvoiceRegistered = !!agency.invoice_registration_number;
+  const royaltyDeductionJpy = getRoyaltyDeductionJpy(grossIncTax, isInvoiceRegistered);
+  const subtotalJpy = Math.round((grossIncTax - royaltyDeductionJpy) / TAX_MULTIPLIER);
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 
-  const isInvoiceRegistered = !!agency.invoice_registration_number;
   const deductibleRate = getDeductibleRate(isInvoiceRegistered);
 
   const existingInvoiceNumber =
@@ -338,6 +356,7 @@ export async function getInvoicePreview(
     totalJpy,
     totalSpecialBonusJpy,
     deductibleRate,
+    royaltyDeductionJpy,
     existingInvoiceNumber,
   };
 }
@@ -484,11 +503,13 @@ export async function createAndSendInvoice(params: {
   // grossAgencyJpy は既に税込のため、税込→税抜の順で算出
   // 特別ボーナスを加算、返金は代理店分（返金額×手数料率）を差し引く
   const grossIncTax = grossAgencyJpy + totalSpecialBonusJpy - totalRefundJpy * agency.commission_rate;
-  const subtotalJpy = Math.round(grossIncTax / TAX_MULTIPLIER);
+  // インボイス未登録の代理店はロイヤリティ2%を総額から控除してから税抜/税に分解する
+  const isInvoiceRegistered = !!agency.invoice_registration_number;
+  const royaltyDeductionJpy = getRoyaltyDeductionJpy(grossIncTax, isInvoiceRegistered);
+  const subtotalJpy = Math.round((grossIncTax - royaltyDeductionJpy) / TAX_MULTIPLIER);
   const taxAmountJpy = Math.round(subtotalJpy * CONSUMPTION_TAX_RATE);
   const totalJpy = subtotalJpy + taxAmountJpy;
 
-  const isInvoiceRegistered = !!agency.invoice_registration_number;
   const deductibleRate = getDeductibleRate(isInvoiceRegistered);
 
   // 請求書番号の生成: INV-{YYYYMM}-{4桁連番}
@@ -525,6 +546,8 @@ export async function createAndSendInvoice(params: {
       is_invoice_registered: isInvoiceRegistered,
       invoice_registration_number: agency.invoice_registration_number,
       deductible_rate: deductibleRate,
+      royalty_rate: royaltyDeductionJpy > 0 ? INVOICE_ROYALTY_RATE : 0,
+      royalty_deduction_jpy: royaltyDeductionJpy,
       agency_name: agency.name,
       agency_company_name: agency.company_name,
       agency_contract_person_name: agency.contract_person_name,

@@ -75,6 +75,9 @@ export function fallbackPathForRole(role: UserRole): string {
 /** 消費税率（10%） */
 export const CONSUMPTION_TAX_RATE = 0.1;
 
+/** インボイス未登録の支払先に適用するロイヤリティ控除率（2%・2026-07発注元ルール） */
+export const INVOICE_ROYALTY_RATE = 0.02;
+
 /** 税込み乗数（1 + 消費税率） — ダッシュボード計算用 */
 export const TAX_MULTIPLIER = 1 + CONSUMPTION_TAX_RATE;
 

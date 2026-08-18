@@ -30,15 +30,18 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reports: MonthlyReportItem[];
-  userAgencyId: string;
+  agencies: { id: string; name: string }[];
+  defaultAgencyId: string;
 };
 
 export function CreateInvoiceDialog({
   open,
   onOpenChange,
   reports,
-  userAgencyId,
+  agencies,
+  defaultAgencyId,
 }: Props) {
+  const [selectedAgencyId, setSelectedAgencyId] = useState(defaultAgencyId);
   const [selectedReportId, setSelectedReportId] = useState("");
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -50,12 +53,18 @@ export function CreateInvoiceDialog({
     setLoadingPreview(true);
   }
 
-  // Fetch preview when report is selected
+  function handleAgencyChange(id: string) {
+    setSelectedAgencyId(id);
+    setPreview(null);
+    if (selectedReportId) setLoadingPreview(true);
+  }
+
+  // Fetch preview when agency or report is selected
   useEffect(() => {
     if (!selectedReportId) return;
 
     let cancelled = false;
-    getInvoicePreview(userAgencyId, selectedReportId)
+    getInvoicePreview(selectedAgencyId, selectedReportId)
       .then((result) => {
         if (cancelled) return;
         if ("error" in result) {
@@ -77,14 +86,14 @@ export function CreateInvoiceDialog({
     return () => {
       cancelled = true;
     };
-  }, [selectedReportId, userAgencyId]);
+  }, [selectedReportId, selectedAgencyId]);
 
   async function handleSubmit() {
     if (!selectedReportId) return;
     setSubmitting(true);
 
     const result = await createAndSendInvoice({
-      agencyId: userAgencyId,
+      agencyId: selectedAgencyId,
       monthlyReportId: selectedReportId,
     });
 
@@ -114,10 +123,36 @@ export function CreateInvoiceDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>請求書作成</DialogTitle>
-          <DialogDescription>対象月次レポートを選択して請求書を作成します。</DialogDescription>
+          <DialogDescription>
+            {agencies.length > 1
+              ? "請求元の代理店と対象月次レポートを選択して請求書を作成します。"
+              : "対象月次レポートを選択して請求書を作成します。"}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Agency Select（発行可能な代理店が複数ある場合のみ） */}
+          {agencies.length > 1 && (
+            <div className="space-y-2">
+              <Label>請求元の代理店</Label>
+              <Select
+                value={selectedAgencyId}
+                onValueChange={handleAgencyChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="代理店を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agencies.map((agency) => (
+                    <SelectItem key={agency.id} value={agency.id}>
+                      {agency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Monthly Report Select */}
           <div className="space-y-2">
             <Label>月次レポート</Label>

@@ -113,6 +113,33 @@ function getRoyaltyDeductionJpy(
 // 1. getInvoices
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// getIssuableAgencies: 請求書を発行できる代理店の一覧
+// ---------------------------------------------------------------------------
+// agencies の RLS「代理店ユーザーは閲覧可能代理店のみ」により、
+// profile_viewable_agencies に登録された代理店だけが返る。
+// 発行の実権限チェックは createAndSendInvoice / getInvoicePreview 側で行う。
+
+export async function getIssuableAgencies(): Promise<
+  { id: string; name: string }[]
+> {
+  const user = await getAuthUser();
+  if (!user || user.role !== "agency_user") return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agencies")
+    .select("id, name")
+    .eq("is_deleted", false)
+    .order("name");
+
+  if (error) {
+    console.error("[getIssuableAgencies]", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getInvoices(
   agencyId?: string
 ): Promise<InvoiceListItem[]> {
@@ -229,6 +256,15 @@ export async function getInvoicePreview(
 
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
+
+  // 閲覧可能代理店のみ許可（createAndSendInvoice と同一ガード）
+  const { data: viewablePreview } = await supabase
+    .from("profile_viewable_agencies")
+    .select("agency_id")
+    .eq("profile_id", user.id);
+  if (!(viewablePreview ?? []).some((v) => v.agency_id === agencyId)) {
+    return { error: "権限がありません" };
+  }
 
   // 代理店情報と月次レポートを並列取得
   const [agencyRes, reportRes] = await Promise.all([

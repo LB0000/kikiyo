@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
-import { getInvoices } from "@/lib/actions/invoices";
+import { getInvoices, getIssuableAgencies } from "@/lib/actions/invoices";
 import { getMonthlyReports } from "@/lib/actions/dashboard";
 import { fallbackPathForRole } from "@/lib/constants";
 import { InvoicesClient } from "./_components/invoices-client";
@@ -15,9 +15,11 @@ export default async function InvoicesPage() {
     redirect(fallbackPathForRole(user.role));
   }
 
-  const [invoices, reports] = await Promise.all([
+  const [invoices, reports, issuableAgencies] = await Promise.all([
     getInvoices(),
     getMonthlyReports(),
+    // 発行可能な代理店（＝閲覧可能代理店）。複数社ある場合は作成時に選択させる。
+    getIssuableAgencies(),
   ]);
 
   return (
@@ -27,6 +29,7 @@ export default async function InvoicesPage() {
         reports={reports}
         userRole={user.role}
         userAgencyId={user.agencyId}
+        issuableAgencies={issuableAgencies}
       />
     </div>
   );

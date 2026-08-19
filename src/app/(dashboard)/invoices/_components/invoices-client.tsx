@@ -16,6 +16,7 @@ type Props = {
   reports: MonthlyReportItem[];
   userRole: UserRole;
   userAgencyId: string | null;
+  issuableAgencies: { id: string; name: string }[];
 };
 
 export function InvoicesClient({
@@ -23,6 +24,7 @@ export function InvoicesClient({
   reports,
   userRole,
   userAgencyId,
+  issuableAgencies,
 }: Props) {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -43,6 +45,14 @@ export function InvoicesClient({
     setDetailKey((k) => k + 1);
     setDetailOpen(true);
   }
+
+  // 所属代理店が未設定でも、閲覧可能代理店があれば発行できる（複数社はダイアログで選択）
+  const canCreate = userRole === "agency_user" && issuableAgencies.length > 0;
+  // 既定の発行先は所属代理店。未設定なら一覧の先頭。
+  const defaultAgencyId =
+    userAgencyId && issuableAgencies.some((a) => a.id === userAgencyId)
+      ? userAgencyId
+      : (issuableAgencies[0]?.id ?? null);
 
   const filtered = invoices.filter((inv) => {
     if (!search) return true;
@@ -80,7 +90,7 @@ export function InvoicesClient({
             {filtered.length}件
           </span>
         </div>
-        {userRole === "agency_user" && userAgencyId && (
+        {canCreate && (
           <Button className="rounded-full" onClick={handleCreate}>
             請求書作成
           </Button>
@@ -93,13 +103,14 @@ export function InvoicesClient({
         onDetail={handleDetail}
       />
 
-      {userRole === "agency_user" && userAgencyId && (
+      {canCreate && defaultAgencyId && (
         <CreateInvoiceDialog
           key={createKey}
           open={createOpen}
           onOpenChange={setCreateOpen}
           reports={reports}
-          userAgencyId={userAgencyId}
+          agencies={issuableAgencies}
+          defaultAgencyId={defaultAgencyId}
         />
       )}
 

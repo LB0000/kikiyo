@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getAuthUser } from "@/lib/auth";
 import { createApplicationSchema } from "@/lib/validations/application";
-import type { ApplicationStatus, FormTab } from "@/lib/supabase/types";
+import type { ApplicationStatus, FormTab, Json } from "@/lib/supabase/types";
 
 const applicationStatusSchema = z.enum([
   "completed", "released", "authorized", "pending", "rejected",
@@ -52,8 +52,13 @@ export async function getApplications(): Promise<ApplicationRow[]> {
     (allAgencies ?? []).map((a) => [a.id, a.name])
   );
 
+  // DB 上は NULL 許容だが DEFAULT 付き（id_verified=false / status='pending' / created_at=now()）
   return data.map((app) => ({
     ...app,
+    id_verified: app.id_verified ?? false,
+    status: app.status ?? "pending",
+    form_data: (app.form_data ?? null) as Record<string, unknown> | null,
+    created_at: app.created_at ?? "",
     agency_name: app.agency_id ? agencyMap.get(app.agency_id) : undefined,
   }));
 }
@@ -117,7 +122,7 @@ export async function createApplication(params: {
     status: "pending",
     form_tab: v.form_tab,
     agency_id: v.agency_id || null,
-    form_data: v.form_data ?? {},
+    form_data: (v.form_data ?? {}) as Json,
   });
 
   if (error) {

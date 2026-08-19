@@ -149,6 +149,37 @@ export type DashboardData = {
   summary: DashboardSummary;
 };
 
+// csv_data の数値列は DB 上 `NUMERIC DEFAULT 0`（NULL 許容）。取込側は常に数値を書くが、
+// 型上の NULL を 0 に正規化してから集計・表示に回す（NaN 混入防止の単一口）。
+const CSV_NUMERIC_FIELDS = [
+  "diamonds",
+  "estimated_bonus",
+  "payment_bonus",
+  "total_reward_jpy",
+  "agency_reward_jpy",
+  "bonus_rookie_half_milestone",
+  "bonus_rookie_milestone_1",
+  "bonus_rookie_retention",
+  "bonus_rookie_milestone_2",
+  "bonus_activeness",
+  "bonus_off_platform",
+  "bonus_revenue_scale",
+  "bonus_ranked_up",
+  "bonus_maintained_tiers",
+  "bonus_off_platform_2026_03",
+  "bonus_incremental_revenue",
+] as const;
+type CsvNumericField = (typeof CSV_NUMERIC_FIELDS)[number];
+
+function normalizeCsvNumerics<T extends Record<CsvNumericField, number | null>>(
+  row: T
+): Omit<T, CsvNumericField> & Record<CsvNumericField, number> {
+  const normalized = Object.fromEntries(
+    CSV_NUMERIC_FIELDS.map((k) => [k, row[k] ?? 0])
+  ) as Record<CsvNumericField, number>;
+  return { ...row, ...normalized };
+}
+
 // ---------------------------------------------------------------------------
 // 1. getMonthlyReports
 // ---------------------------------------------------------------------------
@@ -169,7 +200,7 @@ export async function getMonthlyReports(): Promise<MonthlyReportItem[]> {
 
   if (error || !data) return [];
 
-  return data;
+  return data.map((r) => ({ ...r, created_at: r.created_at ?? "" }));
 }
 
 // ---------------------------------------------------------------------------
@@ -297,7 +328,7 @@ export async function getDashboardData(
     return { error: "代理店情報の取得に失敗しました" };
   }
 
-  const rows = csvRows ?? [];
+  const rows = (csvRows ?? []).map(normalizeCsvNumerics);
   const refundRows = refunds ?? [];
   const specialBonusRows = specialBonuses ?? [];
 
@@ -362,7 +393,7 @@ export async function getDashboardData(
       }));
 
   return {
-    report,
+    report: { ...report, created_at: report.created_at ?? "" },
     csvRows: csvRowsForClient,
     refunds: refundRows,
     specialBonuses: specialBonusRows,
@@ -639,7 +670,7 @@ export async function importCsvData(params: {
           needsConfirmation: true,
           existingReports: existingReports.map((r) => ({
             id: r.id,
-            createdAt: r.created_at,
+            createdAt: r.created_at ?? "",
           })),
           dataMonth,
         };
@@ -1247,19 +1278,19 @@ export async function previewRateChange(
     (agencyRes.data ?? []).map((a) => [a.id, a.commission_rate])
   );
 
-  const oldTotalRewardJpy = csvRows.reduce((s, r) => s + r.total_reward_jpy, 0);
+  const oldTotalRewardJpy = csvRows.reduce((s, r) => s + (r.total_reward_jpy ?? 0), 0);
   const newTotalRewardJpy = csvRows.reduce(
-    (s, r) => s + Math.round(r.payment_bonus * newRate * 100) / 100,
+    (s, r) => s + Math.round((r.payment_bonus ?? 0) * newRate * 100) / 100,
     0
   );
 
   const oldTotalAgencyRewardJpy = csvRows.reduce(
-    (s, r) => s + r.agency_reward_jpy,
+    (s, r) => s + (r.agency_reward_jpy ?? 0),
     0
   );
   const newTotalAgencyRewardJpy = csvRows.reduce((s, r) => {
     const commission = r.agency_id ? (agencyMap.get(r.agency_id) ?? 0) : 0;
-    return s + Math.round(r.payment_bonus * newRate * commission * 100) / 100;
+    return s + Math.round((r.payment_bonus ?? 0) * newRate * commission * 100) / 100;
   }, 0);
 
   const oldTotalRefundJpy = refundRows.reduce((s, r) => s + r.amount_jpy, 0);

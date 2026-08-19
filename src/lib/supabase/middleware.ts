@@ -69,9 +69,28 @@ export async function updateSession(request: NextRequest) {
 
   // 認証済みユーザーがログインページにアクセスした場合（reset-passwordは許可）
   if (session && pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return redirectWithCookies(url, supabaseResponse);
+    // Cookie 上のセッションが Auth サーバー側でも有効かを検証してからダッシュボードへ返す。
+    // 検証しないと、失効済み（別端末のグローバルサインアウト・ユーザー削除・パスワード変更等）
+    // だが期限内のトークンが残った端末で /login → /dashboard → /login の無限リダイレクトに
+    // なり、トークン失効まで最長1時間ログイン画面に到達できない。
+    // getUser() のコストは「セッションCookie持ちで /login を開いた時」だけに限定される。
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return redirectWithCookies(url, supabaseResponse);
+    }
+
+    // 無効セッション: 残存 sb-* Cookie を削除し、ログインフォームをそのまま表示する
+    request.cookies.getAll().forEach((cookie) => {
+      if (cookie.name.startsWith("sb-")) {
+        supabaseResponse.cookies.delete(cookie.name);
+      }
+    });
+    return supabaseResponse;
   }
 
   return supabaseResponse;

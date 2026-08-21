@@ -16,7 +16,10 @@
 -- ============================================
 
 -- 1. csv_data INSERT: admin のみ
+-- 本番へは SQL Editor で手動適用するため、再実行しても 42710 で止まらないよう
+-- 新ポリシー側にも DROP IF EXISTS を付ける（適用済み環境での再実行を許容する）。
 DROP POLICY IF EXISTS "代理店ユーザーはCSV挿入可能" ON public.csv_data;
+DROP POLICY IF EXISTS "管理者のみCSV挿入可能" ON public.csv_data;
 CREATE POLICY "管理者のみCSV挿入可能" ON public.csv_data
   FOR INSERT WITH CHECK (public.get_user_role() = 'system_admin');
 

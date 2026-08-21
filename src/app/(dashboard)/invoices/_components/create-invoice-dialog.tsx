@@ -183,6 +183,16 @@ export function CreateInvoiceDialog({
             </div>
           )}
 
+          {preview && !loadingPreview && preview.totalJpy < 0 && (
+            <div className="rounded-lg border border-red-500 bg-red-50 p-3 dark:bg-red-950/30">
+              <p className="text-sm text-red-700 dark:text-red-400">
+                返金額が報酬額を上回るため、請求額がマイナス（
+                {preview.totalJpy.toLocaleString("ja-JP")}円）になります。
+                この月の請求書は発行できません。
+              </p>
+            </div>
+          )}
+
           {preview && !loadingPreview && preview.existingInvoiceNumber && (
             <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-3 dark:bg-yellow-950/30">
               <p className="text-sm text-yellow-700 dark:text-yellow-400">
@@ -290,7 +300,7 @@ export function CreateInvoiceDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!preview || submitting}
+            disabled={!preview || submitting || preview.totalJpy < 0}
           >
             {submitting
               ? "送信中..."

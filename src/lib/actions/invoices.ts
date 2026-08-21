@@ -548,6 +548,20 @@ export async function createAndSendInvoice(params: {
 
   const isRecreation = (existingInvoices ?? []).length > 0;
 
+  // ⚠️ 金額計算は既存請求書の削除より前に行う。後ろに置くと、下のマイナス判定で
+  //    弾いたときには既存の請求書が消えた後になり、再作成もできず失われる。
+  const { royaltyDeductionJpy, subtotalJpy, taxAmountJpy, totalJpy, deductibleRate } =
+    computeInvoiceAmounts(sourceRows, agency.commission_rate, isInvoiceRegistered);
+
+  // 返金が売上を上回るとマイナスの請求書になる。請求書としては成立しないため発行させない
+  // （0円は正常。実績あり）。返金の繰越運用が必要なら発注元と決めてから対応する。
+  if (totalJpy < 0) {
+    return {
+      error:
+        "返金額が報酬額を上回るため、請求額がマイナスになります。この月の請求書は発行できません。",
+    };
+  }
+
   // 既存の請求書がある場合は先に削除（UNIQUE制約 uq_invoices_agency_report 対応）
   if (isRecreation) {
     const deleteIds = existingInvoices!.map((d) => d.id);
@@ -560,9 +574,6 @@ export async function createAndSendInvoice(params: {
       return { error: "既存の請求書の削除に失敗しました" };
     }
   }
-
-  const { royaltyDeductionJpy, subtotalJpy, taxAmountJpy, totalJpy, deductibleRate } =
-    computeInvoiceAmounts(sourceRows, agency.commission_rate, isInvoiceRegistered);
 
   // 請求書番号の生成: INV-{YYYYMM}-{4桁連番}
   const dataMonth = report.data_month;

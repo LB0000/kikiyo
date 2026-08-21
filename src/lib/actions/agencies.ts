@@ -105,7 +105,7 @@ export async function getAgencies(): Promise<AgencyWithHierarchy[]> {
       rank: agency.rank,
       user_id: agency.user_id,
       email: authUser?.email ?? null,
-      created_at: agency.created_at,
+      created_at: agency.created_at ?? "",
       parent_agencies: (hierarchyByAgency.get(agency.id) ?? []).map((h) => ({
         parent_agency_id: h.parent_agency_id,
         parent_name: agencyMap.get(h.parent_agency_id) ?? "",
@@ -146,6 +146,9 @@ export async function createAgency(values: AgencyFormValues) {
     return { error: "代理店の作成に失敗しました" };
   }
 
+  // narrowing 後の値をキャプチャ（rollback クロージャ内で null 安全に参照）
+  const createdAgency = agency;
+
   // 2. 仮パスワード生成
   const tempPassword = generateTempPassword();
 
@@ -173,7 +176,7 @@ export async function createAgency(values: AgencyFormValues) {
   // ロールバック用ヘルパー（adminSupabaseでRLSバイパス）
   async function rollback() {
     const results = await Promise.allSettled([
-      adminSupabase.from("agencies").delete().eq("id", agency.id),
+      adminSupabase.from("agencies").delete().eq("id", createdAgency.id),
       adminSupabase.auth.admin.deleteUser(authData.user!.id),
     ]);
     for (const r of results) {

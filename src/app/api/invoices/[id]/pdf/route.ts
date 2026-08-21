@@ -74,7 +74,8 @@ export async function GET(
     bank_account_number: invoice.bank_account_number,
     bank_account_holder: invoice.bank_account_holder,
     sent_at: invoice.sent_at,
-    created_at: invoice.created_at,
+    // created_at は DEFAULT now()（実質 NOT NULL）。型上の NULL は空文字で吸収
+    created_at: invoice.created_at ?? "",
   });
 
   return new NextResponse(new Uint8Array(pdfBuffer), {

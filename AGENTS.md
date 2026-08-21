@@ -18,6 +18,8 @@ npm run dev          # 開発サーバー起動
 npm run build        # 本番ビルド
 npx eslint src/      # Lint実行
 npx tsc --noEmit     # 型チェック
+# DB型の再生成（スキーマ変更のマイグレーション適用後に必ず実行。要 `supabase login`）
+npx supabase gen types typescript --project-id <ref> --schema public > src/lib/supabase/database.types.ts
 ```
 
 ## コード規約
@@ -47,7 +49,8 @@ src/
     ui/              # shadcn/uiコンポーネント（24種）
   lib/
     actions/         # Server Actions（agencies, livers, dashboard, applications）
-    supabase/        # client.ts, server.ts, middleware.ts, types.ts
+    supabase/        # client.ts, server.ts, middleware.ts（全クライアントに Database ジェネリクス適用）
+                     # database.types.ts（自動生成・手編集禁止）, types.ts（生成型から導出したエイリアス）
     validations/     # Zodスキーマ（agency, liver, application, refund）
     auth.ts          # getAuthUser() ヘルパー
     constants.ts     # ラベル定数・NAV_ITEMS・TAX_RATE

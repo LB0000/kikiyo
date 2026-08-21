@@ -63,7 +63,7 @@ export async function getLivers(): Promise<LiverRow[]> {
     liver_id: liver.liver_id,
     email: showPii ? liver.email : null,
     tiktok_username: liver.tiktok_username,
-    status: liver.status,
+    status: liver.status ?? "pending",
     link: liver.link,
     address: showPii ? liver.address : null,
     contact: showPii ? liver.contact : null,
@@ -161,7 +161,8 @@ export async function updateLiver(
     if (newAgencyId !== undefined && newAgencyId !== oldLiver.agency_id && (newAgencyId !== null || oldLiver.agency_id !== null)) {
       const { error: rpcError } = await supabase.rpc("update_liver_agency", {
         p_liver_id: id,
-        p_new_agency_id: newAgencyId,
+        // RPC は NULL（所属解除）を受け付ける（021）。生成型は関数引数の NULL 許容を表現できないためキャスト
+        p_new_agency_id: newAgencyId as unknown as string,
       });
       if (rpcError) {
         console.error("[updateLiver] update_liver_agency:", rpcError.message);

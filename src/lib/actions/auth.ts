@@ -16,10 +16,15 @@ import {
  * ブラウザ側 `supabase.auth.signOut()` では HTTP-only やチャンク分割された sb-* Cookie
  * を取りこぼすケースがあり、残存 Cookie の累積で Edge 側がリクエストヘッダ上限に達して
  * ERR_CONNECTION_RESET を返す事象を防ぐための仕組み。
+ *
+ * scope: "local" 必須。既定の "global" は同一アカウントの全端末のセッションを失効させる。
+ * 本システムはアカウント共有運用（バックオフィス複数名）があり、global だと1人のログアウトで
+ * 他端末に「失効済みだが期限内のトークン」が残り、/login ↔ /dashboard の無限リダイレクトで
+ * 最長1時間ログイン不能になる（2026-08-19 発注元報告の再ログイン不可事象）。
  */
 export async function signOutAction(): Promise<never> {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
 
   const cookieStore = await cookies();
   for (const c of cookieStore.getAll()) {
